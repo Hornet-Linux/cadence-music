@@ -1,0 +1,31 @@
+# Unnamed Music server — self-hosted deployment.
+#
+#   cp .env.example .env   # then edit it
+#   docker compose up -d --build
+#
+# The server listens on 127.0.0.1 only; put a TLS reverse proxy (e.g. Caddy)
+# in front of it for your domain. See docs/SELF_HOSTING.md.
+
+name: unnamed-music
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    image: unnamed-music-server:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      DATA_DIR: /data
+      MUSIC_DIR: /music
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8787}:8787"
+    volumes:
+      - music-data:/data
+      - ${MUSIC_PATH:-./music}:/music:ro
+
+volumes:
+  music-data:

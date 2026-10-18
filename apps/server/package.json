@@ -1,0 +1,30 @@
+{
+  "name": "unnamed-music-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted server for Unnamed Music App: accounts, OIDC sign-in, music library and streaming.",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "tsc -p tsconfig.json && node --disable-warning=ExperimentalWarning --test \"dist/**/*.test.js\"",
+    "start": "node --disable-warning=ExperimentalWarning dist/index.js"
+  },
+  "dependencies": {
+    "fastify": "4.28.1",
+    "music-metadata": "10.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.11.1",
+    "@types/node": "22.10.2",
+    "eslint": "9.11.1",
+    "globals": "15.9.0",
+    "typescript": "5.5.4",
+    "typescript-eslint": "8.8.0"
+  }
+}

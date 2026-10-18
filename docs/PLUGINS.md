@@ -53,17 +53,47 @@ single source of truth about what a plugin can do.
 - **Settings panels** — `ctx.registerSettingsPanel(...)`
 - **Audio sources** — `ctx.registerAudioSource({ resolve })`; the player tries each
   enabled source until one returns a URL.
-- **Library sources** — `ctx.registerLibrarySource({ connect })` for service
-  connectors (this is where Spotify / Apple Music library import will live).
+- **Library sources** — `ctx.registerLibrarySource({ id, label, useTracks })`.
+  `useTracks` is a React hook returning the source's tracks; the Library, Home
+  and Search views render a section for every source. This is where the server,
+  local files and future Spotify / Apple Music importers plug in.
 - **Now-playing observers** — `ctx.onNowPlaying(cb)` for scrobblers, presence, etc.
+
+Enabling or disabling a plugin rebuilds every contribution from the plugins
+that are enabled at that moment. Operations are queued, so plugins that enable
+at the same time (as built-ins do at start-up) never overwrite each other.
+`activate` may run more than once and should be idempotent.
 
 ## Built-in vs sample plugins
 
 - `builtin: true` plugins ship with the app, are trusted, and enable
-  automatically (e.g. `core.welcome`, `core.now-playing-log`).
+  automatically: `core.server` (your self-hosted server), `core.local-files`,
+  `core.welcome` and `core.now-playing-log`.
 - Sample plugins start **disabled** and demonstrate the consent flow — e.g.
   `obsoletelabs.tracking-bridge`, a stub that shows where a bridge to a
   self-hosted Unnamed Tracking App instance would live.
+
+## Server plugins
+
+The server has the same seam (`apps/server/src/plugins/types.ts`). A server
+plugin receives the Fastify instance and a context with the database, config,
+server secret, a logger and the `requireUser` / `requireAdmin` pre-handlers:
+
+```ts
+export const myPlugin: ServerPlugin = {
+  id: "me.hello",
+  name: "Hello",
+  version: "1.0.0",
+  register(app, ctx) {
+    app.get("/api/hello", { preHandler: ctx.requireUser }, async (req) => ({
+      hello: req.user!.username,
+    }));
+  },
+};
+```
+
+The music library itself (`core.library`) is a server plugin, so third-party
+plugins use exactly the same contract. Keep routes under `/api/<area>`.
 
 ## Planned: signed packages
 

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/dist-electron
+**/release
+**/coverage
+**/.env
+deploy/data
+deploy/music
+.git
+.github
+apps/desktop
+docs

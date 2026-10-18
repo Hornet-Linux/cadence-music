@@ -6,6 +6,13 @@ dist/
 dist-electron/
 release/
 out/
+coverage/
+
+# Local server data and music (self-hosting)
+deploy/data/
+deploy/music/
+apps/server/data/
+apps/server/music/
 
 # Environment and secrets
 .env

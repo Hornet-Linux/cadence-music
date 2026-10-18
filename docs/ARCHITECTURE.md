@@ -1,69 +1,86 @@
 # Architecture
 
-Unnamed Music App is a **plugin-first** desktop music player. The app is a thin,
-good-looking shell — library, playback, navigation — and almost every capability
-beyond that (where audio comes from, lyrics, scrobbling, service connections) is
-provided by **plugins**.
-
-## Two parts
-
-1. **Desktop app** (this repo): an Electron + React + TypeScript application that
-   runs standalone on your computer and ships as a Windows `.exe`.
-2. **Self-hosted server** (planned, separate deployment): optional backend shipped
-   as Docker containers so your library, playlists and history can live on a VPS
-   you control. The desktop app points at your instance; nothing is required to
-   use the app locally.
-
-## Desktop stack
-
-| Concern        | Choice                                  |
-| -------------- | --------------------------------------- |
-| Shell          | Electron 31 (frameless, custom titlebar) |
-| UI             | React 18 + TypeScript, hand-rolled CSS design system |
-| State          | Zustand stores (`player`, `pluginHost`, `nav`) |
-| Build          | Vite + `vite-plugin-electron`           |
-
-### Process model
-
-- **Main process** (`electron/main.ts`): owns the window and window controls.
-  External links always open in the user's real browser, never in-app.
-- **Preload** (`electron/preload.ts`): exposes a deliberately tiny, explicit
-  bridge (`window.host`) via `contextBridge`. `nodeIntegration` is off and
-  `contextIsolation` is on.
-- **Renderer** (`src/`): the whole UI and the plugin host.
-
-### Source layout
+Unnamed Music App is a **plugin-first** music player made of two parts that
+live in this repository:
 
 ```
-electron/        main + preload (Node side)
-src/
-  app/           App root, routing (navStore), global CSS
-  ui/            shell + reusable components (TitleBar, Sidebar, PlayerBar, cards, icons)
-  features/      home / search / library / settings views
-  player/        playback engine (playerStore) over a single <audio> element
-  plugins/       plugin contracts (types.ts), host/registry (host.ts), built-ins
-  shared/        shared types + mock library data
+apps/desktop/     Electron desktop app (Windows .exe; also runs on Linux/macOS)
+apps/server/      Self-hosted server (Docker) — accounts, OIDC, library, streaming
+packages/shared/  Type-only HTTP API contract shared by both
+deploy/           docker-compose, env template, Caddy example
+docs/             This documentation
 ```
 
-## Playback
+The desktop app works on its own (local files). Point it at your server to get
+your whole library on every machine, with sign-in through your own identity
+provider.
 
-`player/playerStore.ts` drives a single shared `HTMLAudioElement`: queue,
-play/pause, next/previous, seek, volume, shuffle and repeat. To play a track it
-asks the plugin host to **resolve** it to a playable URL. With no source plugin
-enabled, the player shows an honest "no source can play this yet" state rather
-than faking audio.
+## Desktop app (`apps/desktop`)
 
-## Plugin system
+| Concern | Choice |
+| --- | --- |
+| Shell | Electron 31, frameless window with a custom title bar |
+| UI | React 18 + TypeScript, hand-rolled CSS design system |
+| State | Zustand stores (`player`, `pluginHost`, `nav`, per-plugin stores) |
+| Build | Vite + `vite-plugin-electron`; electron-builder for the installer |
+| Tests | Vitest (jsdom) |
 
-See [PLUGINS.md](./PLUGINS.md). In short: a plugin declares a **manifest** with
-the **capabilities** it needs; the host grants them on user consent and hands the
-plugin a **context** whose surface is limited to what it was granted. Plugins
-contribute sidebar pages, Home widgets, settings panels, audio sources, library
-sources, and now-playing observers.
+**Process model.** The main process (`electron/main.ts`) owns the window, runs
+the OIDC loopback sign-in and stores secrets with Electron `safeStorage` (the OS
+keychain / DPAPI). The preload exposes a deliberately small bridge,
+`window.host`, through `contextBridge`; `nodeIntegration` is off and
+`contextIsolation` is on. The renderer (`src/`) holds the UI and the plugin
+host.
 
-## Roadmap (high level)
+**Playback.** `player/playerStore.ts` drives a single shared `<audio>` element:
+queue, play/pause, next/previous, seek, volume, shuffle and repeat. To play a
+track it asks the plugin host to resolve it to a URL; each audio-source plugin
+gets a turn.
 
-- v1: the shell + plugin system (this). Built-in sample plugins demonstrate each
-  contribution point.
-- Next: real source plugins (local files, then service connectors), lyrics,
-  the self-hosted Docker server, and signed third-party plugin packages.
+**Library.** Library, Home and Search have no data of their own. They render a
+section per *library source* contributed by plugins — today the server and local
+files — so a new source plugin shows up everywhere automatically.
+
+## Server (`apps/server`)
+
+| Concern | Choice |
+| --- | --- |
+| Runtime | Node 22, TypeScript compiled with `tsc` |
+| HTTP | Fastify 4 |
+| Storage | SQLite via Node's built-in `node:sqlite`, versioned migrations |
+| Tags | `music-metadata` |
+| Tests | `node:test` against the compiled output |
+| Deploy | Multi-stage Docker image, non-root, health-checked |
+
+**Auth.** Sessions are random bearer tokens; only their SHA-256 hashes are
+stored. Two sign-in methods:
+
+- *Password* — scrypt-hashed, with per-IP failure rate limiting. An admin can be
+  bootstrapped from `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
+- *OIDC* — authorization code + PKCE against any provider (Authentik, Keycloak,
+  …). For the desktop app the server only redirects to loopback addresses, and
+  hands back a one-time code bound to the app's own PKCE challenge, so a code
+  intercepted on the machine is useless. ID-token claims (issuer, audience,
+  authorized party, expiry, nonce) are validated; the token arrives directly
+  from the provider's token endpoint over TLS, which OIDC Core allows in place
+  of a signature check. Group claims can restrict sign-in and grant admin.
+
+**Library and streaming.** The library is a built-in *server plugin*. It scans
+`MUSIC_DIR` at start-up, periodically and on demand, re-reading tags only for
+files whose size or modification time changed. Audio elements cannot send
+headers, so the app asks for a short-lived HMAC-signed stream URL; the stream
+endpoint supports byte ranges for seeking.
+
+## Security notes
+
+- The server binds to localhost in the provided compose file; expose it only
+  through a TLS proxy.
+- CORS allows any origin because the API uses bearer tokens, never cookies.
+- Tokens on the desktop are encrypted at rest with the OS keychain.
+
+## Roadmap
+
+- Playlists and likes synced through the server.
+- Spotify / Apple Music connector plugins (library import).
+- Artwork extraction and caching.
+- Signed, installable third-party plugin packages for both apps.

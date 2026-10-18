@@ -1,0 +1,11 @@
+# Add a site block like this to your Caddyfile. Caddy obtains and renews the
+# TLS certificate automatically once the domain's DNS points at this server.
+#
+# If Caddy runs in Docker with `network_mode: host`, 127.0.0.1 reaches the
+# music server directly. If Caddy runs on a Docker network instead, put both
+# containers on the same network and use `reverse_proxy server:8787`.
+
+music.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+}
