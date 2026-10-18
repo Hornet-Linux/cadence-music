@@ -68,10 +68,13 @@ try {
     const c = electron.components;
     if (!c) return { castlabs: false };
     const ready = await Promise.race([
-      c.whenReady().then(() => "ready", (err) => `failed: ${err}`),
-      new Promise((r) => setTimeout(() => r("timeout"), 60_000)),
+      c.whenReady([c.WIDEVINE_CDM_ID]).then(
+        () => "ready",
+        (err) => `failed: ${JSON.stringify(err?.errors ?? String(err))}`,
+      ),
+      new Promise((r) => setTimeout(() => r("timeout"), 90_000)),
     ]);
-    return { castlabs: true, ready, status: c.status() };
+    return { castlabs: true, updatesEnabled: c.updatesEnabled, id: c.WIDEVINE_CDM_ID, ready, status: c.status() };
   });
   console.log("castlabs components:", JSON.stringify(components));
 

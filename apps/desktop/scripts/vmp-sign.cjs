@@ -1,4 +1,4 @@
-// electron-builder afterPack hook: Widevine VMP-sign the packaged app with
+// electron-builder afterSign hook: Widevine VMP-sign the packaged app with
 // castlabs EVS, which DRM license servers (Spotify, Apple Music) require from
 // production builds. Runs only when CI has signed in to EVS and set VMP_SIGN=1;
 // otherwise the build stays unsigned and DRM playback may be refused.

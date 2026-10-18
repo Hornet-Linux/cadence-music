@@ -17,7 +17,12 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 // castlabs Electron (ECS) adds `components` to install the Widevine CDM that
 // Spotify and Apple Music need. Stock Electron has no such module.
-type Components = { whenReady: () => Promise<unknown>; status: () => unknown };
+type Components = {
+  whenReady: (required?: string[]) => Promise<unknown>;
+  status: () => Record<string, unknown>;
+  updatesEnabled: boolean;
+  WIDEVINE_CDM_ID: string;
+};
 const components = (electron as unknown as { components?: Components }).components;
 
 async function widevineReady(): Promise<void> {
@@ -25,13 +30,20 @@ async function widevineReady(): Promise<void> {
     console.warn("Not a castlabs Electron build: DRM playback is unavailable");
     return;
   }
+  if (!components.updatesEnabled) {
+    // A disabled updater never installs the CDM; turn it back on.
+    components.updatesEnabled = true;
+  }
   const timeout = new Promise<"timeout">((r) => setTimeout(() => r("timeout"), 30_000));
   try {
-    const result = await Promise.race([components.whenReady(), timeout]);
+    // Require Widevine explicitly so a failed install rejects with details
+    // instead of resolving with nothing installed.
+    const result = await Promise.race([components.whenReady([components.WIDEVINE_CDM_ID]), timeout]);
     if (result === "timeout") console.warn("Widevine CDM is still installing; continuing");
-    else console.log("Widevine components ready", components.status());
+    else console.log("Widevine CDM ready", JSON.stringify(components.status()));
   } catch (err) {
-    console.error("Widevine CDM failed to install", err);
+    const errors = (err as { errors?: unknown }).errors;
+    console.error("Widevine CDM failed to install", JSON.stringify(errors ?? String(err)));
   }
 }
 
