@@ -47,7 +47,7 @@ try {
   // A first launch opens the setup wizard: walk through every step.
   // Scope to the dialog: the player bar also has a "Next" (track) button.
   const wizard = page.getByRole("dialog");
-  await wizard.getByRole("heading", { name: "Welcome to Unnamed Music App" }).waitFor({ timeout: 15_000 });
+  await wizard.getByRole("heading", { name: "Welcome to Cadence" }).waitFor({ timeout: 15_000 });
   if (process.env.E2E_SCREENSHOTS === "1") {
     const shots = path.join(appDir, "e2e", "screenshots");
     fs.mkdirSync(shots, { recursive: true });

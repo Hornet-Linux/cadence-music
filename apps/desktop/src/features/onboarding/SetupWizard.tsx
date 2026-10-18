@@ -23,7 +23,7 @@ export function SetupWizard() {
   const steps: Step[] = [
     {
       id: "welcome",
-      title: "Welcome to Unnamed Music App",
+      title: "Welcome to Cadence",
       description: "Let's get your music in. Every step is optional and you can change it later in Settings.",
       body: (
         <div className="wizard-welcome">

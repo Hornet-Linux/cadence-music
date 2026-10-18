@@ -1,5 +1,5 @@
 # Build from the repository root:
-#   docker build -f apps/server/Dockerfile -t unnamed-music-server .
+#   docker build -f apps/server/Dockerfile -t cadence-server .
 
 FROM node:22-slim AS build
 WORKDIR /src

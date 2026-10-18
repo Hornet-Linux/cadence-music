@@ -1,4 +1,4 @@
-# unnamed_music_app
+# Cadence
 
 [![CI](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml)
 

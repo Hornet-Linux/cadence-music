@@ -206,9 +206,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -f apps/server/Dockerfile -t unnamed-music-server:ci .
+        run: docker build -f apps/server/Dockerfile -t cadence-server:ci .
       - name: Smoke-test the running container
-        run: bash .github/scripts/server-smoke-test.sh unnamed-music-server:ci
+        run: bash .github/scripts/server-smoke-test.sh cadence-server:ci
       - name: Lint shell scripts
         run: shellcheck -S error deploy/setup.sh .github/scripts/server-smoke-test.sh
       - name: Run the setup wizard with scripted answers

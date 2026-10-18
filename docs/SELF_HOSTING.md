@@ -108,15 +108,15 @@ connect Spotify and Apple Music, and you can skip any of them.
      `profile` scope includes the user's groups.
    - **Subject mode:** the default ("Based on the User's hashed ID") is fine.
 2. Create an **Application** that uses this provider (slug e.g.
-   `unnamed-music`) and bind the users or groups that may use it.
+   `cadence`) and bind the users or groups that may use it.
 3. Copy the **Client ID** and **Client Secret** from the provider, and the
    **OpenID Configuration Issuer** shown on the provider's overview page —
-   it looks like `https://auth.example.com/application/o/unnamed-music/`.
+   it looks like `https://auth.example.com/application/o/cadence/`.
 4. Set these in `deploy/.env`:
 
    ```ini
    PUBLIC_URL=https://music.example.com
-   OIDC_ISSUER=https://auth.example.com/application/o/unnamed-music/
+   OIDC_ISSUER=https://auth.example.com/application/o/cadence/
    OIDC_CLIENT_ID=...
    OIDC_CLIENT_SECRET=...
    OIDC_NAME=Authentik

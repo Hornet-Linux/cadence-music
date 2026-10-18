@@ -1,9 +1,9 @@
 {
-  "name": "unnamed-music-server",
+  "name": "cadence-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted server for Unnamed Music App: accounts, OIDC sign-in, music library and streaming.",
+  "description": "Self-hosted server for Cadence: accounts, OIDC sign-in, music library and streaming.",
   "engines": {
     "node": ">=22.13"
   },

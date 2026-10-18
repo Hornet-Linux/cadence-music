@@ -113,7 +113,7 @@ export const appleMusicPlugin: Plugin = {
     version: "1.0.0",
     description:
       "Sign in with your Apple ID to import your Apple Music library and play it in the app. Needs a MusicKit key on your server.",
-    author: "Unnamed Music App",
+    author: "Cadence",
     capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "network.outbound"],
     apiRange: "^1.0.0",
     builtin: true,

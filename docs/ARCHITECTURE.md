@@ -1,6 +1,6 @@
 # Architecture
 
-Unnamed Music App is a **plugin-first** music player made of two parts that
+Cadence is a **plugin-first** music player made of two parts that
 live in this repository:
 
 ```

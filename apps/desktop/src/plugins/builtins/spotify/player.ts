@@ -40,7 +40,7 @@ export function ensureSpotifyPlayer(): Promise<string> {
       if (!SpotifySdk) throw new Error("The Spotify player is unavailable");
       return await new Promise<string>((resolve, reject) => {
         const p = new SpotifySdk.Player({
-          name: "Unnamed Music App",
+          name: "Cadence",
           volume: 0.8,
           getOAuthToken: (cb) => {
             void spotifyAccessToken().then((token) => {

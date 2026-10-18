@@ -1,5 +1,5 @@
 {
-  "name": "unnamed-music-app",
+  "name": "cadence",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,8 +22,8 @@
     "electron:build:win": "tsc --noEmit && vite build && electron-builder --win --publish never"
   },
   "build": {
-    "appId": "net.hornetlinux.unnamedmusicapp",
-    "productName": "Unnamed Music App",
+    "appId": "net.hornetlinux.cadencemusic",
+    "productName": "Cadence",
     "electronVersion": "42.11.0+wvcus",
     "electronDownload": {
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"

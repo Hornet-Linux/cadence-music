@@ -56,7 +56,7 @@ export function loopbackAuthorize(options: LoopbackOptions): Promise<string> {
       res.writeHead(ok ? 200 : 400, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
         ok
-          ? resultPage("Signed in", "You can close this tab and return to Unnamed Music App.")
+          ? resultPage("Signed in", "You can close this tab and return to Cadence.")
           : resultPage("Sign-in failed", error ?? "No code was returned."),
       );
       finish();

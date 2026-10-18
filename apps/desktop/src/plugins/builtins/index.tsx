@@ -18,7 +18,7 @@ const nowPlayingLogPlugin: Plugin = {
     name: "Now Playing Log",
     version: "1.0.0",
     description: "Writes the current track to the developer console.",
-    author: "Unnamed Music App",
+    author: "Cadence",
     capabilities: ["player.read"],
     apiRange: "^1.0.0",
     builtin: true,

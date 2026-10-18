@@ -52,7 +52,7 @@ export const spotifyPlugin: Plugin = {
     version: "1.0.0",
     description:
       "Sign in with Spotify to import your liked songs and play them in the app (Premium required for playback).",
-    author: "Unnamed Music App",
+    author: "Cadence",
     capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "network.outbound"],
     apiRange: "^1.0.0",
     builtin: true,

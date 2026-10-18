@@ -1,6 +1,6 @@
 # Plugins
 
-Almost everything in Unnamed Music App is a plugin. This document describes the
+Almost everything in Cadence is a plugin. This document describes the
 plugin model as it stands in v1 (built-in and sample plugins loaded in-process).
 Signed, installable third-party packages build on this same contract.
 

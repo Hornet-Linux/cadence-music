@@ -56,7 +56,7 @@ export const localFilesPlugin: Plugin = {
     name: "Local Files",
     version: "1.0.0",
     description: "Play audio files from your computer. A working source plugin.",
-    author: "Unnamed Music App",
+    author: "Cadence",
     capabilities: ["source.audio", "source.library", "ui.sidebar"],
     apiRange: "^1.0.0",
     builtin: true,

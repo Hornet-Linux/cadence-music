@@ -69,7 +69,7 @@ export function getMusicKit(developerToken: () => Promise<string>): Promise<Musi
       const MusicKit = await loadMusicKit();
       return MusicKit.configure({
         developerToken: await developerToken(),
-        app: { name: "Unnamed Music App", build: "0.1.0" },
+        app: { name: "Cadence", build: "0.1.0" },
       });
     })().catch((err) => {
       instance = null;

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Interactive setup for the Unnamed Music server.
+# Interactive setup for the Cadence server.
 #
 #   cd deploy && ./setup.sh
 #
@@ -74,7 +74,7 @@ envq() {
   printf "'%s'" "$1"
 }
 
-printf '%sUnnamed Music — server setup%s\n' "$BOLD" "$RESET"
+printf '%sCadence — server setup%s\n' "$BOLD" "$RESET"
 info "This writes deploy/.env. Press Enter to accept a [default]."
 
 if ! command -v docker >/dev/null 2>&1; then

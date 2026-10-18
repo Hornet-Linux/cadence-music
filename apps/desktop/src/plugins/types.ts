@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Track } from "@/shared/types";
 
 /**
- * Plugin contracts for Unnamed Music App.
+ * Plugin contracts for Cadence.
  *
  * Modeled on a capability-based, manifest-declared plugin system: a plugin
  * declares what it needs up front, the host reviews and grants it, and the

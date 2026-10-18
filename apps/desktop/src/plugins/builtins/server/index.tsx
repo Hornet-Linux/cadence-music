@@ -51,15 +51,15 @@ function ServerLibraryPage() {
   );
 }
 
-/** Connects the app to a self-hosted Unnamed Music server. */
+/** Connects the app to a self-hosted Cadence server. */
 export const serverPlugin: Plugin = {
   manifest: {
     id: "core.server",
     name: "Self-hosted Server",
     version: "1.0.0",
     description:
-      "Connect to your own Unnamed Music server: sign in (password or OIDC such as Authentik), sync listening history across devices, and stream any music stored on it.",
-    author: "Unnamed Music App",
+      "Connect to your own Cadence server: sign in (password or OIDC such as Authentik), sync listening history across devices, and stream any music stored on it.",
+    author: "Cadence",
     capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "network.outbound"],
     apiRange: "^1.0.0",
     builtin: true,

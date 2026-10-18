@@ -3,7 +3,7 @@
 # then exercise health, sign-in, a library scan and a ranged stream.
 set -euo pipefail
 
-IMAGE="${1:-unnamed-music-server:ci}"
+IMAGE="${1:-cadence-server:ci}"
 PORT=18787
 NAME=uma-smoke
 MUSIC_DIR="$(mktemp -d)"

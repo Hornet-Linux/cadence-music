@@ -139,7 +139,7 @@ function AboutSection() {
   const playCount = useHistory((s) => s.plays.length);
   return (
     <>
-      <SettingRow title="Unnamed Music App" description="Self-hostable, plugin-first music player. Version 0.1.0.">
+      <SettingRow title="Cadence" description="Self-hostable, plugin-first music player. Version 0.1.0.">
         <span />
       </SettingRow>
       <SettingRow title="Setup wizard" description="Walk through connecting your server and services again.">
