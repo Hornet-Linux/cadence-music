@@ -145,23 +145,35 @@ const WIDEVINE_PROBE = process.argv.includes("--widevine-probe");
 
 async function runWidevineProbe() {
   const result: Record<string, unknown> = { castlabs: !!components, platform: process.platform };
-  if (components) {
-    try {
-      await components.whenReady([components.WIDEVINE_CDM_ID]);
-      result.install = "ok";
-    } catch (err) {
-      result.install = (err as { errors?: unknown }).errors ?? String(err);
+  try {
+    if (components) {
+      try {
+        await components.whenReady([components.WIDEVINE_CDM_ID]);
+        result.install = "ok";
+      } catch (err) {
+        result.install = (err as { errors?: unknown }).errors ?? String(err);
+      }
+      result.status = components.status();
     }
-    result.status = components.status();
+    // EME only exists in secure contexts; the app's own file:// page is one.
+    const probe = new BrowserWindow({ show: false });
+    await probe.loadFile(path.join(RENDERER_DIST, "index.html"));
+    result.keySystem = await probe.webContents.executeJavaScript(`(async () => {
+      try {
+        if (!navigator.requestMediaKeySystemAccess) return "EME unavailable (insecure context?)";
+        await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [{ initDataTypes: ["cenc"],
+          audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] }]);
+        return true;
+      } catch (e) {
+        return String(e);
+      }
+    })()`);
+  } catch (err) {
+    result.error = String(err);
+  } finally {
+    console.log(`WIDEVINE_PROBE ${JSON.stringify(result)}`);
+    app.exit(0);
   }
-  const probe = new BrowserWindow({ show: false });
-  await probe.loadURL("about:blank");
-  result.keySystem = await probe.webContents.executeJavaScript(
-    `navigator.requestMediaKeySystemAccess("com.widevine.alpha", [{ initDataTypes: ["cenc"],
-       audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] }]).then(() => true, (e) => String(e))`,
-  );
-  console.log(`WIDEVINE_PROBE ${JSON.stringify(result)}`);
-  app.exit(0);
 }
 
 // ---- App lifecycle ---------------------------------------------------------
