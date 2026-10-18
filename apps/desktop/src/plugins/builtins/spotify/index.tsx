@@ -5,6 +5,9 @@ import { TrackRow } from "@/ui/media";
 import { createSpotifyPlayback } from "./player";
 import { SpotifySettings } from "./SpotifySettings";
 import { useSpotify } from "./spotifyStore";
+import { useServer } from "../server/serverStore";
+
+let watchingServer = false;
 
 function SpotifyPage() {
   const { status, tracks, total, loading } = useSpotify();
@@ -58,7 +61,14 @@ export const spotifyPlugin: Plugin = {
     builtin: true,
   },
   activate(ctx) {
-    void useSpotify.getState().init();
+    if (!watchingServer) {
+      watchingServer = true;
+      // The app ID follows the Cadence account across devices.
+      useServer.subscribe((state, prev) => {
+        if (state.integrations !== prev.integrations) useSpotify.getState().syncWithAccount();
+      });
+    }
+    void useSpotify.getState().init().then(() => useSpotify.getState().syncWithAccount());
 
     ctx.registerSettingsPanel({
       id: "spotify",

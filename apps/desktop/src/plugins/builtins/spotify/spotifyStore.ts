@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Track } from "@/shared/types";
 import { spotifyFetch } from "./api";
 import { resetSpotifyPlayer } from "./player";
+import { useServer } from "../server/serverStore";
 
 const CLIENT_ID_KEY = "spotify:clientId";
 /** Liked songs to import (50 per request). */
@@ -49,6 +50,8 @@ interface SpotifyState {
 
   init: () => Promise<void>;
   setClientId: (clientId: string) => void;
+  /** Share the app ID between this device and the Cadence account, both ways. */
+  syncWithAccount: () => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   loadLibrary: () => Promise<void>;
@@ -106,6 +109,28 @@ export const useSpotify = create<SpotifyState>((set, get) => {
     await get().loadLibrary();
   }
 
+  // Save the app ID to the Cadence account so the person's other devices
+  // (desktop, web) find it filled in. Spotify tokens stay on each device.
+  async function saveToAccount(clientId: string) {
+    const server = useServer.getState();
+    if (!server.token || server.integrations?.spotify?.clientId === clientId) return;
+    if (server.integrations?.spotify?.source === "server") return;
+    try {
+      await server.api<void>("api/me/integrations/spotify", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientId }),
+      });
+      useServer.setState((st) => ({
+        integrations: st.integrations
+          ? { ...st.integrations, spotify: { clientId, source: "account" } }
+          : st.integrations,
+      }));
+    } catch {
+      // Older servers don't store it; this device still remembers it.
+    }
+  }
+
   return {
     status: "unknown",
     clientId: "",
@@ -132,6 +157,15 @@ export const useSpotify = create<SpotifyState>((set, get) => {
       set({ clientId });
     },
 
+    syncWithAccount() {
+      const integrations = useServer.getState().integrations;
+      const saved = integrations?.spotify?.clientId;
+      const local = get().clientId.trim();
+      if (saved && !local) set({ clientId: saved });
+      // Connected here before accounts kept the ID (or on another server): upload it.
+      else if (integrations && !saved && local && get().status === "signed-in") void saveToAccount(local);
+    },
+
     async login() {
       const clientId = get().clientId.trim();
       if (!window.host?.spotify) return;
@@ -143,6 +177,7 @@ export const useSpotify = create<SpotifyState>((set, get) => {
         } catch {
           // Optional convenience only.
         }
+        void saveToAccount(clientId);
         await afterSignIn();
       } catch (err) {
         set({ status: "signed-out", error: cleanError(err) });

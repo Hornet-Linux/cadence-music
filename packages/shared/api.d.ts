@@ -141,8 +141,11 @@ export interface TopTracksResponse {
 
 /** Streaming-service settings the server shares with signed-in apps. */
 export interface IntegrationsResponse {
-  /** Spotify app (client) ID configured on the server, if any. Not a secret. */
-  spotify: { clientId: string } | null;
+  /**
+   * Spotify app (client) ID, if any. Not a secret. `server`: set by the server
+   * owner for everyone; `account`: saved by this person from one of their apps.
+   */
+  spotify: { clientId: string; source?: "server" | "account" } | null;
   /** True when the server can mint Apple Music developer tokens. */
   appleMusic: { available: boolean };
 }
