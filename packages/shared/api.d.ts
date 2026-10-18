@@ -16,6 +16,11 @@ export interface HealthResponse {
   ok: true;
   name: string;
   version: string;
+  /**
+   * True on a brand-new server with no accounts: the first admin must be
+   * created with the one-time setup code printed in the server's logs.
+   */
+  setupRequired: boolean;
   auth: {
     /** True when at least one account can sign in with a password. */
     password: boolean;
@@ -26,6 +31,14 @@ export interface HealthResponse {
 
 export interface LoginRequest {
   username: string;
+  password: string;
+}
+
+export interface SetupAdminRequest {
+  /** One-time code from the server's logs. */
+  setupCode: string;
+  username: string;
+  /** At least 10 characters. */
   password: string;
 }
 

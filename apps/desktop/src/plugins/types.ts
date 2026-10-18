@@ -64,6 +64,17 @@ export interface SettingsContribution {
   render: () => ReactNode;
 }
 
+/** A step in the first-run setup wizard (e.g. "Connect your server"). */
+export interface SetupStepContribution {
+  id: string;
+  title: string;
+  /** One line under the title explaining why this step matters. */
+  description?: string;
+  /** Larger weights come earlier. Every step can be skipped. */
+  weight?: number;
+  render: () => ReactNode;
+}
+
 /** State changes reported by an external player. All fields optional. */
 export interface ExternalPlaybackEvent {
   /** Position in seconds. */
@@ -141,6 +152,8 @@ export interface PluginContext {
   registerSidebarItem: (item: SidebarContribution) => void;
   registerHomeWidget: (widget: HomeWidgetContribution) => void;
   registerSettingsPanel: (panel: SettingsContribution) => void;
+  /** Add a first-run setup step (requires "ui.settings"). */
+  registerSetupStep: (step: SetupStepContribution) => void;
   registerAudioSource: (source: AudioSource) => void;
   registerLibrarySource: (source: LibrarySource) => void;
 

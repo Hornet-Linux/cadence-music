@@ -97,8 +97,12 @@ jobs:
           if-no-files-found: error
 
   desktop-e2e:
-    name: Desktop · launch smoke test
-    runs-on: ubuntu-latest
+    name: Desktop · launch smoke test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     defaults:
       run:
         working-directory: apps/desktop
@@ -114,8 +118,14 @@ jobs:
           restore-keys: ${{ runner.os }}-npm-desktop-
       - run: npm install --no-audit --no-fund
       - run: npm run build
-      - name: Launch the app and check bridge, plugins and Widevine
+      - name: Launch the app (Linux, virtual display)
+        if: runner.os == 'Linux'
         run: xvfb-run -a npm run e2e
+      - name: Launch the app (Windows, Widevine required)
+        if: runner.os == 'Windows'
+        env:
+          E2E_REQUIRE_WIDEVINE: "1"
+        run: npm run e2e
 
   desktop-package-windows:
     name: Desktop · Windows installer
@@ -190,7 +200,34 @@ jobs:
         run: docker build -f apps/server/Dockerfile -t unnamed-music-server:ci .
       - name: Smoke-test the running container
         run: bash .github/scripts/server-smoke-test.sh unnamed-music-server:ci
-      - name: Validate the compose file
+      - name: Lint shell scripts
+        run: shellcheck -S error deploy/setup.sh .github/scripts/server-smoke-test.sh
+      - name: Run the setup wizard with scripted answers
+        working-directory: deploy
+        run: |
+          # domain, port, music folder, create it, local admin, OIDC (+6 answers),
+          # Spotify (+id), Apple Music, start now
+          printf '%s\n' music.example.test '' /tmp/uma-setup-music y n \
+            y https://auth.example.test/application/o/music/ music-app s3cret-value '' music-users music-admins \
+            y 0123456789abcdef0123456789abcdef n n | bash setup.sh
+          test "$(stat -c %a .env)" = 600
+          test -d /tmp/uma-setup-music
+          grep -qx "PUBLIC_URL='https://music.example.test'" .env
+          grep -qx "HOST_PORT='8787'" .env
+          grep -qx "MUSIC_PATH='/tmp/uma-setup-music'" .env
+          grep -qx "OIDC_ISSUER='https://auth.example.test/application/o/music/'" .env
+          grep -qx "OIDC_CLIENT_SECRET='s3cret-value'" .env
+          grep -qx "OIDC_NAME='Authentik'" .env
+          grep -qx "OIDC_ALLOWED_GROUPS='music-users'" .env
+          grep -qx "SPOTIFY_CLIENT_ID='0123456789abcdef0123456789abcdef'" .env
+          if grep -q ADMIN_PASSWORD .env; then echo "unexpected admin password"; exit 1; fi
+          docker compose config --quiet
+          # Re-running without confirming keeps the existing file.
+          before=$(sha256sum .env)
+          printf 'n\n' | bash setup.sh
+          test "$before" = "$(sha256sum .env)"
+          rm .env
+      - name: Validate the compose file with the example env
         working-directory: deploy
         run: |
           cp .env.example .env

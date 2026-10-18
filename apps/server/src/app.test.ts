@@ -97,6 +97,69 @@ test("health reports available sign-in methods", async () => {
   db.close();
 });
 
+test("first-run setup creates the admin with the one-time code", async () => {
+  const musicDir = tempDir();
+  const db = openDb(":memory:");
+  let code = "";
+  const app = await buildApp({
+    config: testConfig(musicDir),
+    db,
+    secret: SECRET,
+    logger: false,
+    onSetupCode: (c) => (code = c),
+  });
+
+  const health = await app.inject({ method: "GET", url: "/api/health" });
+  assert.equal(health.json().setupRequired, true);
+  assert.ok(code.length >= 20, "a setup code was issued");
+
+  const attempt = (setupCode: string, username = "owner", password = "a-long-password") =>
+    app.inject({ method: "POST", url: "/api/setup/admin", payload: { setupCode, username, password } });
+
+  assert.equal((await attempt("wrong-code")).statusCode, 403);
+  assert.equal((await attempt(code, "bad name!")).json().error, "invalid_username");
+  assert.equal((await attempt(code, "owner", "short")).json().error, "weak_password");
+
+  const ok = await attempt(code);
+  assert.equal(ok.statusCode, 200, ok.body);
+  const auth = ok.json() as AuthResponse;
+  assert.equal(auth.user.username, "owner");
+  assert.equal(auth.user.isAdmin, true);
+
+  // The code is single use and setup is over.
+  assert.equal((await attempt(code, "intruder")).statusCode, 409);
+  assert.equal((await app.inject({ method: "GET", url: "/api/health" })).json().setupRequired, false);
+  assert.equal((await login(app, "owner", "a-long-password")).length > 0, true);
+
+  await app.close();
+  db.close();
+});
+
+test("servers that already have accounts issue no setup code", async () => {
+  let code: string | null = null;
+  const musicDir = tempDir();
+  const db = openDb(":memory:");
+  createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
+  const app = await buildApp({
+    config: testConfig(musicDir),
+    db,
+    secret: SECRET,
+    logger: false,
+    onSetupCode: (c) => (code = c),
+  });
+  const health = await app.inject({ method: "GET", url: "/api/health" });
+  assert.equal(health.json().setupRequired, false);
+  assert.equal(code, null);
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/setup/admin",
+    payload: { setupCode: "anything", username: "x", password: "a-long-password" },
+  });
+  assert.equal(res.statusCode, 409);
+  await app.close();
+  db.close();
+});
+
 test("password sign-in, session and sign-out", async () => {
   const { app, db } = await setup();
 

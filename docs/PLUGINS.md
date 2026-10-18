@@ -58,6 +58,13 @@ single source of truth about what a plugin can do.
   and Search views render a section for every source. This is where the server,
   local files and future Spotify / Apple Music importers plug in.
 - **Now-playing observers** — `ctx.onNowPlaying(cb)` for scrobblers, presence, etc.
+- **Setup steps** — `ctx.registerSetupStep({ id, title, description, weight, render })`
+  adds a page to the first-run wizard (requires `ui.settings`). The server,
+  Spotify and Apple Music plugins each add one; higher weights come first.
+- **External playback** — an audio source may return an `ExternalPlayback`
+  handle instead of a URL when the service has its own player (Spotify,
+  Apple Music). The host drives `play/pause/seek/setVolume/stop` and listens
+  for position, duration and `ended` events.
 
 Enabling or disabling a plugin rebuilds every contribution from the plugins
 that are enabled at that moment. Operations are queued, so plugins that enable

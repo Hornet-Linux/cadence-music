@@ -76,7 +76,14 @@ beforeEach(async () => {
   handles = [];
   usePluginHost.setState({
     plugins: [],
-    contributions: { sidebar: [], homeWidgets: [], settings: [], audioSources: [], librarySources: [] },
+    contributions: {
+      sidebar: [],
+      homeWidgets: [],
+      settings: [],
+      setupSteps: [],
+      audioSources: [],
+      librarySources: [],
+    },
   });
   usePluginHost.getState().register(externalSource);
   await usePluginHost.getState().setEnabled("test.external", true);

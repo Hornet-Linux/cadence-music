@@ -60,6 +60,13 @@ export const spotifyPlugin: Plugin = {
     void useSpotify.getState().init();
 
     ctx.registerSettingsPanel({ id: "spotify", title: "Spotify", render: () => <SpotifySettings /> });
+    ctx.registerSetupStep({
+      id: "spotify",
+      title: "Connect Spotify",
+      description: "Bring in your liked songs and play them here. Playback needs Spotify Premium.",
+      weight: 50,
+      render: () => <SpotifySettings />,
+    });
     ctx.registerSidebarItem({ id: "spotify", label: "Spotify", render: () => <SpotifyPage /> });
     ctx.registerLibrarySource({
       id: "spotify",

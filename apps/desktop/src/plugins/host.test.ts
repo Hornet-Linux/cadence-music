@@ -10,6 +10,7 @@ function resetHost() {
       sidebar: [],
       homeWidgets: [],
       settings: [],
+      setupSteps: [],
       audioSources: [],
       librarySources: [],
     },
@@ -107,6 +108,29 @@ describe("plugin host", () => {
 
     const ids = usePluginHost.getState().contributions.sidebar.map((s) => s.id);
     expect(ids).toEqual(["race.a", "race.b", "race.c"]);
+  });
+
+  it("orders setup steps by weight and gates them on ui.settings", async () => {
+    const step = (id: string, weight: number) => ({ id, title: id, weight, render: () => null });
+    const plugin: Plugin = {
+      manifest: { id: "test.steps", name: "Steps", version: "1.0.0", capabilities: ["ui.settings"], apiRange: "^1.0.0" },
+      activate(ctx) {
+        ctx.registerSetupStep(step("low", 10));
+        ctx.registerSetupStep(step("high", 100));
+      },
+    };
+    const ungated: Plugin = {
+      manifest: { id: "test.steps-ungated", name: "Ungated", version: "1.0.0", capabilities: [], apiRange: "^1.0.0" },
+      activate(ctx) {
+        ctx.registerSetupStep(step("nope", 1));
+      },
+    };
+    const host = usePluginHost.getState();
+    host.register(plugin);
+    host.register(ungated);
+    await host.setEnabled("test.steps", true);
+    expect(usePluginHost.getState().contributions.setupSteps.map((s) => s.id)).toEqual(["high", "low"]);
+    await expect(host.setEnabled("test.steps-ungated", true)).rejects.toThrow(/ui\.settings/);
   });
 
   it("does not duplicate now-playing listeners when plugins are toggled", async () => {

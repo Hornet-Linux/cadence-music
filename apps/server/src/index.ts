@@ -22,13 +22,29 @@ async function main() {
     }
   }
 
-  const app = await buildApp({ config, db, secret });
+  const app = await buildApp({
+    config,
+    db,
+    secret,
+    // Printed plainly so `docker compose logs server | grep "setup code"` finds it.
+    onSetupCode: (code) => {
+      console.log(
+        [
+          "",
+          "==================================================================",
+          `  First-run setup code: ${code}`,
+          "  Open the desktop app, connect to this server and enter the code",
+          "  to create the admin account. It works once and is gone after a",
+          "  restart once an account exists.",
+          "==================================================================",
+          "",
+        ].join("\n"),
+      );
+    },
+  });
 
   if (!fs.existsSync(config.musicDir)) {
     app.log.warn({ musicDir: config.musicDir }, "MUSIC_DIR does not exist; the library will be empty");
-  }
-  if (!config.oidc && !config.adminUsername) {
-    app.log.warn("Neither OIDC nor ADMIN_USERNAME/ADMIN_PASSWORD is set; nobody can sign in yet");
   }
 
   const shutdown = async (signal: string) => {

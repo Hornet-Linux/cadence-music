@@ -19,6 +19,8 @@ export interface AppDeps {
   /** Injectable fetch for OIDC (tests use a fake identity provider). */
   fetchFn?: FetchFn;
   plugins?: ServerPlugin[];
+  /** Receives the first-run setup code of a server with no accounts. */
+  onSetupCode?: (code: string) => void;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -61,7 +63,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ? new OidcClient(config.oidc, `${config.publicUrl}/api/auth/oidc/callback`, deps.fetchFn)
       : null;
 
-  registerAuthRoutes(app, { db, config, oidc, requireUser });
+  registerAuthRoutes(app, { db, config, oidc, requireUser, onSetupCode: deps.onSetupCode });
 
   for (const plugin of deps.plugins ?? builtinPlugins) {
     await plugin.register(app, {

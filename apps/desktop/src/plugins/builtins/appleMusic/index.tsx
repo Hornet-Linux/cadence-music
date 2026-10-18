@@ -128,6 +128,13 @@ export const appleMusicPlugin: Plugin = {
     void useAppleMusic.getState().sync();
 
     ctx.registerSettingsPanel({ id: "apple-music", title: "Apple Music", render: () => <AppleMusicSettings /> });
+    ctx.registerSetupStep({
+      id: "apple-music",
+      title: "Connect Apple Music",
+      description: "Bring in your Apple Music library and play it here. Playback needs an Apple Music subscription.",
+      weight: 40,
+      render: () => <AppleMusicSettings />,
+    });
     ctx.registerSidebarItem({ id: "apple-music", label: "Apple Music", render: () => <AppleMusicPage /> });
     ctx.registerLibrarySource({
       id: "apple-music",

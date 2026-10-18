@@ -34,6 +34,8 @@ interface ServerState {
   init: () => Promise<void>;
   connect: (url: string) => Promise<void>;
   loginPassword: (username: string, password: string) => Promise<void>;
+  /** Create the first admin on a new server using its one-time setup code. */
+  setupAdmin: (setupCode: string, username: string, password: string) => Promise<void>;
   loginOidc: () => Promise<void>;
   logout: () => Promise<void>;
   loadTracks: () => Promise<void>;
@@ -204,6 +206,34 @@ export const useServer = create<ServerState>((set, get) => {
         const message = (err as Error).message;
         set({
           error: message.includes("401") ? "Wrong username or password." : message,
+        });
+      } finally {
+        set({ busy: false });
+      }
+    },
+
+    async setupAdmin(setupCode, username, password) {
+      set({ busy: true, error: null, token: null });
+      try {
+        const auth = await request<AuthResponse>("api/setup/admin", {
+          method: "POST",
+          body: JSON.stringify({ setupCode: setupCode.trim(), username: username.trim(), password }),
+        });
+        const health = get().health;
+        if (health) set({ health: { ...health, setupRequired: false, auth: { ...health.auth, password: true } } });
+        await signedIn(auth);
+      } catch (err) {
+        const message = (err as Error).message;
+        set({
+          error: message.includes("invalid setup code")
+            ? "That setup code isn't right. Copy it again from the server logs."
+            : message.includes("weak password")
+              ? "Use a password of at least 10 characters."
+              : message.includes("invalid username")
+                ? "Usernames can use letters, numbers, dots, dashes, underscores and @."
+                : message.includes("already set up")
+                  ? "This server already has an admin. Sign in instead."
+                  : message,
         });
       } finally {
         set({ busy: false });

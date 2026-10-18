@@ -32,6 +32,10 @@ export function findUserByUsername(db: Db, username: string): UserRow | undefine
   return db.prepare("SELECT * FROM users WHERE username = ?").get(username) as UserRow | undefined;
 }
 
+export function countUsers(db: Db): number {
+  return (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n;
+}
+
 export function countPasswordUsers(db: Db): number {
   const row = db.prepare("SELECT COUNT(*) AS n FROM users WHERE password_hash IS NOT NULL").get() as {
     n: number;

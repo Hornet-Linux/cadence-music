@@ -772,6 +772,101 @@ code {
   background: var(--border);
 }
 
+/* Numbered instructions */
+.steps {
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ---------- Setup wizard ---------- */
+.wizard-backdrop {
+  position: fixed;
+  inset: var(--titlebar-h) 0 0 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 5, 9, 0.72);
+  backdrop-filter: blur(10px);
+  animation: wizard-fade 0.2s ease-out;
+}
+.wizard {
+  width: min(640px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: wizard-rise 0.25s ease-out;
+}
+.wizard-progress {
+  display: flex;
+  gap: 6px;
+  padding: 22px 28px 0;
+}
+.wizard-progress .dot {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  transition: background 0.2s;
+}
+.wizard-progress .dot.done {
+  background: rgba(124, 92, 255, 0.55);
+}
+.wizard-progress .dot.current {
+  background: var(--accent-grad);
+}
+.wizard-header {
+  padding: 22px 28px 6px;
+}
+.wizard-header h1 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.wizard-header p {
+  margin-top: 6px;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+.wizard-body {
+  padding: 16px 28px 22px;
+  overflow-y: auto;
+}
+.wizard-welcome p {
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.wizard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+@keyframes wizard-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes wizard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar {
   width: 10px;

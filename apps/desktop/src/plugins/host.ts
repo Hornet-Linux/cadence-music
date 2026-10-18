@@ -11,6 +11,7 @@ import type {
   PluginStorage,
   ResolvedAudio,
   SettingsContribution,
+  SetupStepContribution,
   SidebarContribution,
 } from "./types";
 
@@ -25,6 +26,7 @@ interface Contributions {
   sidebar: SidebarContribution[];
   homeWidgets: HomeWidgetContribution[];
   settings: SettingsContribution[];
+  setupSteps: SetupStepContribution[];
   audioSources: AudioSource[];
   librarySources: LibrarySource[];
 }
@@ -49,6 +51,7 @@ function emptyContributions(): Contributions {
     sidebar: [],
     homeWidgets: [],
     settings: [],
+    setupSteps: [],
     audioSources: [],
     librarySources: [],
   };
@@ -121,6 +124,10 @@ function makeContext(
       requireCap("ui.settings", "registerSettingsPanel");
       target.settings.push(panel);
     },
+    registerSetupStep(step) {
+      requireCap("ui.settings", "registerSetupStep");
+      target.setupSteps.push(step);
+    },
     registerAudioSource(source) {
       requireCap("source.audio", "registerAudioSource");
       target.audioSources.push(source);
@@ -156,6 +163,7 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
       }
     }
     contributions.homeWidgets.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+    contributions.setupSteps.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
     return { contributions, listeners };
   }
 

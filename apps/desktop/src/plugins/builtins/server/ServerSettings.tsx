@@ -5,6 +5,82 @@ function StatusDot({ status }: { status: string }) {
   return <span className={`status-dot ${status}`} aria-hidden />;
 }
 
+/** Shown on a brand-new server: claim it with the code from its logs. */
+function SetupAdminForm() {
+  const s = useServer();
+  const [code, setCode] = useState("");
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const tooShort = password.length > 0 && password.length < 10;
+
+  return (
+    <form
+      className="stack"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void s.setupAdmin(code, username, password);
+      }}
+    >
+      <p className="notice">
+        This is a new server. Create its admin account with the one-time setup code from the
+        server's logs — run <code>docker compose logs server | grep &quot;setup code&quot;</code> in
+        the <code>deploy</code> folder.
+      </p>
+      <input
+        className="text-input"
+        placeholder="Setup code"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        spellCheck={false}
+        autoComplete="off"
+        aria-label="Setup code"
+      />
+      <input
+        className="text-input"
+        placeholder="Admin username"
+        autoComplete="username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        aria-label="Admin username"
+      />
+      <input
+        className="text-input"
+        type="password"
+        placeholder="Password (at least 10 characters)"
+        autoComplete="new-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        aria-label="Password"
+      />
+      <input
+        className="text-input"
+        type="password"
+        placeholder="Repeat password"
+        autoComplete="new-password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        aria-label="Repeat password"
+      />
+      {(mismatch || tooShort) && (
+        <p className="muted small">
+          {mismatch ? "The passwords don't match." : "Use at least 10 characters."}
+        </p>
+      )}
+      <div>
+        <button
+          className="btn primary"
+          type="submit"
+          disabled={s.busy || !code.trim() || !username.trim() || password.length < 10 || confirm !== password}
+        >
+          {s.busy ? "Creating…" : "Create admin account"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function ServerSettings() {
   const s = useServer();
   // null until the user edits it, so the saved URL shows once it has loaded.
@@ -55,7 +131,9 @@ export function ServerSettings() {
         </p>
       )}
 
-      {s.status === "online" && !s.user && (
+      {s.status === "online" && !s.user && s.health?.setupRequired && <SetupAdminForm />}
+
+      {s.status === "online" && !s.user && !s.health?.setupRequired && (
         <div className="stack">
           {s.health?.auth.oidc && (
             <button className="btn primary" disabled={s.busy} onClick={() => void s.loginOidc()}>

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { usePluginHost } from "@/plugins/host";
 import { allRegisterablePlugins } from "@/plugins/builtins";
 import { HomeView } from "@/features/home/HomeView";
+import { SetupWizard } from "@/features/onboarding/SetupWizard";
 import { SearchView } from "@/features/search/SearchView";
 import { LibraryView } from "@/features/library/LibraryView";
 import { SettingsView } from "@/features/settings/SettingsView";
@@ -53,6 +54,7 @@ export function App() {
         </main>
       </div>
       <PlayerBar />
+      <SetupWizard />
     </div>
   );
 }

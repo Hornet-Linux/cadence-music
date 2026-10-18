@@ -5,6 +5,7 @@ import type {
   HealthResponse,
   LoginRequest,
   PublicUser,
+  SetupAdminRequest,
 } from "@uma/shared";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
@@ -23,6 +24,8 @@ import { verifyPassword } from "./passwords.js";
 import { createSession, deleteSession } from "./sessions.js";
 import {
   countPasswordUsers,
+  countUsers,
+  createLocalUser,
   findUserById,
   findUserByUsername,
   toPublicUser,
@@ -49,6 +52,9 @@ const HANDOFF_TTL_MS = 2 * 60 * 1000;
 const MAX_PENDING = 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 10;
+
+const USERNAME_RE = /^[\w.@-]{1,48}$/;
+const MIN_PASSWORD = 10;
 
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const STATE_RE = /^[A-Za-z0-9._~-]{8,256}$/;
@@ -82,6 +88,8 @@ export function registerAuthRoutes(
     config: Config;
     oidc: OidcClient | null;
     requireUser: PreHandler;
+    /** Receives the first-run setup code; defaults to logging it. */
+    onSetupCode?: (code: string) => void;
   },
 ): void {
   const { db, config, oidc, requireUser } = deps;
@@ -94,22 +102,76 @@ export function registerAuthRoutes(
     return { token, user: toPublicUser(findUserById(db, userId)!) };
   }
 
+  function isLimited(ip: string): boolean {
+    const record = failures.get(ip);
+    return !!record && record.resetAt > Date.now() && record.count >= LOGIN_MAX_FAILURES;
+  }
+
+  function recordFailure(ip: string): void {
+    const now = Date.now();
+    const record = failures.get(ip);
+    failures.set(
+      ip,
+      record && record.resetAt > now
+        ? { count: record.count + 1, resetAt: record.resetAt }
+        : { count: 1, resetAt: now + LOGIN_WINDOW_MS },
+    );
+    if (failures.size > 10_000) failures.clear();
+  }
+
+  // ---- First-run setup --------------------------------------------------
+  // A brand-new server (no accounts) prints a one-time code to its logs. The
+  // first admin is created by presenting it, so nobody who merely finds the
+  // server before its owner can claim it.
+  let setupCode: string | null = countUsers(db) === 0 ? randomToken(18) : null;
+  const setupRequired = () => {
+    if (setupCode && countUsers(db) > 0) setupCode = null;
+    return setupCode !== null;
+  };
+  if (setupCode) {
+    const code = setupCode;
+    app.addHook("onReady", async () => {
+      if (deps.onSetupCode) deps.onSetupCode(code);
+      else app.log.warn(`First-run setup code: ${code} — enter it in the app to create the admin account`);
+    });
+  }
+
   app.get("/api/health", async (): Promise<HealthResponse> => ({
     ok: true,
     name: SERVER_NAME,
     version: SERVER_VERSION,
+    setupRequired: setupRequired(),
     auth: {
       password: countPasswordUsers(db) > 0,
       oidc: oidc ? { name: oidc.displayName } : null,
     },
   }));
 
+  app.post<{ Body: SetupAdminRequest }>("/api/setup/admin", async (req, reply) => {
+    if (!setupRequired()) return reply.code(409).send({ error: "already_set_up" });
+    if (isLimited(req.ip)) {
+      return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
+    }
+    const { setupCode: code, username, password } = (req.body ?? {}) as Partial<SetupAdminRequest>;
+    if (typeof code !== "string" || !safeEqual(code.trim(), setupCode!)) {
+      recordFailure(req.ip);
+      return reply.code(403).send({ error: "invalid_setup_code" });
+    }
+    if (typeof username !== "string" || !USERNAME_RE.test(username.trim())) {
+      return reply.code(400).send({ error: "invalid_username" });
+    }
+    if (typeof password !== "string" || password.length < MIN_PASSWORD) {
+      return reply.code(400).send({ error: "weak_password" });
+    }
+    const user = createLocalUser(db, { username: username.trim(), password, isAdmin: true });
+    setupCode = null;
+    return respond(user.id);
+  });
+
   // ---- Password sign-in -------------------------------------------------
   app.post<{ Body: LoginRequest }>("/api/auth/login", async (req, reply) => {
     const ip = req.ip;
-    const now = Date.now();
-    const record = failures.get(ip);
-    if (record && record.resetAt > now && record.count >= LOGIN_MAX_FAILURES) {
+    if (isLimited(ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
 
@@ -121,12 +183,7 @@ export function registerAuthRoutes(
     const user = findUserByUsername(db, username);
     const ok = !!user?.password_hash && verifyPassword(password, user.password_hash);
     if (!ok || !user) {
-      const next =
-        record && record.resetAt > now
-          ? { count: record.count + 1, resetAt: record.resetAt }
-          : { count: 1, resetAt: now + LOGIN_WINDOW_MS };
-      failures.set(ip, next);
-      if (failures.size > 10_000) failures.clear();
+      recordFailure(ip);
       return reply.code(401).send({ error: "invalid_credentials" });
     }
     failures.delete(ip);

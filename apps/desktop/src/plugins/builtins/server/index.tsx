@@ -66,6 +66,14 @@ export const serverPlugin: Plugin = {
     void useServer.getState().init();
 
     ctx.registerSettingsPanel({ id: "server", title: "Server", render: () => <ServerSettings /> });
+    ctx.registerSetupStep({
+      id: "server",
+      title: "Connect your server",
+      description:
+        "Enter your self-hosted server's address and sign in. No server? Skip this — Spotify, Apple Music and local files work without one.",
+      weight: 100,
+      render: () => <ServerSettings />,
+    });
     ctx.registerSidebarItem({ id: "server", label: "Server", render: () => <ServerLibraryPage /> });
     ctx.registerLibrarySource({
       id: "server",

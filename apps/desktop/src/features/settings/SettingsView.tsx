@@ -1,3 +1,4 @@
+import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { usePluginHost } from "@/plugins/host";
 import type { Capability } from "@/plugins/types";
 
@@ -22,6 +23,7 @@ export function SettingsView() {
   const plugins = usePluginHost((s) => s.plugins);
   const settingsPanels = usePluginHost((s) => s.contributions.settings);
   const setEnabled = usePluginHost((s) => s.setEnabled);
+  const startSetup = useOnboarding((s) => s.start);
 
   return (
     <div className="view">
@@ -88,10 +90,15 @@ export function SettingsView() {
         <div className="section-head">
           <h2>About</h2>
         </div>
-        <div className="card pad">
+        <div className="card pad stack">
           <p className="muted">
             Unnamed Music App — a self-hostable, plugin-first music player. Early development build.
           </p>
+          <div>
+            <button className="btn" onClick={startSetup}>
+              Run setup again
+            </button>
+          </div>
         </div>
       </section>
     </div>

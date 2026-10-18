@@ -14,7 +14,34 @@ database — no separate database to manage.
 - Your music in a folder on the host. Formats: MP3, FLAC, M4A/AAC, Ogg/Opus,
   WAV, WebM.
 
-## 1. Get the code and configure
+## Quick start: the setup wizard
+
+```bash
+git clone https://github.com/Hornet-Linux/unnamed_music_app.git
+cd unnamed_music_app/deploy
+./setup.sh
+```
+
+The wizard asks for your domain, music folder and port, and optionally your
+OIDC provider (Authentik etc.), a Spotify app ID and an Apple Music key. It
+writes `deploy/.env` (readable only by you), prints the Caddy block for your
+domain, and can build and start the server. Re-run it any time; it backs up the
+old `.env` first.
+
+On first start, a server with no accounts prints a **one-time setup code**:
+
+```bash
+docker compose logs server | grep "setup code"
+```
+
+Open the desktop app. Its first-run wizard asks for your server's address,
+then for that code, and creates your admin account. The code works once, so
+nobody who finds your new server before you do can claim it.
+
+The sections below describe the same steps by hand, for when you'd rather edit
+files yourself.
+
+## 1. Get the code and configure (manual)
 
 ```bash
 git clone https://github.com/Hornet-Linux/unnamed_music_app.git
@@ -64,9 +91,11 @@ should return JSON.
 
 ## 4. Connect the desktop app
 
-Install the app, open **Settings → Server**, enter `music.example.com` and
-click **Connect**. Then sign in with your admin account or with your SSO
-provider.
+Install the app. The first-run wizard opens on its own (or use **Settings →
+About → Run setup again**). Enter `music.example.com` and click **Connect**.
+On a new server you'll be asked for the setup code to create the admin;
+otherwise sign in with your account or your SSO provider. The remaining steps
+connect Spotify and Apple Music, and you can skip any of them.
 
 ## Single sign-on with Authentik (OIDC)
 

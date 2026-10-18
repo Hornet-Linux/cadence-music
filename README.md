@@ -28,14 +28,15 @@ connections) is a plugin, on both the desktop and the server.
 ```bash
 git clone https://github.com/Hornet-Linux/unnamed_music_app.git
 cd unnamed_music_app/deploy
-cp .env.example .env   # set MUSIC_PATH, PUBLIC_URL, admin and/or OIDC
-docker compose up -d --build
+./setup.sh             # asks about your domain, music folder, SSO, Spotify, Apple Music
 ```
 
-Then put a TLS proxy (e.g. Caddy) in front of `127.0.0.1:8787`.
+The wizard writes `.env`, prints the Caddy config for your domain and starts the
+server. A new server prints a one-time setup code to its logs.
 
 **Desktop:** install the `.exe` from the latest CI run's `windows-installer`
-artifact, open **Settings → Server** and connect to your domain.
+artifact. Its first-run wizard connects to your server (enter the setup code to
+create your admin account), then Spotify and Apple Music.
 
 ## Development
 
