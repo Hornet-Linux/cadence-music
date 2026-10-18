@@ -16,10 +16,16 @@ interface Props {
  */
 export function CoverArt({ src, seed, label, showInitial = true }: Props) {
   const [failed, setFailed] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState<string | null>(null);
   if (src && failed !== src) {
+    // Fades in once decoded instead of popping in line by line.
     return (
       <img
-        className="cover cover-img"
+        className={`cover cover-img${loaded === src ? " loaded" : ""}`}
+        ref={(img) => {
+          if (img?.complete && img.naturalWidth > 0 && loaded !== src) setLoaded(src);
+        }}
+        onLoad={() => setLoaded(src)}
         src={src}
         alt={label ?? ""}
         loading="lazy"
