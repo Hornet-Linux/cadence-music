@@ -1,0 +1,22 @@
+# XcodeGen spec. CI runs `xcodegen generate` to produce Cadence.xcodeproj,
+# so no Xcode project file is checked in.
+name: Cadence
+options:
+  bundleIdPrefix: net.hornetlinux
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  Cadence:
+    type: application
+    platform: iOS
+    sources: [Cadence]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.hornetlinux.cadencemusic
+        MARKETING_VERSION: "0.1.1"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: Cadence/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        # Built unsigned; Sideloadly / AltStore re-sign it with your free Apple ID.
+        CODE_SIGNING_ALLOWED: "NO"

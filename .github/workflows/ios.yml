@@ -1,0 +1,79 @@
+name: iOS
+
+# Builds an unsigned Cadence.ipa for sideloading (Sideloadly, AltStore) with a
+# free Apple ID, so no paid developer account is needed. See docs/IOS.md.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths: ["apps/ios/**", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["apps/ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    name: iOS · unsigned IPA
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Cadence.xcodeproj \
+            -scheme Cadence \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Package Cadence.ipa
+        run: |
+          mkdir -p out/Payload
+          cp -R build/Build/Products/Release-iphoneos/Cadence.app out/Payload/
+          (cd out && zip -qry Cadence.ipa Payload)
+          ls -la out/Cadence.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: apps/ios/out/Cadence.ipa
+          if-no-files-found: error
+
+  release:
+    name: Attach Cadence.ipa to the release
+    runs-on: ubuntu-latest
+    needs: [ipa]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+          path: dist
+      - name: Upload (waits for the CI workflow to create the release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          for _ in $(seq 1 60); do
+            gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 && break
+            sleep 30
+          done
+          gh release upload "$TAG" dist/Cadence.ipa -R "$REPO" --clobber

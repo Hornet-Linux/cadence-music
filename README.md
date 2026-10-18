@@ -11,6 +11,8 @@ connections) is a plugin, on both the desktop and the server.
 
 - **Desktop app** (`apps/desktop`) — Electron, ships as a Windows `.exe`. Plays
   local files on its own, or connects to your server.
+- **iOS app** (`apps/ios`) — sideloaded with a free Apple ID; plays from your
+  server in the background. See [docs/IOS.md](docs/IOS.md).
 - **Self-hosted server** (`apps/server`) — one Docker container. Scans your music
   folder, streams it with seeking, and handles accounts.
 - **Single sign-on** — OIDC with any provider (Authentik, Keycloak, …) plus an
@@ -38,6 +40,7 @@ your admin login. Manage people at `https://your-domain/admin`.
 
 **3. Listen** in the browser at `/app`, or install the Windows app:
 **[Download Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)**.
+On iPhone or iPad, sideload the iOS app with a free Apple ID: [docs/IOS.md](docs/IOS.md).
 
 To update the server later, run the same command again.
 
