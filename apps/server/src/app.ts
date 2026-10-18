@@ -5,12 +5,14 @@ import { OidcClient, type FetchFn } from "./auth/oidc.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
+import { Settings } from "./settings.js";
+import { adminPlugin } from "./admin/plugin.js";
 import { historyPlugin } from "./history/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
 
-export const builtinPlugins: ServerPlugin[] = [libraryPlugin, integrationsPlugin, historyPlugin];
+export const builtinPlugins: ServerPlugin[] = [libraryPlugin, integrationsPlugin, historyPlugin, adminPlugin];
 
 export interface AppDeps {
   config: Config;
@@ -65,7 +67,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ? new OidcClient(config.oidc, `${config.publicUrl}/api/auth/oidc/callback`, deps.fetchFn)
       : null;
 
-  registerAuthRoutes(app, { db, config, oidc, requireUser, onSetupCode: deps.onSetupCode });
+  const settings = new Settings(db, config);
+  registerAuthRoutes(app, { db, config, oidc, requireUser, settings, onSetupCode: deps.onSetupCode });
   registerWebApp(app, config.webDir);
 
   for (const plugin of deps.plugins ?? builtinPlugins) {
@@ -76,6 +79,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       log: app.log.child({ plugin: plugin.id }),
       requireUser,
       requireAdmin,
+      settings,
     });
   }
 

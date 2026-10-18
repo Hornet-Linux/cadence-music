@@ -71,7 +71,7 @@ try {
   await page.reload();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Server", exact: true }).click();
-  await page.getByRole("dialog").getByText("Web Tester").waitFor({ timeout: 10_000 });
+  await page.getByRole("dialog").getByText("Web Tester").first().waitFor({ timeout: 10_000 });
   console.log("✓ still signed in after a reload");
 
   const relevant = problems.filter((p) => !/favicon/i.test(p));

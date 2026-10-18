@@ -9,6 +9,7 @@ import type {
   SetupAdminRequest,
 } from "@uma/shared";
 import { registerSignupPage } from "../web/signupPage.js";
+import type { Settings } from "../settings.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import type { PreHandler } from "../plugins/types.js";
@@ -89,13 +90,14 @@ export function registerAuthRoutes(
   deps: {
     db: Db;
     config: Config;
+    settings: Settings;
     oidc: OidcClient | null;
     requireUser: PreHandler;
     /** Receives the first-run setup code; defaults to logging it. */
     onSetupCode?: (code: string) => void;
   },
 ): void {
-  const { db, config, oidc, requireUser } = deps;
+  const { db, config, oidc, requireUser, settings } = deps;
   const pending = new Map<string, PendingLogin>();
   const handoffs = new Map<string, Handoff>();
   const failures = new Map<string, { count: number; resetAt: number }>();
@@ -147,7 +149,7 @@ export function registerAuthRoutes(
     auth: {
       password: countPasswordUsers(db) > 0,
       oidc: oidc ? { name: oidc.displayName } : null,
-      signup: setupRequired() ? "closed" : (config.signup?.mode ?? "closed"),
+      signup: setupRequired() ? "closed" : (settings.signup()?.mode ?? "closed"),
     },
   }));
 
@@ -156,7 +158,7 @@ export function registerAuthRoutes(
   // before the owner has claimed the server with the setup code.
   const signups = new Map<string, { count: number; resetAt: number }>();
   app.post<{ Body: RegisterRequest }>("/api/auth/register", async (req, reply) => {
-    const signup = config.signup;
+    const signup = settings.signup();
     if (!signup || setupRequired()) return reply.code(403).send({ error: "signup_closed" });
 
     const now = Date.now();
@@ -194,7 +196,11 @@ export function registerAuthRoutes(
     return respond(user.id);
   });
 
-  registerSignupPage(app, { config, signupOpen: () => !!config.signup && !setupRequired() });
+  registerSignupPage(app, {
+    config,
+    signup: () => settings.signup(),
+    signupOpen: () => !!settings.signup() && !setupRequired(),
+  });
 
   app.post<{ Body: SetupAdminRequest }>("/api/setup/admin", async (req, reply) => {
     if (!setupRequired()) return reply.code(409).send({ error: "already_set_up" });

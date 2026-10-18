@@ -2,6 +2,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import type { UserRow } from "../auth/users.js";
+import type { Settings } from "../settings.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -23,6 +24,8 @@ export interface ServerPluginContext {
   requireUser: PreHandler;
   /** Pre-handler that also requires the user to be an admin. */
   requireAdmin: PreHandler;
+  /** Runtime settings an admin can change (they override .env). */
+  settings: Settings;
 }
 
 /**

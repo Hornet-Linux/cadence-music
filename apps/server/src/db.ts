@@ -64,6 +64,14 @@ const MIGRATIONS: string[] = [
   CREATE INDEX plays_user_time ON plays (user_id, played_at DESC);
   CREATE INDEX plays_user_track ON plays (user_id, track_id);
   `,
+  // v3: settings changed from the admin panel; they override .env defaults.
+  `
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 function migrate(db: Db): void {

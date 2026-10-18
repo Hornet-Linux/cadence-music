@@ -270,7 +270,7 @@ function page(opts: { signup: Config["signup"]; open: boolean; download: string;
 /** Public landing page with sign-up (when the owner enables it). */
 export function registerSignupPage(
   app: FastifyInstance,
-  deps: { config: Config; signupOpen: () => boolean },
+  deps: { config: Config; signup: () => Config["signup"]; signupOpen: () => boolean },
 ): void {
   const download = deps.config.appDownloadUrl ?? DEFAULT_DOWNLOAD;
   const handler = async (_req: unknown, reply: FastifyReply) => {
@@ -285,7 +285,7 @@ export function registerSignupPage(
       .header("X-Frame-Options", "DENY")
       .header("Referrer-Policy", "no-referrer")
       .header("Cache-Control", "no-store")
-      .send(page({ signup: deps.config.signup, open: deps.signupOpen(), download, nonce }));
+      .send(page({ signup: deps.signup(), open: deps.signupOpen(), download, nonce }));
   };
   app.get("/", handler);
   app.get("/signup", handler);
