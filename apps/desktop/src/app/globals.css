@@ -1521,6 +1521,10 @@ code {
   padding: 16px 28px 22px;
   overflow-y: auto;
 }
+.wizard-logo {
+  margin-bottom: 18px;
+  filter: drop-shadow(0 10px 28px color-mix(in srgb, var(--accent-from) 50%, transparent));
+}
 .wizard-welcome p {
   line-height: 1.6;
   margin-bottom: 12px;

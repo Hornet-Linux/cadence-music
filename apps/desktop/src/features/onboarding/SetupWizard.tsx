@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { usePluginHost } from "@/plugins/host";
+import { LogoMark } from "@/ui/icons";
 import { useOnboarding } from "./onboardingStore";
 
 interface Step {
@@ -26,6 +27,9 @@ export function SetupWizard() {
       description: "Let's get your music in. Every step is optional and you can change it later in Settings.",
       body: (
         <div className="wizard-welcome">
+          <div className="wizard-logo" aria-hidden>
+            <LogoMark size={64} />
+          </div>
           <p>
             This app plays music from <strong>your own server</strong>, <strong>Spotify</strong>,{" "}
             <strong>Apple Music</strong> and <strong>files on this computer</strong> — all in one

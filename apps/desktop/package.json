@@ -29,6 +29,7 @@
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"
     },
     "afterSign": "scripts/vmp-sign.cjs",
+    "icon": "build/icon.png",
     "directories": { "output": "release" },
     "files": ["dist/**/*", "dist-electron/**/*"],
     "win": { "target": ["nsis"] },

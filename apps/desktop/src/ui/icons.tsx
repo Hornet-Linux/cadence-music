@@ -208,17 +208,33 @@ export const InfoIcon = (p: P) => (
     <path d="M12 11v5M12 8h.01" strokeWidth={2.2} />
   </Svg>
 );
+/**
+ * The app mark: a play button drawn with equaliser bars. The tile
+ * follows the accent colour, so it shifts with the artwork that's playing.
+ * build/icon.png is the same mark with a fixed gradient
+ * (see scripts/make-icon.ps1).
+ */
 export const LogoMark = (p: P) => (
-  <Svg {...p} viewBox="0 0 24 24">
+  <Svg {...p} viewBox="0 0 24 24" stroke="none">
     <defs>
       <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stopColor="var(--accent-from)" />
         <stop offset="1" stopColor="var(--accent-to)" />
       </linearGradient>
+      <linearGradient id="logo-gloss" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#fff" stopOpacity="0.28" />
+        <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
+      </linearGradient>
     </defs>
-    <rect x="2" y="2" width="20" height="20" rx="6.5" fill="url(#logo-grad)" stroke="none" />
-    <path d="M8 15.5V9.2l7.5-1.7v6.3" stroke="#fff" strokeWidth={1.8} />
-    <circle cx="6.9" cy="15.6" r="1.6" fill="#fff" stroke="none" />
-    <circle cx="14.4" cy="13.9" r="1.6" fill="#fff" stroke="none" />
+    <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#logo-grad)" />
+    <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#logo-gloss)" />
+    {/* Equaliser bars that shrink left to right, tracing a play triangle. */}
+    <g fill="#fff">
+      <rect x="5.75" y="6" width="1.9" height="12" rx="0.95" />
+      <rect x="8.65" y="7.4" width="1.9" height="9.2" rx="0.95" />
+      <rect x="11.55" y="8.8" width="1.9" height="6.4" rx="0.95" />
+      <rect x="14.45" y="10.1" width="1.9" height="3.8" rx="0.95" />
+      <rect x="17.35" y="11.05" width="1.9" height="1.9" rx="0.95" />
+    </g>
   </Svg>
 );
