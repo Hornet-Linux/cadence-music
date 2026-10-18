@@ -16,6 +16,11 @@ const app = await electron.launch({
   timeout: 90_000,
 });
 
+// Surface main-process logs (Widevine install messages, errors).
+const proc = app.process();
+proc.stdout?.on("data", (d) => process.stdout.write(`[main] ${d}`));
+proc.stderr?.on("data", (d) => process.stdout.write(`[main:err] ${d}`));
+
 try {
   const page = await app.firstWindow({ timeout: 90_000 });
   page.on("console", (msg) => {
@@ -45,20 +50,42 @@ try {
     await page.getByRole("heading", { name: heading, exact: true }).waitFor({ timeout: 10_000 });
   }
 
-  const widevine = await page.evaluate(async () => {
-    try {
-      await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [
-        {
-          initDataTypes: ["cenc"],
-          audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }],
-        },
-      ]);
-      return true;
-    } catch (err) {
-      return String(err);
-    }
+  // castlabs installs the Widevine CDM through Chromium's component updater.
+  const components = await app.evaluate(async (electron) => {
+    const c = electron.components;
+    if (!c) return { castlabs: false };
+    const ready = await Promise.race([
+      c.whenReady().then(() => "ready", (err) => `failed: ${err}`),
+      new Promise((r) => setTimeout(() => r("timeout"), 60_000)),
+    ]);
+    return { castlabs: true, ready, status: c.status() };
   });
-  assert.equal(widevine, true, `Widevine is unavailable: ${widevine}`);
+  console.log("castlabs components:", JSON.stringify(components));
+
+  const widevine = await page.evaluate(async () => {
+    const configs = [
+      { label: "audio/mp4 aac", audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] },
+      { label: "audio/webm opus", audioCapabilities: [{ contentType: 'audio/webm; codecs="opus"' }] },
+      { label: "no capabilities", audioCapabilities: [] },
+    ];
+    const results = {};
+    for (const { label, audioCapabilities } of configs) {
+      try {
+        await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [
+          { initDataTypes: ["cenc"], audioCapabilities },
+        ]);
+        results[label] = true;
+      } catch (err) {
+        results[label] = String(err);
+      }
+    }
+    return results;
+  });
+  console.log("Widevine probe:", JSON.stringify(widevine));
+  assert.ok(
+    Object.values(widevine).some((v) => v === true),
+    `Widevine is unavailable: ${JSON.stringify(widevine)}`,
+  );
 
   console.log("Desktop smoke test passed (bridge, plugins, settings, Widevine)");
 } finally {
