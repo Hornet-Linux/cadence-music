@@ -75,6 +75,28 @@ try {
   console.log("✓ still signed in after a reload");
   await page.keyboard.press("Escape");
 
+  // ---- Liked songs and playlists, synced through the server -----------------
+  await page.locator(".playerbar").getByRole("button", { name: "Add Smoke Test to Liked Songs" }).click();
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "New playlist" }).first().click();
+  await page.getByRole("textbox", { name: "New playlist name" }).fill("Road trip");
+  await page.keyboard.press("Enter");
+  await page.locator(".collection-title", { hasText: "Road trip" }).waitFor();
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "Add Smoke Test to a playlist" }).first().click();
+  await page.getByRole("menuitem", { name: "Road trip" }).click();
+  // Forget this browser's copy: what comes back must come from the server.
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => localStorage.removeItem("collection:v1"));
+  await page.reload();
+  await page.getByRole("button", { name: "Liked Songs", exact: true }).click();
+  await page.locator(".track-row", { hasText: "Smoke Test" }).waitFor({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.locator(".collection-tile", { hasText: "Road trip" }).click();
+  await page.locator(".track-row", { hasText: "Smoke Test" }).waitFor({ timeout: 15_000 });
+  await shot("5-playlist");
+  console.log("✓ liked a song and made a playlist; both came back from the server");
+
   // ---- Phone layout (as in the iOS app) --------------------------------------
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Library", exact: true }).click();
