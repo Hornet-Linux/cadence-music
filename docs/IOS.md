@@ -21,6 +21,10 @@ Apple ID — no $99/year developer account needed.
    Apple ID and **Trust** it. On iOS 16+ also turn on **Settings → Privacy &
    Security → Developer Mode** (the phone restarts).
 4. Open Cadence and enter your server's address, e.g. `music.example.com`.
+   To switch servers later: **Settings → Server → Change server** in the app.
+
+The app shows your server's web player, so update the server to get the
+latest player and its phone layout; the app itself rarely needs reinstalling.
 
 ## Free Apple ID limits
 

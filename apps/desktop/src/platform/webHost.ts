@@ -226,6 +226,25 @@ export async function completeWebRedirects(): Promise<void> {
   }
 }
 
+interface NativeBridge {
+  postMessage(message: unknown): void;
+}
+
+/** The iOS app's message handler, when the web player runs inside it (apps/ios). */
+function iosApp(): NativeBridge | undefined {
+  return (window as unknown as { webkit?: { messageHandlers?: { cadence?: NativeBridge } } }).webkit?.messageHandlers
+    ?.cadence;
+}
+
+export function isIosApp(): boolean {
+  return !!iosApp();
+}
+
+/** Ask the iOS app to go back to its server address screen. */
+export function changeIosServer(): void {
+  iosApp()?.postMessage({ action: "changeServer" });
+}
+
 /** True when running as the website rather than the desktop app. */
 export function isWeb(): boolean {
   return (window.host?.platform as string | undefined) === "web";

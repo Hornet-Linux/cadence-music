@@ -13,8 +13,8 @@ struct PlayerView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            WebPlayer(url: url, reloadToken: reloadToken, failure: $failure)
-                .ignoresSafeArea(.container, edges: .bottom)
+            WebPlayer(url: url, reloadToken: reloadToken, failure: $failure, onChangeServer: onChangeServer)
+                .ignoresSafeArea()
             if let failure {
                 VStack(spacing: 14) {
                     Text("Couldn't load your server").font(.headline)
@@ -39,6 +39,7 @@ struct WebPlayer: UIViewRepresentable {
     let url: URL
     let reloadToken: Int
     @Binding var failure: String?
+    let onChangeServer: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -47,15 +48,18 @@ struct WebPlayer: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.websiteDataStore = .default() // keeps the sign-in between launches
+        // The page's "Change server" button (Settings → Server) posts here.
+        config.userContentController.add(WeakMessageHandler(context.coordinator), name: "cadence")
+
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
-        web.allowsBackForwardNavigationGestures = true
         web.isOpaque = false
         web.backgroundColor = .black
-        let refresh = UIRefreshControl()
-        refresh.addTarget(context.coordinator, action: #selector(Coordinator.pulledToRefresh(_:)), for: .valueChanged)
-        web.scrollView.refreshControl = refresh
+        // The player scrolls inside its own panes; the page itself shouldn't bounce or zoom.
+        web.scrollView.bounces = false
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+        web.scrollView.pinchGestureRecognizer?.isEnabled = false
         context.coordinator.web = web
         web.load(URLRequest(url: url))
         return web
@@ -70,40 +74,102 @@ struct WebPlayer: UIViewRepresentable {
         }
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "cadence")
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         var parent: WebPlayer
         var loadedToken: Int
         weak var web: WKWebView?
+        private var popup: UIViewController?
 
         init(_ parent: WebPlayer) {
             self.parent = parent
             self.loadedToken = parent.reloadToken
         }
 
-        @objc func pulledToRefresh(_ sender: UIRefreshControl) {
-            web?.reload()
-            sender.endRefreshing()
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any], body["action"] as? String == "changeServer" else { return }
+            parent.onChangeServer()
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            show(error)
+            show(error, in: webView)
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            show(error)
+            show(error, in: webView)
         }
 
-        private func show(_ error: Error) {
-            if (error as NSError).code == NSURLErrorCancelled { return }
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if webView === web { parent.failure = nil }
+        }
+
+        private func show(_ error: Error, in webView: WKWebView) {
+            guard webView === web, (error as NSError).code != NSURLErrorCancelled else { return }
             parent.failure = error.localizedDescription
         }
 
-        // Sign-ins (the OIDC provider, Spotify) navigate in place and redirect
-        // back to /app; only links that ask for a new window open in Safari.
+        // Pages that open a new window (Apple Music's sign-in) get a sheet that
+        // shares this web view's session, so window.opener keeps working.
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            if let url = navigationAction.request.url { UIApplication.shared.open(url) }
-            return nil
+            let child = WKWebView(frame: .zero, configuration: configuration)
+            child.uiDelegate = self
+            child.navigationDelegate = self
+            let controller = UIViewController()
+            controller.view = child
+            let nav = UINavigationController(rootViewController: controller)
+            nav.overrideUserInterfaceStyle = .dark
+            controller.navigationItem.leftBarButtonItem = UIBarButtonItem(
+                systemItem: .close, primaryAction: UIAction { [weak self] _ in self?.closePopup() })
+            popup = nav
+            topController(from: webView)?.present(nav, animated: true)
+            return child
         }
+
+        func webViewDidClose(_ webView: WKWebView) {
+            if webView !== web { closePopup() }
+        }
+
+        private func closePopup() {
+            popup?.dismiss(animated: true)
+            popup = nil
+        }
+
+        private func topController(from view: UIView) -> UIViewController? {
+            var top = view.window?.rootViewController
+            while let presented = top?.presentedViewController { top = presented }
+            return top
+        }
+
+        // alert()/confirm() from the page.
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            guard let top = topController(from: webView) else { return completionHandler() }
+            top.present(alert, animated: true)
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            guard let top = topController(from: webView) else { return completionHandler(false) }
+            top.present(alert, animated: true)
+        }
+    }
+}
+
+/// WKUserContentController retains its handlers; this breaks the cycle.
+private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var target: WKScriptMessageHandler?
+    init(_ target: WKScriptMessageHandler) { self.target = target }
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(controller, didReceive: message)
     }
 }

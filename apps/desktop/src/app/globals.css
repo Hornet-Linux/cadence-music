@@ -1585,3 +1585,208 @@ code {
 .web .rail {
   -webkit-app-region: no-drag;
 }
+
+/* ---------- Phones (web player and the iOS app) ----------
+   The rail becomes a bottom tab bar, the player bar a compact mini-player,
+   and edges respect the notch and home indicator. */
+@media (max-width: 760px) {
+  .web {
+    --titlebar-h: calc(env(safe-area-inset-top) + 6px);
+    --player-h: 68px;
+    --tabbar-h: 56px;
+  }
+  .web .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+    height: 100dvh;
+  }
+  .web .stage {
+    grid-row: 1;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .web .rail {
+    grid-row: 2;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 0;
+    padding: 4px max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+  }
+  .web .rail-logo,
+  .web .rail-divider,
+  .web .rail-spacer {
+    display: none;
+  }
+  .web .rail-btn {
+    flex-shrink: 0;
+  }
+  .web .rail-btn.active::before {
+    left: 12px;
+    right: 12px;
+    top: -4px;
+    bottom: auto;
+    width: auto;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+  }
+
+  .web .view {
+    padding: 0 max(16px, env(safe-area-inset-right)) 28px max(16px, env(safe-area-inset-left));
+  }
+  .web .view-header h1 {
+    font-size: 1.7rem;
+  }
+  .web .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    min-height: 0;
+    padding: 20px;
+    margin-bottom: 28px;
+    border-radius: 20px;
+  }
+  .web .hero-art {
+    flex-basis: 128px;
+    width: 128px;
+    height: 128px;
+  }
+  .web .media-card {
+    flex-basis: 146px;
+  }
+  .web .shelf-row {
+    gap: 14px;
+  }
+  .web .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px;
+  }
+  .web .track-row {
+    grid-template-columns: 32px minmax(0, 1fr) 40px 44px;
+    gap: 10px;
+    padding: 7px 6px;
+  }
+  .web .track-row .album {
+    display: none;
+  }
+
+  /* Mini-player: art and title, play/next, queue; seek bar along the top edge. */
+  .web .playerbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+  }
+  .web .np {
+    gap: 11px;
+  }
+  .web .np .art {
+    width: 46px;
+    height: 46px;
+    border-radius: 10px;
+  }
+  .web .transport .buttons {
+    gap: 16px;
+  }
+  .web .seek {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -8px;
+    gap: 0;
+  }
+  .web .seek .time,
+  .web .player-right .volume {
+    display: none;
+  }
+  .web .scrub .track-bg {
+    height: 3px;
+    border-radius: 0;
+  }
+  .web .scrub .fill {
+    border-radius: 0;
+  }
+
+  .web .queue-drawer {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  /* Settings fill the screen; its sections become a scrolling strip of tabs. */
+  .web .modal-backdrop,
+  .web .wizard-backdrop {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .web .settings {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+  .web .settings-nav {
+    padding: 10px 12px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .web .settings-search,
+  .web .settings-group-label {
+    display: none;
+  }
+  .web .settings-groups {
+    display: flex;
+    gap: 4px;
+    margin-top: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .web .settings-group {
+    display: contents;
+  }
+  .web .settings-link {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .web .settings-head {
+    padding: 18px 16px 6px;
+  }
+  .web .settings-body {
+    padding: 6px 16px 24px;
+  }
+  .web .setting-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .web .wizard {
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+  }
+}
+@media (max-width: 420px) {
+  /* No room for shuffle and repeat on small phones. */
+  .web .transport .buttons .ctrl:first-child,
+  .web .transport .buttons .ctrl:last-child {
+    display: none;
+  }
+}
+
+/* Touch screens have no hover: show the controls hover would reveal. */
+@media (hover: none) {
+  .track-row .row-actions,
+  .queue-item .icon-btn {
+    opacity: 1;
+  }
+  .media-card .play-fab {
+    opacity: 1;
+    transform: none;
+  }
+  [data-tip]:hover::after {
+    display: none;
+  }
+}
