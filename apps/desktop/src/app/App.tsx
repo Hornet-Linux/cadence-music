@@ -12,7 +12,7 @@ import { Sidebar } from "@/ui/Sidebar";
 import { TitleBar } from "@/ui/TitleBar";
 import { PlayerBar } from "@/ui/PlayerBar";
 import { QueueDrawer } from "@/ui/QueueDrawer";
-import { useNav, type Route } from "./navStore";
+import { startNavShortcuts, useNav, type Route } from "./navStore";
 import { useTheme } from "./theme";
 
 function MainView({ route }: { route: Route }) {
@@ -48,11 +48,12 @@ export function App() {
     for (const plugin of allRegisterablePlugins) register(plugin);
     startPlayerIntegrations();
     startHistoryTracking();
+    startNavShortcuts();
   }, [register]);
 
   // Each page starts at the top.
   useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0 });
+    mainRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [route]);
 
   return (
@@ -62,7 +63,10 @@ export function App() {
         <div className="ambient" aria-hidden />
         <TitleBar />
         <main className="main" ref={mainRef}>
-          <MainView route={route} />
+          {/* Keyed by page so every navigation replays the enter animation. */}
+          <div className="page" key={JSON.stringify(route)}>
+            <MainView route={route} />
+          </div>
         </main>
         <QueueDrawer />
         <PlayerBar />

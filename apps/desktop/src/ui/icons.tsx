@@ -238,3 +238,36 @@ export const LogoMark = (p: P) => (
     </g>
   </Svg>
 );
+export const BackIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="m15 5-7 7 7 7" />
+  </Svg>
+);
+export const ForwardIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="m9 5 7 7-7 7" />
+  </Svg>
+);
+export const HeartIcon = ({ filled, ...p }: P & { filled?: boolean }) => (
+  <Svg {...p} fill={filled ? "currentColor" : "none"}>
+    <path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.7 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.2 4.5 6.6-1.7 4.8-9.2 9.4-9.2 9.4Z" />
+  </Svg>
+);
+export const ListIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 6h12M4 12h12M4 18h8" />
+    <path d="M19 15v6M16 18h6" />
+  </Svg>
+);
+export const MoreIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="5" cy="12" r="1.2" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+    <circle cx="19" cy="12" r="1.2" fill="currentColor" />
+  </Svg>
+);
+export const TrashIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+  </Svg>
+);
