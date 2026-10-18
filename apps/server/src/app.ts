@@ -8,11 +8,18 @@ import { registerWebApp } from "./web/webApp.js";
 import { Settings } from "./settings.js";
 import { adminPlugin } from "./admin/plugin.js";
 import { historyPlugin } from "./history/plugin.js";
+import { collectionPlugin } from "./collection/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
 
-export const builtinPlugins: ServerPlugin[] = [libraryPlugin, integrationsPlugin, historyPlugin, adminPlugin];
+export const builtinPlugins: ServerPlugin[] = [
+  libraryPlugin,
+  integrationsPlugin,
+  historyPlugin,
+  collectionPlugin,
+  adminPlugin,
+];
 
 export interface AppDeps {
   config: Config;

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useNav } from "@/app/navStore";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { usePluginHost } from "@/plugins/host";
-import { HomeIcon, LibraryIcon, LogoMark, PlugIcon, SearchIcon, SettingsIcon } from "./icons";
+import { HeartIcon, HomeIcon, LibraryIcon, LogoMark, PlugIcon, SearchIcon, SettingsIcon } from "./icons";
 
 function RailButton({
   active,
@@ -42,6 +42,7 @@ export function Sidebar() {
       <RailButton active={route.kind === "home"} icon={<HomeIcon size={22} />} label="Home" onClick={() => navigate({ kind: "home" })} />
       <RailButton active={route.kind === "search"} icon={<SearchIcon size={22} />} label="Search" onClick={() => navigate({ kind: "search" })} />
       <RailButton active={route.kind === "library"} icon={<LibraryIcon size={22} />} label="Library" onClick={() => navigate({ kind: "library" })} />
+      <RailButton active={route.kind === "liked"} icon={<HeartIcon size={22} />} label="Liked Songs" onClick={() => navigate({ kind: "liked" })} />
 
       {sidebarItems.length > 0 && <div className="rail-divider" />}
       {sidebarItems.map((item) => (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useUi } from "@/app/uiStore";
 import { usePlayer } from "@/player/playerStore";
 import { formatDuration, primaryArtist } from "@/shared/types";
+import { LikeButton } from "./CollectionButtons";
 import { CoverArt } from "./CoverArt";
 import {
   MuteIcon,
@@ -156,6 +157,7 @@ function NowPlaying() {
           {unresolved ? "Can't play this right now — check the source in Settings" : primaryArtist(current)}
         </div>
       </div>
+      <LikeButton track={current} size={18} />
     </div>
   );
 }

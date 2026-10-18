@@ -2,6 +2,7 @@ import { useSettingsModal } from "@/features/settings/settingsStore";
 import type { Plugin } from "../../types";
 import { ServerIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
+import { startCollectionSync } from "./collectionSync";
 import { startHistorySync } from "./historySync";
 import { ServerSettings } from "./ServerSettings";
 import { SERVER_TRACK_PREFIX, useServer } from "./serverStore";
@@ -67,6 +68,7 @@ export const serverPlugin: Plugin = {
   activate(ctx) {
     void useServer.getState().init();
     startHistorySync();
+    startCollectionSync();
 
     ctx.registerSettingsPanel({
       id: "server",
