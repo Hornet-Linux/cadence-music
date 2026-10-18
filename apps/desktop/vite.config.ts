@@ -17,6 +17,9 @@ export default defineConfig({
         onstart(args) {
           args.reload();
         },
+        // Electron only treats a preload as an ES module when it ends in .mjs
+        // (it ignores "type": "module"); main.ts loads preload.mjs.
+        vite: { build: { lib: { entry: "electron/preload.ts", fileName: () => "[name].mjs" } } },
       },
     ]),
     renderer(),
