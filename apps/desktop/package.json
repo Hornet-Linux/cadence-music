@@ -35,7 +35,12 @@
     "directories": { "output": "release" },
     "files": ["dist/**/*", "dist-electron/**/*"],
     "win": { "target": ["nsis"] },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Cadence-Setup.exe",
+      "shortcutName": "Cadence"
+    }
   },
   "dependencies": {
     "react": "18.3.1",
