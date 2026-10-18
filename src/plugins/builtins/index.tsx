@@ -1,5 +1,6 @@
 import type { Plugin } from "../types";
 import type { Track } from "@/shared/types";
+import { localFilesPlugin } from "./localFiles";
 
 /**
  * Built-in and sample plugins. Built-in plugins (`builtin: true`) are trusted
@@ -100,6 +101,6 @@ const trackingBridgePlugin: Plugin = {
   },
 };
 
-export const builtinPlugins: Plugin[] = [welcomePlugin, nowPlayingLogPlugin];
+export const builtinPlugins: Plugin[] = [welcomePlugin, localFilesPlugin, nowPlayingLogPlugin];
 export const samplePlugins: Plugin[] = [trackingBridgePlugin];
 export const allRegisterablePlugins: Plugin[] = [...builtinPlugins, ...samplePlugins];

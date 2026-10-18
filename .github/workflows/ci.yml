@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:coverage
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: error
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Ensure the build left tracked files unchanged
+        run: git diff --exit-code
+      - name: Upload renderer build
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderer-dist
+          path: dist/
+          if-no-files-found: error
+
+  package-windows:
+    name: Package Windows installer
+    runs-on: windows-latest
+    needs: [lint-and-typecheck, test, build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm install --no-audit --no-fund
+      - name: Build Windows installer
+        run: npm run electron:build:win
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+          if-no-files-found: error

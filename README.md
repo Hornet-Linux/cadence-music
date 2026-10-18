@@ -1,5 +1,7 @@
 # unnamed_music_app
 
+[![CI](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml)
+
 A desktop music player that you own end to end. Run it entirely on your own
 computer, or self-host the server part on a VPS with Docker and point the desktop
 app at it. **Plugin-first**: the app is a clean player shell, and almost
@@ -26,9 +28,19 @@ Requires **Node.js 20+**.
 ```bash
 npm install
 npm run dev        # launch the Electron app with hot reload
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm run test       # Vitest
 npm run build      # typecheck + production build
 npm run electron:build:win   # package a Windows .exe (nsis)
 ```
+
+## CI
+
+GitHub Actions runs on every push and PR ([ci.yml](.github/workflows/ci.yml)):
+lint + typecheck, a Vitest suite with coverage across **Linux and Windows**, a
+production build with a clean-tree guard, and — on `main` and version tags — a
+real Windows `.exe` built with electron-builder and uploaded as an artifact.
 
 ## Project layout
 
