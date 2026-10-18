@@ -48,6 +48,12 @@ try {
   // Scope to the dialog: the player bar also has a "Next" (track) button.
   const wizard = page.getByRole("dialog");
   await wizard.getByRole("heading", { name: "Welcome to Unnamed Music App" }).waitFor({ timeout: 15_000 });
+  if (process.env.E2E_SCREENSHOTS === "1") {
+    const shots = path.join(appDir, "e2e", "screenshots");
+    fs.mkdirSync(shots, { recursive: true });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(shots, "0-setup-wizard.png") });
+  }
   await wizard.getByRole("button", { name: "Get started", exact: true }).click();
   for (const title of ["Connect your server", "Connect Spotify", "Connect Apple Music"]) {
     await wizard.getByRole("heading", { name: title, exact: true }).waitFor({ timeout: 10_000 });
