@@ -51,7 +51,7 @@ try {
   if (process.env.E2E_SCREENSHOTS === "1") {
     const shots = path.join(appDir, "e2e", "screenshots");
     fs.mkdirSync(shots, { recursive: true });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2000); // let the entrance animation finish
     await page.screenshot({ path: path.join(shots, "0-setup-wizard.png") });
   }
   await wizard.getByRole("button", { name: "Get started", exact: true }).click();
