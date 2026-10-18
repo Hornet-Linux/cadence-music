@@ -17,8 +17,8 @@ database — no separate database to manage.
 ## Quick start: the setup wizard
 
 ```bash
-git clone https://github.com/Hornet-Linux/unnamed_music_app.git
-cd unnamed_music_app/deploy
+git clone https://github.com/Hornet-Linux/cadence-music.git
+cd cadence-music/deploy
 ./setup.sh
 ```
 
@@ -44,8 +44,8 @@ files yourself.
 ## 1. Get the code and configure (manual)
 
 ```bash
-git clone https://github.com/Hornet-Linux/unnamed_music_app.git
-cd unnamed_music_app/deploy
+git clone https://github.com/Hornet-Linux/cadence-music.git
+cd cadence-music/deploy
 cp .env.example .env
 ```
 
@@ -203,7 +203,7 @@ to play.
 ## Updating
 
 ```bash
-cd unnamed_music_app
+cd cadence-music
 git pull
 cd deploy
 docker compose up -d --build

@@ -1,6 +1,6 @@
 # Cadence
 
-[![CI](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Hornet-Linux/unnamed_music_app/actions/workflows/ci.yml)
+[![CI](https://github.com/Hornet-Linux/cadence-music/actions/workflows/ci.yml/badge.svg)](https://github.com/Hornet-Linux/cadence-music/actions/workflows/ci.yml)
 
 A music player you own end to end: a desktop app for your computer and a
 server you host yourself. **Plugin-first** — the app is a clean player shell,
@@ -26,8 +26,8 @@ connections) is a plugin, on both the desktop and the server.
 **Server** (on your VPS — full guide in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)):
 
 ```bash
-git clone https://github.com/Hornet-Linux/unnamed_music_app.git
-cd unnamed_music_app/deploy
+git clone https://github.com/Hornet-Linux/cadence-music.git
+cd cadence-music/deploy
 ./setup.sh             # asks about your domain, music folder, SSO, Spotify, Apple Music
 ```
 
