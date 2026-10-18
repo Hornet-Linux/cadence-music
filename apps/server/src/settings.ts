@@ -46,4 +46,14 @@ export class Settings {
   setSignup(value: { mode: "closed" } | { mode: "open" } | { mode: "invite"; inviteCode: string }): void {
     this.write("signup", value);
   }
+
+  /** A person's own Spotify app ID, saved so all their devices can use it. */
+  userSpotifyClientId(userId: number): string | undefined {
+    return this.read<string>(`user:${userId}:spotifyClientId`);
+  }
+
+  setUserSpotifyClientId(userId: number, clientId: string | null): void {
+    if (clientId) this.write(`user:${userId}:spotifyClientId`, clientId);
+    else this.db.prepare("DELETE FROM settings WHERE key = ?").run(`user:${userId}:spotifyClientId`);
+  }
 }

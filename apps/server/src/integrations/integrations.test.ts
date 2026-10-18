@@ -106,7 +106,7 @@ test("integrations endpoint and Apple Music tokens", async () => {
 
   const res = await app.inject({ method: "GET", url: "/api/integrations", headers });
   assert.deepEqual(res.json() as IntegrationsResponse, {
-    spotify: { clientId: "0123456789abcdef0123456789abcdef" },
+    spotify: { clientId: "0123456789abcdef0123456789abcdef", source: "server" },
     appleMusic: { available: true },
   });
 
@@ -125,5 +125,20 @@ test("Apple Music is unavailable without a key", async () => {
   assert.deepEqual(res.json(), { spotify: null, appleMusic: { available: false } });
   const token = await app.inject({ method: "GET", url: "/api/integrations/apple-music/token", headers });
   assert.equal(token.statusCode, 404);
+  await close();
+});
+
+test("a Spotify app ID saved from one device reaches the account's other devices", async () => {
+  const { app, headers, close } = await appWith({});
+  const get = async () => (await app.inject({ method: "GET", url: "/api/integrations", headers })).json() as IntegrationsResponse;
+  const put = (clientId: string | null) =>
+    app.inject({ method: "PUT", url: "/api/me/integrations/spotify", headers, payload: { clientId } });
+
+  assert.equal((await get()).spotify, null);
+  assert.equal((await put("not-a-client-id")).statusCode, 400);
+  assert.equal((await put("abcdef0123456789abcdef0123456789")).statusCode, 204);
+  assert.deepEqual((await get()).spotify, { clientId: "abcdef0123456789abcdef0123456789", source: "account" });
+  assert.equal((await put(null)).statusCode, 204);
+  assert.equal((await get()).spotify, null);
   await close();
 });
