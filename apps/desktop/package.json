@@ -24,8 +24,10 @@
   "build": {
     "appId": "net.hornetlinux.unnamedmusicapp",
     "productName": "Unnamed Music App",
-    "electronVersion": "42.11.0",
-    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "42.11.0+wvcus",
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"
+    },
     "afterSign": "scripts/vmp-sign.cjs",
     "directories": { "output": "release" },
     "files": ["dist/**/*", "dist-electron/**/*"],
