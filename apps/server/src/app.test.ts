@@ -92,7 +92,7 @@ test("health reports available sign-in methods", async () => {
   const { app, db } = await setup();
   const res = await app.inject({ method: "GET", url: "/api/health" });
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.json().auth, { password: true, oidc: null });
+  assert.deepEqual(res.json().auth, { password: true, oidc: null, signup: "closed" });
   await app.close();
   db.close();
 });
