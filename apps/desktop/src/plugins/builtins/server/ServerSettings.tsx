@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { changeIosServer, isIosApp } from "@/platform/webHost";
 import { isInsecureRemote, useServer } from "./serverStore";
 
 function StatusDot({ status }: { status: string }) {
@@ -193,6 +194,11 @@ export function ServerSettings() {
       <div className="status-line">
         <StatusDot status={s.status} />
         <span className="muted small">{statusText}</span>
+        {isIosApp() && (
+          <button className="btn ghost" style={{ marginLeft: "auto" }} onClick={changeIosServer}>
+            Change server
+          </button>
+        )}
       </div>
 
       {isInsecureRemote(s.url) && (

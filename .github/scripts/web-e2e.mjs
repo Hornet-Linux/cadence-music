@@ -73,6 +73,23 @@ try {
   await page.getByRole("dialog").getByRole("button", { name: "Server", exact: true }).click();
   await page.getByRole("dialog").getByText("Web Tester").first().waitFor({ timeout: 10_000 });
   console.log("✓ still signed in after a reload");
+  await page.keyboard.press("Escape");
+
+  // ---- Phone layout (as in the iOS app) --------------------------------------
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("heading", { name: "Your Library" }).waitFor();
+  const tabBar = await page.locator(".rail").boundingBox();
+  assert.ok(tabBar && tabBar.y > 700, `expected the nav as a bottom tab bar on phones (y=${tabBar?.y})`);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert.ok(overflow <= 0, `the phone layout scrolls sideways by ${overflow}px`);
+  await shot("5-phone-library");
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await shot("6-phone-home");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Server", exact: true }).click();
+  await shot("7-phone-settings");
+  console.log("✓ phone layout: bottom tab bar, no sideways scrolling");
 
   const relevant = problems.filter((p) => !/favicon/i.test(p));
   assert.deepEqual(relevant, [], `the page reported problems:\n${relevant.join("\n")}`);
