@@ -9,6 +9,7 @@ import type {
   PluginContext,
   PluginManifest,
   PluginStorage,
+  ResolvedAudio,
   SettingsContribution,
   SidebarContribution,
 } from "./types";
@@ -37,8 +38,8 @@ interface PluginHostState {
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
   /** Resolves once every queued enable/disable has finished. */
   whenIdle: () => Promise<void>;
-  /** Resolve a track to a playable URL via the first source that can. */
-  resolveAudio: (track: Track) => Promise<string | null>;
+  /** Make a track playable via the first audio source that can. */
+  resolveAudio: (track: Track) => Promise<ResolvedAudio | null>;
   /** Notify plugins that the now-playing track changed. */
   emitNowPlaying: (track: Track | null) => void;
 }
@@ -205,8 +206,8 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
     async resolveAudio(track) {
       for (const source of get().contributions.audioSources) {
         try {
-          const url = await source.resolve(track);
-          if (url) return url;
+          const resolved = await source.resolve(track);
+          if (resolved) return resolved;
         } catch {
           // Try the next source.
         }

@@ -19,27 +19,38 @@ provider.
 
 | Concern | Choice |
 | --- | --- |
-| Shell | Electron 31, frameless window with a custom title bar |
+| Shell | castlabs Electron 42 (Widevine DRM), frameless window with a custom title bar |
 | UI | React 18 + TypeScript, hand-rolled CSS design system |
 | State | Zustand stores (`player`, `pluginHost`, `nav`, per-plugin stores) |
-| Build | Vite + `vite-plugin-electron`; electron-builder for the installer |
-| Tests | Vitest (jsdom) |
+| Build | Vite + `vite-plugin-electron`; electron-builder (optional VMP signing) |
+| Tests | Vitest (jsdom) + a Playwright launch test of the built app |
 
-**Process model.** The main process (`electron/main.ts`) owns the window, runs
-the OIDC loopback sign-in and stores secrets with Electron `safeStorage` (the OS
-keychain / DPAPI). The preload exposes a deliberately small bridge,
-`window.host`, through `contextBridge`; `nodeIntegration` is off and
-`contextIsolation` is on. The renderer (`src/`) holds the UI and the plugin
-host.
+**Process model.** The main process (`electron/`) owns the window and the
+browser-based sign-ins (server OIDC and Spotify, both loopback + PKCE), installs
+the Widevine CDM, and stores secrets with Electron `safeStorage` (OS keychain /
+DPAPI). Spotify refresh tokens never leave the main process; the page only
+receives short-lived access tokens. The preload exposes a deliberately small
+bridge, `window.host`, through `contextBridge`; `nodeIntegration` is off and
+`contextIsolation` is on (the preload runs unsandboxed because it is an ES
+module). The renderer (`src/`) holds the UI and the plugin host.
 
-**Playback.** `player/playerStore.ts` drives a single shared `<audio>` element:
-queue, play/pause, next/previous, seek, volume, shuffle and repeat. To play a
-track it asks the plugin host to resolve it to a URL; each audio-source plugin
-gets a turn.
+**Playback.** `player/playerStore.ts` owns the queue, shuffle, repeat, seek and
+volume. Each audio-source plugin may return either a URL, played by the shared
+`<audio>` element (server, local files), or an `ExternalPlayback` handle that
+drives the service's own player (Spotify's Web Playback SDK, Apple's MusicKit).
+Exactly one backend is active at a time, and a load counter stops a slow source
+from overriding a newer selection, so tracks from different services mix freely
+in one queue.
 
 **Library.** Library, Home and Search have no data of their own. They render a
-section per *library source* contributed by plugins — today the server and local
-files — so a new source plugin shows up everywhere automatically.
+section per *library source* contributed by plugins — the server, Spotify, Apple
+Music and local files — so a new source plugin shows up everywhere
+automatically.
+
+**Streaming services.** Spotify and Apple Music connect only through their
+official APIs. Spotify uses a per-installation developer app (client ID, no
+secret). Apple Music needs a MusicKit key; it lives on the server, which mints
+short-lived developer tokens for signed-in apps.
 
 ## Server (`apps/server`)
 

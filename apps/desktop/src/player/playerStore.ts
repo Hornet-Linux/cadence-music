@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Track } from "@/shared/types";
 import { usePluginHost } from "@/plugins/host";
+import type { ExternalPlayback } from "@/plugins/types";
 
 type RepeatMode = "off" | "all" | "one";
 
@@ -11,13 +12,13 @@ interface PlayerState {
   isPlaying: boolean;
   /** Current playback position in seconds. */
   position: number;
-  /** Track duration in seconds (from the media element when available). */
+  /** Track duration in seconds. */
   duration: number;
   volume: number;
   muted: boolean;
   shuffle: boolean;
   repeat: RepeatMode;
-  /** Set when a track could not be resolved to a playable stream. */
+  /** Set when no audio source could play the current track. */
   unresolved: boolean;
 
   playQueue: (tracks: Track[], startIndex?: number) => Promise<void>;
@@ -32,41 +33,99 @@ interface PlayerState {
   cycleRepeat: () => void;
 }
 
-// A single shared media element drives playback.
+// Plain media (server, local files) plays through one shared <audio> element.
+// Sources with their own player (Spotify, Apple Music) hand back an
+// ExternalPlayback handle instead; exactly one backend is active at a time.
 const audio = new Audio();
 audio.preload = "auto";
 
+type Backend = { kind: "none" } | { kind: "html" } | { kind: "external"; handle: ExternalPlayback; unsubscribe: () => void };
+
+const ignore = () => undefined;
+
 export const usePlayer = create<PlayerState>((set, get) => {
-  async function load(track: Track | null, autoplay: boolean) {
-    usePluginHost.getState().emitNowPlaying(track);
-    if (!track) {
+  let backend: Backend = { kind: "none" };
+  // Bumped on every load so a slow resolve can't override a newer selection.
+  let loadSeq = 0;
+
+  const effectiveVolume = () => (get().muted ? 0 : get().volume);
+
+  async function releaseBackend() {
+    const previous = backend;
+    backend = { kind: "none" };
+    if (previous.kind === "external") {
+      previous.unsubscribe();
+      await previous.handle.stop().catch(ignore);
+    } else if (previous.kind === "html") {
+      audio.pause();
       audio.removeAttribute("src");
-      set({ current: null, isPlaying: false, position: 0, duration: 0, unresolved: false });
-      return;
-    }
-    const url = await usePluginHost.getState().resolveAudio(track);
-    if (!url) {
-      audio.removeAttribute("src");
-      set({ current: track, isPlaying: false, position: 0, duration: 0, unresolved: true });
-      return;
-    }
-    audio.src = url;
-    set({ current: track, position: 0, unresolved: false });
-    if (autoplay) {
-      try {
-        await audio.play();
-        set({ isPlaying: true });
-      } catch {
-        set({ isPlaying: false });
-      }
     }
   }
 
-  audio.addEventListener("timeupdate", () => set({ position: audio.currentTime }));
-  audio.addEventListener("durationchange", () =>
-    set({ duration: Number.isFinite(audio.duration) ? audio.duration : 0 }),
-  );
-  audio.addEventListener("ended", () => void get().next());
+  async function startPlaying() {
+    try {
+      if (backend.kind === "html") await audio.play();
+      else if (backend.kind === "external") await backend.handle.play();
+      else return;
+      set({ isPlaying: true });
+    } catch {
+      set({ isPlaying: false });
+    }
+  }
+
+  async function load(track: Track | null, autoplay: boolean) {
+    const seq = ++loadSeq;
+    usePluginHost.getState().emitNowPlaying(track);
+    await releaseBackend();
+    if (seq !== loadSeq) return;
+
+    if (!track) {
+      set({ current: null, isPlaying: false, position: 0, duration: 0, unresolved: false });
+      return;
+    }
+    set({ current: track, isPlaying: false, position: 0, duration: track.durationSec ?? 0, unresolved: false });
+
+    const resolved = await usePluginHost.getState().resolveAudio(track);
+    if (seq !== loadSeq) {
+      // The user picked something else while this was resolving.
+      if (resolved && typeof resolved !== "string") void resolved.stop().catch(ignore);
+      return;
+    }
+    if (!resolved) {
+      set({ unresolved: true });
+      return;
+    }
+
+    if (typeof resolved === "string") {
+      backend = { kind: "html" };
+      audio.src = resolved;
+    } else {
+      const handle = resolved;
+      const unsubscribe = handle.subscribe((e) => {
+        if (backend.kind !== "external" || backend.handle !== handle) return;
+        const patch: Partial<PlayerState> = {};
+        if (e.position !== undefined) patch.position = e.position;
+        if (e.duration !== undefined && e.duration > 0) patch.duration = e.duration;
+        if (e.playing !== undefined) patch.isPlaying = e.playing;
+        if (Object.keys(patch).length > 0) set(patch);
+        if (e.ended) void get().next();
+      });
+      backend = { kind: "external", handle, unsubscribe };
+      await handle.setVolume(effectiveVolume()).catch(ignore);
+    }
+    if (autoplay) await startPlaying();
+  }
+
+  audio.volume = 0.8;
+  audio.addEventListener("timeupdate", () => {
+    if (backend.kind === "html") set({ position: audio.currentTime });
+  });
+  audio.addEventListener("durationchange", () => {
+    if (backend.kind === "html" && Number.isFinite(audio.duration)) set({ duration: audio.duration });
+  });
+  audio.addEventListener("ended", () => {
+    if (backend.kind === "html") void get().next();
+  });
 
   return {
     queue: [],
@@ -93,13 +152,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     toggle() {
-      const { current, isPlaying } = get();
-      if (!current) return;
-      if (isPlaying) {
-        audio.pause();
+      if (!get().current || backend.kind === "none") return;
+      if (get().isPlaying) {
+        if (backend.kind === "html") audio.pause();
+        else void backend.handle.pause().catch(ignore);
         set({ isPlaying: false });
       } else {
-        void audio.play().then(() => set({ isPlaying: true })).catch(() => undefined);
+        void startPlaying();
       }
     },
 
@@ -129,7 +188,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       if (queue.length === 0) return;
       // Restart the current track if more than 3s in, else go back one.
       if (position > 3) {
-        audio.currentTime = 0;
+        get().seek(0);
         return;
       }
       const prevIndex = index - 1 < 0 ? 0 : index - 1;
@@ -138,20 +197,25 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     seek(seconds) {
-      if (Number.isFinite(seconds)) audio.currentTime = seconds;
+      if (!Number.isFinite(seconds)) return;
+      if (backend.kind === "html") audio.currentTime = seconds;
+      else if (backend.kind === "external") void backend.handle.seek(seconds).catch(ignore);
+      set({ position: seconds });
     },
 
     setVolume(v) {
       const volume = Math.min(1, Math.max(0, v));
+      set({ volume, muted: false });
       audio.volume = volume;
       audio.muted = false;
-      set({ volume, muted: false });
+      if (backend.kind === "external") void backend.handle.setVolume(volume).catch(ignore);
     },
 
     toggleMute() {
       const muted = !get().muted;
-      audio.muted = muted;
       set({ muted });
+      audio.muted = muted;
+      if (backend.kind === "external") void backend.handle.setVolume(effectiveVolume()).catch(ignore);
     },
 
     toggleShuffle() {

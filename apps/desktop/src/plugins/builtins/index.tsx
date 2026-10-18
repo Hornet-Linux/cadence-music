@@ -1,7 +1,9 @@
 import type { Plugin } from "../types";
 import type { Track } from "@/shared/types";
+import { appleMusicPlugin } from "./appleMusic";
 import { localFilesPlugin } from "./localFiles";
 import { serverPlugin } from "./server";
+import { spotifyPlugin } from "./spotify";
 
 /**
  * Built-in and sample plugins. Built-in plugins (`builtin: true`) are trusted
@@ -106,6 +108,8 @@ const trackingBridgePlugin: Plugin = {
 export const builtinPlugins: Plugin[] = [
   welcomePlugin,
   serverPlugin,
+  spotifyPlugin,
+  appleMusicPlugin,
   localFilesPlugin,
   nowPlayingLogPlugin,
 ];

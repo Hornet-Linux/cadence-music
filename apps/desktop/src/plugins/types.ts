@@ -64,12 +64,46 @@ export interface SettingsContribution {
   render: () => ReactNode;
 }
 
-/** An audio source that can turn a Track into a playable URL. */
+/** State changes reported by an external player. All fields optional. */
+export interface ExternalPlaybackEvent {
+  /** Position in seconds. */
+  position?: number;
+  /** Duration in seconds. */
+  duration?: number;
+  playing?: boolean;
+  /** The track finished on its own; the host advances the queue. */
+  ended?: boolean;
+}
+
+/**
+ * A track loaded into a plugin's own player (e.g. Spotify's or Apple's
+ * SDK) rather than the host's <audio> element. The host drives it through
+ * these methods and listens for state changes.
+ */
+export interface ExternalPlayback {
+  play: () => Promise<void>;
+  pause: () => Promise<void>;
+  seek: (seconds: number) => Promise<void>;
+  /** Effective volume 0..1 (already accounts for mute). */
+  setVolume: (volume: number) => Promise<void>;
+  /** Stop and release; called when the host moves to another track. */
+  stop: () => Promise<void>;
+  subscribe: (listener: (event: ExternalPlaybackEvent) => void) => () => void;
+}
+
+/** A media URL for the host's <audio> element, or an external player. */
+export type ResolvedAudio = string | ExternalPlayback;
+
+/** An audio source that can make a Track playable. */
 export interface AudioSource {
   id: string;
   label: string;
-  /** Return a playable media URL for the track, or null if it cannot. */
-  resolve: (track: Track) => Promise<string | null>;
+  /**
+   * Return a playable media URL, an external playback handle, or null if this
+   * source cannot play the track. The track is loaded but must not start
+   * playing until the host calls `play()` on a returned handle.
+   */
+  resolve: (track: Track) => Promise<ResolvedAudio | null>;
 }
 
 /**

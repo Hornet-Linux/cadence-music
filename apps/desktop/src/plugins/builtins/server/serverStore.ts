@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type {
+  AppleMusicTokenResponse,
   AuthResponse,
   HealthResponse,
+  IntegrationsResponse,
   PublicUser,
   ServerTrack,
   StreamUrlResponse,
@@ -23,6 +25,8 @@ interface ServerState {
   user: PublicUser | null;
   tracks: Track[];
   total: number;
+  /** Streaming-service settings shared by the server (Spotify app ID, Apple Music). */
+  integrations: IntegrationsResponse | null;
   loading: boolean;
   busy: boolean;
   error: string | null;
@@ -36,6 +40,8 @@ interface ServerState {
   rescan: () => Promise<void>;
   /** Resolve a server track id to a signed, playable URL. */
   streamUrl: (serverTrackId: string) => Promise<string | null>;
+  /** A MusicKit developer token minted by the server. */
+  appleMusicToken: () => Promise<AppleMusicTokenResponse>;
 }
 
 export function normalizeServerUrl(input: string): string {
@@ -100,7 +106,7 @@ export const useServer = create<ServerState>((set, get) => {
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     const res = await fetch(apiUrl(url, route), { ...init, headers });
     if (res.status === 401 && token) {
-      set({ token: null, user: null, tracks: [], total: 0 });
+      set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       void saveToken(null);
       throw new Error("Your session expired. Sign in again.");
     }
@@ -134,6 +140,7 @@ export const useServer = create<ServerState>((set, get) => {
     user: null,
     tracks: [],
     total: 0,
+    integrations: null,
     loading: false,
     busy: false,
     error: null,
@@ -159,7 +166,7 @@ export const useServer = create<ServerState>((set, get) => {
       const changed = url !== get().url;
       set({ url, status: "checking", error: null });
       if (changed) {
-        set({ token: null, user: null, tracks: [], total: 0 });
+        set({ token: null, user: null, tracks: [], total: 0, integrations: null });
         void saveToken(null);
       }
       try {
@@ -222,13 +229,17 @@ export const useServer = create<ServerState>((set, get) => {
       } catch {
         // Sign out locally regardless.
       }
-      set({ token: null, user: null, tracks: [], total: 0 });
+      set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       await saveToken(null);
     },
 
     async loadTracks() {
       if (!get().token) return;
       set({ loading: true });
+      // Older servers have no integrations endpoint; that's not an error.
+      void request<IntegrationsResponse>("api/integrations")
+        .then((integrations) => set({ integrations }))
+        .catch(() => set({ integrations: null }));
       try {
         const page = await request<TrackListResponse>("api/tracks?limit=5000");
         set({ tracks: page.items.map(toTrack), total: page.total, error: null });
@@ -257,6 +268,10 @@ export const useServer = create<ServerState>((set, get) => {
         `api/tracks/${encodeURIComponent(serverTrackId)}/stream-url`,
       );
       return apiUrl(get().url, signed.path);
+    },
+
+    appleMusicToken() {
+      return request<AppleMusicTokenResponse>("api/integrations/apple-music/token");
     },
   };
 });

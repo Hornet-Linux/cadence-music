@@ -76,6 +76,21 @@ export interface ScanResult {
   total: number;
 }
 
+/** Streaming-service settings the server shares with signed-in apps. */
+export interface IntegrationsResponse {
+  /** Spotify app (client) ID configured on the server, if any. Not a secret. */
+  spotify: { clientId: string } | null;
+  /** True when the server can mint Apple Music developer tokens. */
+  appleMusic: { available: boolean };
+}
+
+export interface AppleMusicTokenResponse {
+  /** MusicKit developer token (ES256 JWT) signed with the server's key. */
+  token: string;
+  /** Unix time (seconds). */
+  expiresAt: number;
+}
+
 export interface ApiError {
   error: string;
   message?: string;

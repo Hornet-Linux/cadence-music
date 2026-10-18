@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthResponse } from "@uma/shared";
+import type { SpotifyAccessToken, SpotifyStatus } from "./spotify";
 
 // The only surface the renderer (and, through it, plugins) can touch in the
 // main process. Keep this intentionally small and explicit.
@@ -19,6 +20,14 @@ const api = {
     /** Sign in through the system browser with the server's OIDC provider. */
     oidcLogin: (serverUrl: string) =>
       ipcRenderer.invoke("auth:oidc-login", serverUrl) as Promise<AuthResponse>,
+  },
+  /** Spotify sign-in; refresh tokens never leave the main process. */
+  spotify: {
+    status: () => ipcRenderer.invoke("spotify:status") as Promise<SpotifyStatus>,
+    login: (clientId: string) => ipcRenderer.invoke("spotify:login", clientId) as Promise<SpotifyStatus>,
+    /** A short-lived access token, refreshed as needed; null when signed out. */
+    token: () => ipcRenderer.invoke("spotify:token") as Promise<SpotifyAccessToken | null>,
+    logout: () => ipcRenderer.invoke("spotify:logout") as Promise<void>,
   },
   platform: process.platform,
 };

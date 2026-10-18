@@ -17,6 +17,15 @@ export interface OidcConfig {
   adminGroups: string[];
 }
 
+export interface AppleMusicConfig {
+  /** Apple Developer Team ID. */
+  teamId: string;
+  /** MusicKit key ID. */
+  keyId: string;
+  /** The MusicKit private key (.p8 contents, PEM). */
+  privateKey: string;
+}
+
 export interface Config {
   host: string;
   port: number;
@@ -27,6 +36,10 @@ export interface Config {
   adminUsername?: string;
   adminPassword?: string;
   oidc?: OidcConfig;
+  /** Spotify app (client) ID offered to desktop apps. Not a secret. */
+  spotifyClientId?: string;
+  /** Enables Apple Music by letting the server mint MusicKit developer tokens. */
+  appleMusic?: AppleMusicConfig;
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
   trustProxy: boolean;
@@ -75,6 +88,27 @@ export function loadConfig(env: Env = process.env): Config {
   const port = int(env.PORT, 8787, "PORT");
   if (port < 1 || port > 65535) throw new Error("PORT must be between 1 and 65535");
 
+  const spotifyClientId = env.SPOTIFY_CLIENT_ID?.trim() || undefined;
+  if (spotifyClientId && !/^[0-9a-f]{32}$/i.test(spotifyClientId)) {
+    throw new Error("SPOTIFY_CLIENT_ID must be the 32-character client ID of a Spotify app");
+  }
+
+  const teamId = env.APPLE_MUSIC_TEAM_ID?.trim();
+  const keyId = env.APPLE_MUSIC_KEY_ID?.trim();
+  const keyFile = env.APPLE_MUSIC_PRIVATE_KEY_FILE?.trim();
+  // Allow the key inline with literal "\n" escapes, as env files often store it.
+  let privateKey = env.APPLE_MUSIC_PRIVATE_KEY?.replace(/\\n/g, "\n").trim();
+  if (!privateKey && keyFile) privateKey = fs.readFileSync(keyFile, "utf8").trim();
+  let appleMusic: AppleMusicConfig | undefined;
+  if (teamId || keyId || privateKey) {
+    if (!teamId || !keyId || !privateKey) {
+      throw new Error(
+        "Apple Music needs APPLE_MUSIC_TEAM_ID, APPLE_MUSIC_KEY_ID and APPLE_MUSIC_PRIVATE_KEY (or _FILE)",
+      );
+    }
+    appleMusic = { teamId, keyId, privateKey };
+  }
+
   return {
     host: env.HOST?.trim() || "0.0.0.0",
     port,
@@ -84,6 +118,8 @@ export function loadConfig(env: Env = process.env): Config {
     adminUsername: env.ADMIN_USERNAME?.trim() || undefined,
     adminPassword: env.ADMIN_PASSWORD || undefined,
     oidc,
+    spotifyClientId,
+    appleMusic,
     scanIntervalMinutes: int(env.SCAN_INTERVAL_MINUTES, 60, "SCAN_INTERVAL_MINUTES"),
     trustProxy: (env.TRUST_PROXY ?? "true").toLowerCase() !== "false",
     logLevel: env.LOG_LEVEL?.trim() || "info",

@@ -15,6 +15,9 @@ connections) is a plugin, on both the desktop and the server.
   folder, streams it with seeking, and handles accounts.
 - **Single sign-on** — OIDC with any provider (Authentik, Keycloak, …) plus an
   optional local admin account.
+- **Spotify and Apple Music** — official sign-in, your library in the app, and
+  full in-app playback (Premium / subscription), mixed in one queue with your
+  own music. See [setup](docs/SELF_HOSTING.md#spotify-and-apple-music).
 - **Plugins** — capability-based plugins on the desktop, and the same plugin
   seam on the server.
 
