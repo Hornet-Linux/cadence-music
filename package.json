@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview",
-    "electron:build:win": "tsc --noEmit && vite build && electron-builder --win"
+    "electron:build:win": "tsc --noEmit && vite build && electron-builder --win --publish never"
   },
   "build": {
     "appId": "net.hornetlinux.unnamedmusicapp",
