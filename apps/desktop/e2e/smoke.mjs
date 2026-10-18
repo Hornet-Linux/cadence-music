@@ -42,14 +42,16 @@ try {
   );
 
   // A first launch opens the setup wizard: walk through every step.
-  await page.getByRole("heading", { name: "Welcome to Unnamed Music App" }).waitFor({ timeout: 15_000 });
-  await page.getByRole("button", { name: "Get started", exact: true }).click();
+  // Scope to the dialog: the player bar also has a "Next" (track) button.
+  const wizard = page.getByRole("dialog");
+  await wizard.getByRole("heading", { name: "Welcome to Unnamed Music App" }).waitFor({ timeout: 15_000 });
+  await wizard.getByRole("button", { name: "Get started", exact: true }).click();
   for (const title of ["Connect your server", "Connect Spotify", "Connect Apple Music"]) {
-    await page.getByRole("heading", { name: title, exact: true }).waitFor({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await wizard.getByRole("heading", { name: title, exact: true }).waitFor({ timeout: 10_000 });
+    await wizard.getByRole("button", { name: "Next", exact: true }).click();
   }
-  await page.getByRole("heading", { name: "You're all set", exact: true }).waitFor({ timeout: 10_000 });
-  await page.getByRole("button", { name: "Start listening", exact: true }).click();
+  await wizard.getByRole("heading", { name: "You're all set", exact: true }).waitFor({ timeout: 10_000 });
+  await wizard.getByRole("button", { name: "Start listening", exact: true }).click();
   await page.locator(".wizard-backdrop").waitFor({ state: "detached", timeout: 10_000 });
 
   for (const label of ["Home", "Server", "Spotify", "Apple Music", "Local Files", "Settings"]) {
