@@ -1,6 +1,21 @@
 # Build from the repository root:
 #   docker build -f apps/server/Dockerfile -t cadence-server .
 
+# ---- Web player: the desktop UI built as a website (served at /app) --------
+FROM node:22-slim AS web
+# git is needed to install the castlabs Electron package (a GitHub dependency);
+# --ignore-scripts skips downloading its binary, which a website doesn't need.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY packages/shared ./packages/shared
+COPY apps/desktop/package.json ./apps/desktop/
+WORKDIR /src/apps/desktop
+RUN npm install --no-audit --no-fund --ignore-scripts
+COPY apps/desktop ./
+RUN npm run build:web
+
+# ---- Server ----------------------------------------------------------------
 FROM node:22-slim AS build
 WORKDIR /src
 # Shared API types (type-only; needed to compile, not at runtime).
@@ -16,11 +31,13 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8787 \
     DATA_DIR=/data \
-    MUSIC_DIR=/music
+    MUSIC_DIR=/music \
+    WEB_DIR=/app/web
 WORKDIR /app
 COPY --from=build /src/apps/server/package.json ./
 COPY --from=build /src/apps/server/node_modules ./node_modules
 COPY --from=build /src/apps/server/dist ./dist
+COPY --from=web /src/apps/desktop/dist-web ./web
 # /data must be writable by the unprivileged user; named volumes inherit this.
 RUN mkdir -p /data /music && chown node:node /data
 USER node

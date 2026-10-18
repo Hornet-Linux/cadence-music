@@ -4,24 +4,37 @@ import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import { fileURLToPath, URL } from "node:url";
 
-export default defineConfig({
-  resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
-  },
-  plugins: [
-    react(),
-    electron([
-      { entry: "electron/main.ts" },
-      {
-        entry: "electron/preload.ts",
-        onstart(args) {
-          args.reload();
+const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
+
+export default defineConfig(({ mode }) => {
+  // `vite build --mode web` builds the same UI as a website, served by the
+  // Cadence server at /app (see apps/server/src/web/webApp.ts).
+  if (mode === "web") {
+    return {
+      base: "/app/",
+      resolve: { alias },
+      plugins: [react()],
+      build: { outDir: "dist-web", emptyOutDir: true },
+    };
+  }
+
+  return {
+    resolve: { alias },
+    plugins: [
+      react(),
+      electron([
+        { entry: "electron/main.ts" },
+        {
+          entry: "electron/preload.ts",
+          onstart(args) {
+            args.reload();
+          },
+          // Electron only treats a preload as an ES module when it ends in .mjs
+          // (it ignores "type": "module"); main.ts loads preload.mjs.
+          vite: { build: { lib: { entry: "electron/preload.ts", fileName: () => "[name].mjs" } } },
         },
-        // Electron only treats a preload as an ES module when it ends in .mjs
-        // (it ignores "type": "module"); main.ts loads preload.mjs.
-        vite: { build: { lib: { entry: "electron/preload.ts", fileName: () => "[name].mjs" } } },
-      },
-    ]),
-    renderer(),
-  ],
+      ]),
+      renderer(),
+    ],
+  };
 });

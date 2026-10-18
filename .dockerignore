@@ -1,6 +1,7 @@
 **/node_modules
 **/dist
 **/dist-electron
+**/dist-web
 **/release
 **/coverage
 **/.env
@@ -8,5 +9,5 @@ deploy/data
 deploy/music
 .git
 .github
-apps/desktop
+apps/desktop/e2e/screenshots
 docs

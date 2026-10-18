@@ -1573,3 +1573,15 @@ code {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---------- Web player (same UI served at /app) ---------- */
+.web {
+  --titlebar-h: 14px;
+}
+.web .win-controls,
+.web .server-address-form {
+  display: none;
+}
+.web .rail {
+  -webkit-app-region: no-drag;
+}

@@ -471,3 +471,22 @@ test("OIDC start refuses non-loopback redirects", async () => {
   await app.close();
   db.close();
 });
+
+test("OIDC start accepts only this server's own web player callback", async () => {
+  const idp = fakeIdp([]);
+  const { app, db } = await setup(oidcConfig(), idp.fetchFn);
+  const start = (redirect: string) =>
+    app.inject({
+      method: "GET",
+      url: `/api/auth/oidc/start?${new URLSearchParams({
+        redirect_uri: redirect,
+        state: "app-state-123",
+        code_challenge: pkceChallenge("x"),
+      })}`,
+    });
+  assert.equal((await start("https://music.test/app/auth/callback")).statusCode, 302);
+  assert.equal((await start("https://music.test/app/other")).statusCode, 400);
+  assert.equal((await start("https://evil.test/app/auth/callback")).statusCode, 400);
+  await app.close();
+  db.close();
+});

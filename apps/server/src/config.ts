@@ -42,6 +42,8 @@ export interface Config {
   appleMusic?: AppleMusicConfig;
   /** Self-service sign-up. Absent means closed (only the admin can add people). */
   signup?: { mode: "open" } | { mode: "invite"; inviteCode: string };
+  /** Folder with the built web player (served at /app). */
+  webDir?: string;
   /** Where the sign-up page sends people to download the desktop app. */
   appDownloadUrl?: string;
   /** 0 disables periodic rescans. */
@@ -140,6 +142,7 @@ export function loadConfig(env: Env = process.env): Config {
     appleMusic,
     signup: parseSignup(env),
     appDownloadUrl: env.APP_DOWNLOAD_URL?.trim() || undefined,
+    webDir: env.WEB_DIR?.trim() || undefined,
     scanIntervalMinutes: int(env.SCAN_INTERVAL_MINUTES, 60, "SCAN_INTERVAL_MINUTES"),
     trustProxy: (env.TRUST_PROXY ?? "true").toLowerCase() !== "false",
     logLevel: env.LOG_LEVEL?.trim() || "info",

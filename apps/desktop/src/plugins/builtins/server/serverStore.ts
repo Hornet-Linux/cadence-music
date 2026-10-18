@@ -10,6 +10,7 @@ import type {
   TrackListResponse,
 } from "@uma/shared";
 import type { Track } from "@/shared/types";
+import { isWeb } from "@/platform/webHost";
 
 const URL_KEY = "server:url";
 const TOKEN_KEY = "server.token";
@@ -154,11 +155,18 @@ export const useServer = create<ServerState>((set, get) => {
     async init() {
       if (initialized) return;
       initialized = true;
-      const url = readSavedUrl();
+      // The web player always talks to the server it was loaded from.
+      const url = isWeb() ? location.origin : readSavedUrl();
       if (!url) return;
       const token = (await window.host?.secrets.get(TOKEN_KEY).catch(() => null)) ?? null;
       set({ url, token });
       await get().connect(url);
+      // A failed sign-in redirect (web) leaves its reason here.
+      const redirectError = sessionStorage.getItem("auth:error");
+      if (redirectError) {
+        sessionStorage.removeItem("auth:error");
+        set({ error: redirectError });
+      }
     },
 
     async connect(input) {

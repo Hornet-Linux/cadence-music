@@ -59,6 +59,11 @@ header{display:flex;align-items:center;justify-content:space-between;max-width:1
 .nav-link{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;font-weight:650;font-size:.9rem;
   text-decoration:none;background:rgba(255,255,255,.07);border:1px solid var(--line)}
 .nav-link:hover{background:rgba(255,255,255,.12)}
+.nav{display:flex;gap:10px}
+.nav-link.primary{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 8px 22px rgba(139,107,255,.4)}
+.nav-link.primary:hover{filter:brightness(1.08)}
+.btn + .btn{margin-top:10px}
+@media (max-width:520px){.nav-link:not(.primary){display:none}}
 main{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center;max-width:1180px;margin:0 auto;padding:28px 24px 64px}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:.78rem;font-weight:700;
   letter-spacing:.04em;color:#e4dcff;background:rgba(139,107,255,.16);border:1px solid rgba(139,107,255,.35)}
@@ -153,8 +158,9 @@ function page(opts: { signup: Config["signup"]; open: boolean; download: string;
         <p class="legal">Your account lives on this server, run by its owner — not by a company.</p>
       </form>`
     : `<div class="card"><h2>Sign-up is closed</h2>
-        <p class="sub">Ask the person who runs this server to create an account for you, then sign in from the app.</p>
-        <a class="btn ghost" href="${dl}" rel="noopener">${icon("download", 18)} Download Cadence</a></div>`;
+        <p class="sub">Ask the person who runs this server to create an account for you. Already have one?</p>
+        <a class="btn" href="/app/">${icon("streams", 18)} Sign in on the web</a>
+        <a class="btn ghost" href="${dl}" rel="noopener">${icon("download", 18)} Download for Windows</a></div>`;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -167,7 +173,10 @@ function page(opts: { signup: Config["signup"]; open: boolean; download: string;
 <div class="bg" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grain"></div></div>
 <header>
   <a class="brand" href="/">${logo(34)} Cadence</a>
-  <a class="nav-link" href="${dl}" rel="noopener">${icon("download", 16)} Get the app</a>
+  <nav class="nav">
+    <a class="nav-link" href="${dl}" rel="noopener">${icon("download", 16)} Get the app</a>
+    <a class="nav-link primary" href="/app/">${icon("streams", 16)} Open web player</a>
+  </nav>
 </header>
 <main>
   <section>
@@ -193,14 +202,15 @@ function page(opts: { signup: Config["signup"]; open: boolean; download: string;
     <div id="done" class="card done" hidden>
       <div class="tick">${icon("check", 30)}</div>
       <h2>You're in, <span id="who"></span>!</h2>
-      <p class="sub">Three quick steps and you're listening.</p>
+      <p class="sub">Your account is ready.</p>
       <ol class="steps">
-        <li><span>Download and install Cadence for Windows.</span></li>
-        <li><span>In the setup wizard, connect to
+        <li><span>Listen right now in the web player — just sign in.</span></li>
+        <li><span>Or install the Windows app and connect to
           <button type="button" class="chip" id="host" title="Copy">${icon("copy", 13)} <span></span></button></span></li>
-        <li><span>Sign in with your username and password.</span></li>
+        <li><span>Use the same username and password everywhere.</span></li>
       </ol>
-      <a class="btn" href="${dl}" rel="noopener">${icon("download", 18)} Download Cadence</a>
+      <a class="btn" href="/app/">${icon("streams", 18)} Open the web player</a>
+      <a class="btn ghost" href="${dl}" rel="noopener">${icon("download", 18)} Download for Windows</a>
     </div>
   </section>
 </main>

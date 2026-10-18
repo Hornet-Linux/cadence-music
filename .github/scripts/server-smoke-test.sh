@@ -64,6 +64,15 @@ HEADERS="$(curl -fsS -D - -o /dev/null -H 'range: bytes=0-9' "$BASE/$STREAM_PATH
 echo "$HEADERS" | grep -qi '^HTTP/1.1 206'
 echo "$HEADERS" | grep -qi '^content-range: bytes 0-9/844'
 
+# The landing page and the web player are served.
+curl -fsS "$BASE/" | grep -q "Cadence"
+WEB_INDEX="$(curl -fsS "$BASE/app/")"
+echo "$WEB_INDEX" | grep -q 'id="root"'
+ASSET="$(echo "$WEB_INDEX" | grep -o '/app/assets/[^"]*\.js' | head -1)"
+test -n "$ASSET"
+curl -fsS -o /dev/null "$BASE$ASSET"
+curl -fsS "$BASE/app/auth/callback" | grep -q 'id="root"'
+
 # Unauthenticated requests are refused.
 test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/tracks")" = "401"
 

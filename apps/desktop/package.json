@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:web": "tsc --noEmit && vite build --mode web",
+    "dev:web": "vite --mode web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",

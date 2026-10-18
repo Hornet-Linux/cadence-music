@@ -87,6 +87,8 @@ jobs:
           restore-keys: ${{ runner.os }}-npm-desktop-
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Build the web player
+        run: npm run build:web
       - name: Ensure the build left tracked files unchanged
         run: git diff --exit-code
       - name: Upload renderer build

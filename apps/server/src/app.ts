@@ -4,6 +4,7 @@ import type { Db } from "./db.js";
 import { OidcClient, type FetchFn } from "./auth/oidc.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { userForToken } from "./auth/sessions.js";
+import { registerWebApp } from "./web/webApp.js";
 import { historyPlugin } from "./history/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
@@ -65,6 +66,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       : null;
 
   registerAuthRoutes(app, { db, config, oidc, requireUser, onSetupCode: deps.onSetupCode });
+  registerWebApp(app, config.webDir);
 
   for (const plugin of deps.plugins ?? builtinPlugins) {
     await plugin.register(app, {

@@ -239,13 +239,16 @@ export function registerAuthRoutes(
     return respond(user.id);
   });
 
-  // ---- OIDC sign-in (desktop loopback + PKCE) ---------------------------
+  // ---- OIDC sign-in (desktop loopback / web player + PKCE) ---------------
+  // The only non-loopback destination allowed is this server's own web
+  // player callback, so the one-time code can't be sent anywhere else.
+  const webCallback = config.publicUrl ? `${config.publicUrl}/app/auth/callback` : null;
   app.get<{ Querystring: Record<string, string | undefined> }>(
     "/api/auth/oidc/start",
     async (req, reply) => {
       if (!oidc) return reply.code(404).send({ error: "oidc_not_configured" });
       const { redirect_uri: redirectUri, state, code_challenge: challenge } = req.query;
-      if (!redirectUri || !isLoopbackRedirect(redirectUri)) {
+      if (!redirectUri || !(isLoopbackRedirect(redirectUri) || redirectUri === webCallback)) {
         return reply.code(400).send({ error: "invalid_redirect_uri" });
       }
       if (!state || !STATE_RE.test(state)) return reply.code(400).send({ error: "invalid_state" });

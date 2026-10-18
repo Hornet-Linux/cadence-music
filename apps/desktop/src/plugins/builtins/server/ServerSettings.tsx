@@ -172,7 +172,7 @@ export function ServerSettings() {
   return (
     <div className="stack">
       <form
-        className="row"
+        className="row server-address-form"
         onSubmit={(e) => {
           e.preventDefault();
           void s.connect(urlInput);
