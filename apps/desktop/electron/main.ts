@@ -137,8 +137,39 @@ ipcMain.handle("spotify:login", (_e, clientId: unknown) => {
 ipcMain.handle("spotify:token", () => spotifyAccessToken());
 ipcMain.handle("spotify:logout", () => spotifyLogout());
 
+// ---- Widevine self-check ---------------------------------------------------
+// `--widevine-probe` installs the CDM, checks the key system in a hidden
+// window, prints one JSON line and exits. Used by CI (without a debugger
+// attached) and handy for support: run the app with this flag to check DRM.
+const WIDEVINE_PROBE = process.argv.includes("--widevine-probe");
+
+async function runWidevineProbe() {
+  const result: Record<string, unknown> = { castlabs: !!components, platform: process.platform };
+  if (components) {
+    try {
+      await components.whenReady([components.WIDEVINE_CDM_ID]);
+      result.install = "ok";
+    } catch (err) {
+      result.install = (err as { errors?: unknown }).errors ?? String(err);
+    }
+    result.status = components.status();
+  }
+  const probe = new BrowserWindow({ show: false });
+  await probe.loadURL("about:blank");
+  result.keySystem = await probe.webContents.executeJavaScript(
+    `navigator.requestMediaKeySystemAccess("com.widevine.alpha", [{ initDataTypes: ["cenc"],
+       audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] }]).then(() => true, (e) => String(e))`,
+  );
+  console.log(`WIDEVINE_PROBE ${JSON.stringify(result)}`);
+  app.exit(0);
+}
+
 // ---- App lifecycle ---------------------------------------------------------
 app.whenReady().then(async () => {
+  if (WIDEVINE_PROBE) {
+    await runWidevineProbe();
+    return;
+  }
   await widevineReady();
   createWindow();
 });

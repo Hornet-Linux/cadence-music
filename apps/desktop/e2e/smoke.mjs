@@ -4,8 +4,10 @@
 //
 //   npm run build && npm run e2e        (Linux CI runs this under xvfb-run)
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import electronPath from "electron";
 import { _electron as electron } from "playwright-core";
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -97,16 +99,32 @@ try {
     }
     return results;
   });
-  console.log("Widevine probe:", JSON.stringify(widevine));
-  const hasWidevine = Object.values(widevine).some((v) => v === true);
-  // Required where the app ships (Windows); castlabs provides no CDM on Linux CI.
-  if (process.env.E2E_REQUIRE_WIDEVINE === "1") {
-    assert.ok(hasWidevine, `Widevine is unavailable: ${JSON.stringify(widevine)}`);
-  } else if (!hasWidevine) {
-    console.warn("Widevine is not available on this platform; DRM playback was not checked.");
-  }
-
-  console.log(`Desktop smoke test passed (bridge, wizard, plugins, settings${hasWidevine ? ", Widevine" : ""})`);
+  // Informational only: a debugger is attached here (Playwright), which DRM
+  // builds may treat as a capture risk. The real check runs below without one.
+  console.log("Widevine under Playwright:", JSON.stringify(widevine));
+  console.log("UI smoke test passed (bridge, wizard, plugins, settings)");
 } finally {
   await app.close();
+}
+
+// ---- DRM check without a debugger attached --------------------------------
+const probe = spawnSync(electronPath, ["--no-sandbox", appDir, "--widevine-probe"], {
+  cwd: appDir,
+  encoding: "utf8",
+  timeout: 150_000,
+});
+const line = `${probe.stdout}\n${probe.stderr}`.split("\n").find((l) => l.includes("WIDEVINE_PROBE "));
+if (!line) {
+  console.log(probe.stdout, probe.stderr, probe.error ?? "");
+  assert.fail("the --widevine-probe run printed no result");
+}
+const result = JSON.parse(line.slice(line.indexOf("WIDEVINE_PROBE ") + "WIDEVINE_PROBE ".length));
+console.log("Widevine probe:", JSON.stringify(result));
+
+if (process.env.E2E_REQUIRE_WIDEVINE === "1") {
+  // Required where the app ships (Windows).
+  assert.equal(result.keySystem, true, `Widevine is unavailable: ${JSON.stringify(result)}`);
+  console.log("Widevine DRM is available");
+} else if (result.keySystem !== true) {
+  console.warn("Widevine is not available on this platform; DRM playback was not checked.");
 }
