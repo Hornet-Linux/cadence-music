@@ -1909,14 +1909,9 @@ code {
   flex: none;
 }
 
-.menu-anchor {
-  position: relative;
-}
 .menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 40;
+  position: fixed;
+  z-index: 200;
   min-width: 230px;
   max-height: 320px;
   overflow-y: auto;

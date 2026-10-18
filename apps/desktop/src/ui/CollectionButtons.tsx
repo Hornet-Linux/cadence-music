@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useCollection, useIsLiked } from "@/features/collection/collectionStore";
 import type { Track } from "@/shared/types";
 import { HeartIcon, ListIcon, MoreIcon, PlusIcon } from "./icons";
@@ -64,25 +65,57 @@ export function AddToPlaylistButton({ tracks, label }: { tracks: Track[]; label:
   const playlists = useCollection((s) => s.playlists);
   const addToPlaylist = useCollection((s) => s.addToPlaylist);
   const createPlaylist = useCollection((s) => s.createPlaylist);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
-  }, [open]);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<CSSProperties>({});
 
   const done = () => {
     setOpen(false);
     setCreating(false);
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!menuRef.current?.contains(target) && !buttonRef.current?.contains(target)) done();
+    };
+    const closeNow = () => done();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") done();
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", closeNow);
+    // Scrolling the page would leave the menu floating away from its song.
+    window.addEventListener("wheel", closeNow, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", closeNow);
+      window.removeEventListener("wheel", closeNow);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (open) return done();
+    // The menu is drawn over the whole page (rows clip what overflows them),
+    // anchored to the button and flipped upwards near the bottom.
+    const rect = buttonRef.current!.getBoundingClientRect();
+    const right = Math.max(8, window.innerWidth - rect.right);
+    const below = window.innerHeight - rect.bottom;
+    setPosition(
+      below < 340
+        ? { right, bottom: window.innerHeight - rect.top + 6 }
+        : { right, top: rect.bottom + 6 },
+    );
+    setOpen(true);
+  };
+
   return (
-    <div className="menu-anchor" ref={ref}>
+    <>
       <button
+        ref={buttonRef}
         className="icon-btn"
         aria-label={label}
         aria-haspopup="menu"
@@ -90,13 +123,14 @@ export function AddToPlaylistButton({ tracks, label }: { tracks: Track[]; label:
         data-tip="Add to playlist"
         onClick={(e) => {
           e.stopPropagation();
-          setOpen(!open);
+          toggle();
         }}
       >
         <MoreIcon size={16} />
       </button>
-      {open && (
-        <div className="menu" role="menu" onClick={(e) => e.stopPropagation()}>
+      {open &&
+        createPortal(
+        <div className="menu" role="menu" ref={menuRef} style={position} onClick={(e) => e.stopPropagation()}>
           <div className="menu-title">Add to playlist</div>
           {creating ? (
             <NameField
@@ -124,8 +158,9 @@ export function AddToPlaylistButton({ tracks, label }: { tracks: Track[]; label:
               <ListIcon size={16} /> <span className="menu-label">{p.name}</span>
             </button>
           ))}
-        </div>
-      )}
-    </div>
+        </div>,
+          document.body,
+        )}
+    </>
   );
 }
