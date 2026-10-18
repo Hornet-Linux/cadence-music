@@ -13,6 +13,8 @@ const isBrowser = !window.host;
 if (isBrowser) {
   window.host = webHost;
   document.documentElement.classList.add("web");
+} else if (window.host?.platform === "darwin") {
+  document.documentElement.classList.add("mac");
 }
 
 const render = () =>

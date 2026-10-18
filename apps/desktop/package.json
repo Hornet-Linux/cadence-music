@@ -21,7 +21,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "node e2e/smoke.mjs",
     "preview": "vite preview",
-    "electron:build:win": "tsc --noEmit && vite build && electron-builder --win --publish never"
+    "electron:build:win": "tsc --noEmit && vite build && electron-builder --win --publish never",
+    "electron:build:mac": "tsc --noEmit && vite build && electron-builder --mac --publish never"
   },
   "build": {
     "appId": "net.hornetlinux.cadencemusic",
@@ -30,11 +31,19 @@
     "electronDownload": {
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"
     },
+    "afterPack": "scripts/after-pack.cjs",
     "afterSign": "scripts/vmp-sign.cjs",
     "icon": "build/icon.png",
     "directories": { "output": "release" },
     "files": ["dist/**/*", "dist-electron/**/*"],
     "win": { "target": ["nsis"] },
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "identity": null,
+      "artifactName": "Cadence-mac-${arch}.${ext}"
+    },
+    "dmg": { "title": "Cadence" },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

@@ -9,7 +9,7 @@ connections) is a plugin, on both the desktop and the server.
 
 ## What's here
 
-- **Desktop app** (`apps/desktop`) — Electron, ships as a Windows `.exe`. Plays
+- **Desktop app** (`apps/desktop`) — Electron, ships for Windows (`.exe`) and macOS (`.dmg`). Plays
   local files on its own, or connects to your server.
 - **iOS app** (`apps/ios`) — sideloaded with a free Apple ID; plays from your
   server in the background. See [docs/IOS.md](docs/IOS.md).
@@ -38,8 +38,14 @@ troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 **2. Claim it:** open `https://your-domain/app`, enter the setup code and choose
 your admin login. Manage people at `https://your-domain/admin`.
 
-**3. Listen** in the browser at `/app`, or install the Windows app:
-**[Download Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)**.
+**3. Listen** in the browser at `/app`, or install the app:
+
+- **Windows:** [Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)
+- **macOS (Apple Silicon):** [Cadence-mac-arm64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-arm64.dmg)
+- **macOS (Intel):** [Cadence-mac-x64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-x64.dmg)
+
+The Mac app isn't notarized by Apple, so the first time, open it with
+right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 On iPhone or iPad, sideload the iOS app with a free Apple ID: [docs/IOS.md](docs/IOS.md).
 
 To update the server later, run the same command again.

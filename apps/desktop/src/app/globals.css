@@ -1582,6 +1582,13 @@ code {
 .web .server-address-form {
   display: none;
 }
+/* macOS: the system draws the window buttons at the top left. */
+.mac .win-controls {
+  display: none;
+}
+.mac .rail {
+  padding-top: 48px;
+}
 .web .rail {
   -webkit-app-region: no-drag;
 }

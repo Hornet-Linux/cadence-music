@@ -60,8 +60,11 @@ function createWindow() {
     minWidth: 940,
     minHeight: 600,
     backgroundColor: "#0b0b0f",
-    frame: false,
-    titleBarStyle: "hidden",
+    // macOS keeps its native traffic-light buttons, inset into our own title
+    // bar; elsewhere the window is frameless and the app draws its controls.
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 18, y: 18 } }
+      : { frame: false, titleBarStyle: "hidden" as const }),
     webPreferences: {
       // The preload is an ES module, which Electron only supports outside the
       // renderer sandbox. contextIsolation still keeps Node out of the page.
