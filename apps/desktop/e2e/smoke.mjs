@@ -4,6 +4,7 @@
 //
 //   npm run build && npm run e2e        (Linux CI runs this under xvfb-run)
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,49 +61,89 @@ try {
     await page.getByRole("button", { name: label, exact: true }).first().waitFor({ timeout: 15_000 });
   }
 
+
+  // ---- Settings window -----------------------------------------------------
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  for (const heading of ["Server", "Spotify", "Apple Music", "Plugins"]) {
-    await page.getByRole("heading", { name: heading, exact: true }).waitFor({ timeout: 10_000 });
+  const settings = page.getByRole("dialog");
+  for (const section of ["Playback", "Appearance", "Server", "Spotify", "Apple Music", "Plugins", "About"]) {
+    await settings.getByRole("button", { name: section, exact: true }).click();
+    await settings.locator("#settings-title", { hasText: section }).waitFor({ timeout: 10_000 });
   }
+  // Search narrows the categories.
+  await settings.getByRole("textbox", { name: "Search settings" }).fill("accent");
+  await settings.locator("#settings-title", { hasText: "Appearance" }).waitFor({ timeout: 5_000 });
+  assert.equal(await settings.getByRole("button", { name: "Playback", exact: true }).count(), 0);
+  await page.keyboard.press("Escape");
+  await page.locator(".modal-backdrop").waitFor({ state: "detached", timeout: 5_000 });
 
-  // castlabs installs the Widevine CDM through Chromium's component updater.
-  const components = await app.evaluate(async (electron) => {
-    const c = electron.components;
-    if (!c) return { castlabs: false };
-    const ready = await Promise.race([
-      c.whenReady([c.WIDEVINE_CDM_ID]).then(
-        () => "ready",
-        (err) => `failed: ${JSON.stringify(err?.errors ?? String(err))}`,
-      ),
-      new Promise((r) => setTimeout(() => r("timeout"), 90_000)),
-    ]);
-    return { castlabs: true, updatesEnabled: c.updatesEnabled, id: c.WIDEVINE_CDM_ID, ready, status: c.status() };
-  });
-  console.log("castlabs components:", JSON.stringify(components));
-
-  const widevine = await page.evaluate(async () => {
-    const configs = [
-      { label: "audio/mp4 aac", audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }] },
-      { label: "audio/webm opus", audioCapabilities: [{ contentType: 'audio/webm; codecs="opus"' }] },
-      { label: "no capabilities", audioCapabilities: [] },
-    ];
-    const results = {};
-    for (const { label, audioCapabilities } of configs) {
-      try {
-        await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [
-          { initDataTypes: ["cenc"], audioCapabilities },
-        ]);
-        results[label] = true;
-      } catch (err) {
-        results[label] = String(err);
-      }
-    }
-    return results;
-  });
-  // Informational only: a debugger is attached here (Playwright), which DRM
-  // builds may treat as a capture risk. The real check runs below without one.
-  console.log("Widevine under Playwright:", JSON.stringify(widevine));
   console.log("UI smoke test passed (bridge, wizard, plugins, settings)");
+
+  // ---- Screenshots with sample data -----------------------------------------
+  // Seeds local history and a restored queue so the design can be reviewed
+  // with real-looking content (artwork from picsum.photos).
+  if (process.env.E2E_SCREENSHOTS === "1") {
+    const shots = path.join(appDir, "e2e", "screenshots");
+    fs.mkdirSync(shots, { recursive: true });
+
+    await page.evaluate(() => {
+      const names = [
+        ["Midnight Static", "Neon Harbor"],
+        ["Glass Avenue", "Vela Nine"],
+        ["Paper Satellites", "Mono Atlas"],
+        ["Velvet Hour", "Room 214"],
+        ["Undertow", "Kaskade Reef"],
+        ["Golden Static", "The Hour Hand"],
+        ["Cassette Sun", "Lumen Drive"],
+        ["Low Orbit", "Mono Atlas"],
+        ["Afterglow", "Vela Nine"],
+        ["Tidal Lines", "Kaskade Reef"],
+      ];
+      const tracks = names.map(([title, artist], i) => ({
+        id: `spotify:track:demo${i}`,
+        title,
+        artists: [{ id: artist, name: artist }],
+        album: `${title} (Deluxe)`,
+        artwork: `https://picsum.photos/seed/uma-${i + 3}/400`,
+        durationSec: 180 + i * 17,
+        source: "spotify",
+      }));
+      const now = Date.now();
+      const plays = [];
+      // Varying play counts so "Most played" has a ranking.
+      tracks.forEach((track, i) => {
+        for (let n = 0; n < 10 - i; n++) plays.push({ track, playedAt: now - (i * 13 + n) * 3_600_000 });
+      });
+      plays.sort((a, b) => b.playedAt - a.playedAt);
+      localStorage.setItem("history:plays", JSON.stringify(plays));
+      localStorage.setItem("player:session", JSON.stringify({ queue: tracks, index: 2, position: 74 }));
+    });
+    await page.reload();
+    await page.waitForSelector(".hero", { timeout: 20_000 });
+    await page.waitForLoadState("networkidle").catch(() => undefined);
+    await page.waitForTimeout(2500); // let the art colour transition settle
+    await page.screenshot({ path: path.join(shots, "1-home.png") });
+
+    await page.getByRole("button", { name: "Queue", exact: true }).click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: path.join(shots, "2-queue.png") });
+    await page.getByRole("button", { name: "Queue", exact: true }).click();
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(shots, "3-settings-playback.png") });
+    await page.getByRole("dialog").getByRole("button", { name: "Appearance", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(shots, "4-settings-appearance.png") });
+    await page.getByRole("dialog").getByRole("button", { name: "Spotify", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(shots, "5-settings-spotify.png") });
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(shots, "6-search.png") });
+    console.log(`Screenshots saved to ${shots}`);
+  }
 } finally {
   await app.close();
 }

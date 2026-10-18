@@ -23,6 +23,13 @@ interface PlayerState {
 
   playQueue: (tracks: Track[], startIndex?: number) => Promise<void>;
   playTrack: (track: Track) => Promise<void>;
+  /** Append to the queue (starts playing if nothing is loaded). */
+  addToQueue: (track: Track) => void;
+  /** Play the queue entry at `index`. */
+  jumpTo: (index: number) => Promise<void>;
+  removeFromQueue: (index: number) => void;
+  /** Restore a saved queue without starting playback. */
+  restore: (saved: { queue: Track[]; index: number; position?: number }) => void;
   toggle: () => void;
   next: () => Promise<void>;
   previous: () => Promise<void>;
@@ -47,6 +54,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
   let backend: Backend = { kind: "none" };
   // Bumped on every load so a slow resolve can't override a newer selection.
   let loadSeq = 0;
+  // Position to resume a restored track at once it is first played.
+  let pendingSeek = 0;
 
   const effectiveVolume = () => (get().muted ? 0 : get().volume);
 
@@ -151,8 +160,57 @@ export const usePlayer = create<PlayerState>((set, get) => {
       await get().playQueue([track], 0);
     },
 
+    addToQueue(track) {
+      const { queue, current } = get();
+      if (!current) {
+        void get().playQueue([...queue, track], queue.length);
+        return;
+      }
+      set({ queue: [...queue, track] });
+    },
+
+    async jumpTo(index) {
+      const { queue } = get();
+      if (index < 0 || index >= queue.length) return;
+      set({ index });
+      await load(queue[index], true);
+    },
+
+    removeFromQueue(index) {
+      const { queue, index: currentIndex } = get();
+      if (index < 0 || index >= queue.length || index === currentIndex) return;
+      set({
+        queue: queue.filter((_, i) => i !== index),
+        index: index < currentIndex ? currentIndex - 1 : currentIndex,
+      });
+    },
+
+    restore({ queue, index, position }) {
+      if (queue.length === 0 || get().current) return;
+      const i = Math.min(Math.max(0, index), queue.length - 1);
+      pendingSeek = position && position > 0 ? position : 0;
+      set({
+        queue,
+        index: i,
+        current: queue[i],
+        position: pendingSeek,
+        duration: queue[i].durationSec ?? 0,
+        isPlaying: false,
+      });
+    },
+
     toggle() {
-      if (!get().current || backend.kind === "none") return;
+      const { current } = get();
+      if (!current) return;
+      if (backend.kind === "none") {
+        // Restored or unresolved: load the track now, then pick up where it was.
+        const resumeAt = pendingSeek;
+        pendingSeek = 0;
+        void load(current, true).then(() => {
+          if (resumeAt > 0 && get().current?.id === current.id) get().seek(resumeAt);
+        });
+        return;
+      }
       if (get().isPlaying) {
         if (backend.kind === "html") audio.pause();
         else void backend.handle.pause().catch(ignore);

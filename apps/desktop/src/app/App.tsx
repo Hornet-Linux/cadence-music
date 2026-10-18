@@ -1,18 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePluginHost } from "@/plugins/host";
 import { allRegisterablePlugins } from "@/plugins/builtins";
+import { startHistoryTracking } from "@/features/history/historyStore";
 import { HomeView } from "@/features/home/HomeView";
 import { SetupWizard } from "@/features/onboarding/SetupWizard";
 import { SearchView } from "@/features/search/SearchView";
 import { LibraryView } from "@/features/library/LibraryView";
-import { SettingsView } from "@/features/settings/SettingsView";
+import { SettingsModal } from "@/features/settings/SettingsModal";
+import { startPlayerIntegrations } from "@/player/integrations";
 import { Sidebar } from "@/ui/Sidebar";
 import { TitleBar } from "@/ui/TitleBar";
 import { PlayerBar } from "@/ui/PlayerBar";
-import { useNav } from "./navStore";
+import { QueueDrawer } from "@/ui/QueueDrawer";
+import { useNav, type Route } from "./navStore";
+import { useTheme } from "./theme";
 
-function MainView() {
-  const route = useNav((s) => s.route);
+function MainView({ route }: { route: Route }) {
   const sidebarItems = usePluginHost((s) => s.contributions.sidebar);
 
   switch (route.kind) {
@@ -22,8 +25,6 @@ function MainView() {
       return <SearchView />;
     case "library":
       return <LibraryView />;
-    case "settings":
-      return <SettingsView />;
     case "plugin": {
       const item = sidebarItems.find((i) => i.id === route.itemId);
       return item ? (
@@ -39,21 +40,34 @@ function MainView() {
 
 export function App() {
   const register = usePluginHost((s) => s.register);
+  const route = useNav((s) => s.route);
+  const mainRef = useRef<HTMLElement>(null);
+  useTheme();
 
   useEffect(() => {
     for (const plugin of allRegisterablePlugins) register(plugin);
+    startPlayerIntegrations();
+    startHistoryTracking();
   }, [register]);
+
+  // Each page starts at the top.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [route]);
 
   return (
     <div className="app">
-      <TitleBar />
-      <div className="body">
-        <Sidebar />
-        <main className="main">
-          <MainView />
+      <Sidebar />
+      <div className="stage">
+        <div className="ambient" aria-hidden />
+        <TitleBar />
+        <main className="main" ref={mainRef}>
+          <MainView route={route} />
         </main>
+        <QueueDrawer />
+        <PlayerBar />
       </div>
-      <PlayerBar />
+      <SettingsModal />
       <SetupWizard />
     </div>
   );

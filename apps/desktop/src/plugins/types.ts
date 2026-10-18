@@ -57,10 +57,15 @@ export interface HomeWidgetContribution {
   weight?: number;
 }
 
-/** A settings panel contributed by a plugin. */
+/** A settings section contributed by a plugin (listed under "Services"). */
 export interface SettingsContribution {
   id: string;
   title: string;
+  /** One line shown under the section title. */
+  description?: string;
+  icon?: ReactNode;
+  /** Extra words that should match this section in settings search. */
+  keywords?: string[];
   render: () => ReactNode;
 }
 

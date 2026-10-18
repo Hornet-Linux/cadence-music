@@ -1,5 +1,6 @@
-import { useNav } from "@/app/navStore";
+import { useSettingsModal } from "@/features/settings/settingsStore";
 import type { Plugin } from "../../types";
+import { WavesIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
 import { createSpotifyPlayback } from "./player";
 import { SpotifySettings } from "./SpotifySettings";
@@ -7,7 +8,7 @@ import { useSpotify } from "./spotifyStore";
 
 function SpotifyPage() {
   const { status, tracks, total, loading } = useSpotify();
-  const navigate = useNav((s) => s.navigate);
+  const openSettings = useSettingsModal((s) => s.show);
 
   return (
     <div className="view">
@@ -23,7 +24,7 @@ function SpotifyPage() {
         <div className="card pad stack">
           <p className="muted">Spotify isn't connected yet.</p>
           <div>
-            <button className="btn primary" onClick={() => navigate({ kind: "settings" })}>
+            <button className="btn primary" onClick={() => openSettings("spotify")}>
               Connect in Settings
             </button>
           </div>
@@ -59,7 +60,14 @@ export const spotifyPlugin: Plugin = {
   activate(ctx) {
     void useSpotify.getState().init();
 
-    ctx.registerSettingsPanel({ id: "spotify", title: "Spotify", render: () => <SpotifySettings /> });
+    ctx.registerSettingsPanel({
+      id: "spotify",
+      title: "Spotify",
+      description: "Your liked songs, played in the app with Premium.",
+      icon: <WavesIcon size={19} />,
+      keywords: ["account", "streaming", "premium", "client id"],
+      render: () => <SpotifySettings />,
+    });
     ctx.registerSetupStep({
       id: "spotify",
       title: "Connect Spotify",
@@ -67,7 +75,7 @@ export const spotifyPlugin: Plugin = {
       weight: 50,
       render: () => <SpotifySettings />,
     });
-    ctx.registerSidebarItem({ id: "spotify", label: "Spotify", render: () => <SpotifyPage /> });
+    ctx.registerSidebarItem({ id: "spotify", label: "Spotify", icon: <WavesIcon />, render: () => <SpotifyPage /> });
     ctx.registerLibrarySource({
       id: "spotify",
       label: "Spotify",

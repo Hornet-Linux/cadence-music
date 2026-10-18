@@ -74,8 +74,8 @@ at the same time (as built-ins do at start-up) never overwrite each other.
 ## Built-in vs sample plugins
 
 - `builtin: true` plugins ship with the app, are trusted, and enable
-  automatically: `core.server` (your self-hosted server), `core.local-files`,
-  `core.welcome` and `core.now-playing-log`.
+  automatically: `core.server` (your self-hosted server and history sync),
+  `core.spotify`, `core.apple-music`, `core.local-files` and `core.now-playing-log`.
 - Sample plugins start **disabled** and demonstrate the consent flow — e.g.
   `obsoletelabs.tracking-bridge`, a stub that shows where a bridge to a
   self-hosted Unnamed Tracking App instance would live.

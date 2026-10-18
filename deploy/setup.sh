@@ -109,16 +109,23 @@ if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q "[:.]$HOST_POR
 fi
 
 # ---------------------------------------------------------------------------
-section "Music"
-info "The folder on this machine that holds your music (mounted read-only)."
-ask_valid MUSIC_PATH "Music folder" '^/' "Use an absolute path such as /srv/music." /srv/music
-MUSIC_PATH=${MUSIC_PATH%/}
-if [ ! -d "$MUSIC_PATH" ]; then
-  warn "$MUSIC_PATH doesn't exist yet."
-  if confirm "Create it now?" y; then
-    mkdir -p "$MUSIC_PATH" 2>/dev/null || sudo mkdir -p "$MUSIC_PATH" ||
-      warn "Couldn't create it; create it yourself before starting the server."
+section "Music files (optional)"
+info "Streaming services don't need this. Only if you keep music files on this"
+info "machine can the server stream them to your apps too."
+MUSIC_PATH="./music"
+if confirm "Do you keep music files on this server?" n; then
+  ask_valid MUSIC_PATH "Music folder" '^/' "Use an absolute path such as /srv/music." /srv/music
+  MUSIC_PATH=${MUSIC_PATH%/}
+  if [ ! -d "$MUSIC_PATH" ]; then
+    warn "$MUSIC_PATH doesn't exist yet."
+    if confirm "Create it now?" y; then
+      mkdir -p "$MUSIC_PATH" 2>/dev/null || sudo mkdir -p "$MUSIC_PATH" ||
+        warn "Couldn't create it; create it yourself before starting the server."
+    fi
   fi
+else
+  # An empty folder keeps the compose mount valid.
+  mkdir -p ./music
 fi
 
 # ---------------------------------------------------------------------------

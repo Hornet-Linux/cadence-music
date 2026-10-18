@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import type { Plugin } from "../types";
+import { FolderIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
 import { useLocalFiles } from "./localFilesStore";
 
@@ -74,6 +75,7 @@ export const localFilesPlugin: Plugin = {
     ctx.registerSidebarItem({
       id: "local-files",
       label: "Local Files",
+      icon: <FolderIcon />,
       render: () => <LocalFilesPage />,
     });
   },

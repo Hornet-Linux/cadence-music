@@ -46,7 +46,7 @@ export function LibraryView() {
       </div>
       <div className="card pad when-empty">
         <p className="muted">
-          Your library is empty. Connect your server in <strong>Settings → Server</strong>, or add
+          Your library is empty. Connect Spotify, Apple Music or your server in <strong>Settings</strong>, or add
           files under <strong>Local Files</strong>.
         </p>
       </div>

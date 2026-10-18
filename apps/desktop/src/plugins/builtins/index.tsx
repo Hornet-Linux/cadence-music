@@ -11,39 +11,6 @@ import { spotifyPlugin } from "./spotify";
  * and start disabled until the user enables them in Settings → Plugins.
  */
 
-// A built-in Home widget showing a getting-started card.
-const welcomePlugin: Plugin = {
-  manifest: {
-    id: "core.welcome",
-    name: "Welcome",
-    version: "1.0.0",
-    description: "A getting-started card on the Home view.",
-    author: "Unnamed Music App",
-    capabilities: ["ui.home.widget"],
-    apiRange: "^1.0.0",
-    builtin: true,
-  },
-  activate(ctx) {
-    ctx.registerHomeWidget({
-      id: "welcome",
-      title: "Welcome",
-      weight: 100,
-      render: () => (
-        <div className="widget-prose">
-          <p>
-            This is a plugin-first music player. Almost everything you see — your server, local
-            files, even this card — is a plugin.
-          </p>
-          <p className="muted">
-            Connect your self-hosted server in <strong>Settings → Server</strong>, or add files
-            from this computer under <strong>Local Files</strong>.
-          </p>
-        </div>
-      ),
-    });
-  },
-};
-
 // A built-in player observer that logs now-playing — demonstrates player.read.
 const nowPlayingLogPlugin: Plugin = {
   manifest: {
@@ -106,7 +73,6 @@ const trackingBridgePlugin: Plugin = {
 };
 
 export const builtinPlugins: Plugin[] = [
-  welcomePlugin,
   serverPlugin,
   spotifyPlugin,
   appleMusicPlugin,

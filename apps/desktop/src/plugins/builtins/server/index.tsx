@@ -1,12 +1,14 @@
-import { useNav } from "@/app/navStore";
+import { useSettingsModal } from "@/features/settings/settingsStore";
 import type { Plugin } from "../../types";
+import { ServerIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
+import { startHistorySync } from "./historySync";
 import { ServerSettings } from "./ServerSettings";
 import { SERVER_TRACK_PREFIX, useServer } from "./serverStore";
 
 function ServerLibraryPage() {
   const { url, user, tracks, total, loading, status } = useServer();
-  const navigate = useNav((s) => s.navigate);
+  const openSettings = useSettingsModal((s) => s.show);
 
   return (
     <div className="view">
@@ -27,7 +29,7 @@ function ServerLibraryPage() {
               : "You're not signed in to a server yet."}
           </p>
           <div>
-            <button className="btn primary" onClick={() => navigate({ kind: "settings" })}>
+            <button className="btn primary" onClick={() => openSettings("server")}>
               Open server settings
             </button>
           </div>
@@ -56,7 +58,7 @@ export const serverPlugin: Plugin = {
     name: "Self-hosted Server",
     version: "1.0.0",
     description:
-      "Connect to your own Unnamed Music server: sign in (password or OIDC such as Authentik) and stream your library.",
+      "Connect to your own Unnamed Music server: sign in (password or OIDC such as Authentik), sync listening history across devices, and stream any music stored on it.",
     author: "Unnamed Music App",
     capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "network.outbound"],
     apiRange: "^1.0.0",
@@ -64,8 +66,16 @@ export const serverPlugin: Plugin = {
   },
   activate(ctx) {
     void useServer.getState().init();
+    startHistorySync();
 
-    ctx.registerSettingsPanel({ id: "server", title: "Server", render: () => <ServerSettings /> });
+    ctx.registerSettingsPanel({
+      id: "server",
+      title: "Server",
+      description: "Your self-hosted server: sign-in and listening history sync.",
+      icon: <ServerIcon size={19} />,
+      keywords: ["account", "sign in", "login", "oidc", "authentik", "sync", "history"],
+      render: () => <ServerSettings />,
+    });
     ctx.registerSetupStep({
       id: "server",
       title: "Connect your server",
@@ -74,7 +84,12 @@ export const serverPlugin: Plugin = {
       weight: 100,
       render: () => <ServerSettings />,
     });
-    ctx.registerSidebarItem({ id: "server", label: "Server", render: () => <ServerLibraryPage /> });
+    ctx.registerSidebarItem({
+      id: "server",
+      label: "Server",
+      icon: <ServerIcon />,
+      render: () => <ServerLibraryPage />,
+    });
     ctx.registerLibrarySource({
       id: "server",
       label: "Your server",

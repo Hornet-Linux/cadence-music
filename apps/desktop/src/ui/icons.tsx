@@ -114,3 +114,111 @@ export const CloseIcon = (p: P) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </Svg>
 );
+export const ServerIcon = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4" width="17" height="6.5" rx="2" />
+    <rect x="3.5" y="13.5" width="17" height="6.5" rx="2" />
+    <path d="M7.5 7.25h.01M7.5 16.75h.01" strokeWidth={2.6} />
+  </Svg>
+);
+export const WavesIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M7.5 9.5c3-1 6.5-.7 9.2.8M8 12.6c2.5-.7 5.2-.5 7.5.7M8.6 15.5c2-.5 4-.3 5.8.5" />
+  </Svg>
+);
+export const NoteIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M9 18V6.5l11-2.5v11.5" />
+    <circle cx="6.5" cy="18" r="2.5" />
+    <circle cx="17.5" cy="15.5" r="2.5" />
+  </Svg>
+);
+export const FolderIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
+  </Svg>
+);
+export const QueueIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 6h12M4 11h12M4 16h7" />
+    <path d="M15.5 14.5v5l4-2.5-4-2.5Z" fill="currentColor" />
+  </Svg>
+);
+export const PlusIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Svg>
+);
+export const SparkleIcon = (p: P) => (
+  <Svg {...p}>
+    <path
+      d="M12 3.5 13.8 9a2 2 0 0 0 1.2 1.2l5.5 1.8-5.5 1.8a2 2 0 0 0-1.2 1.2L12 20.5 10.2 15A2 2 0 0 0 9 13.8L3.5 12 9 10.2A2 2 0 0 0 10.2 9Z"
+      fill="currentColor"
+      stroke="none"
+    />
+  </Svg>
+);
+export const FlameIcon = (p: P) => (
+  <Svg {...p}>
+    <path
+      d="M12 21c-4 0-6.5-2.7-6.5-6.2 0-3.6 2.6-5.6 3.8-8.8.4 2.1 1.7 3.2 2.7 3.6C12.5 6.5 13.6 4 15.8 3c-.4 2.8 2.7 5.2 2.7 10.8C18.5 18.3 16 21 12 21Z"
+      fill="currentColor"
+      stroke="none"
+    />
+  </Svg>
+);
+export const TrophyIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0Z" fill="currentColor" stroke="none" />
+    <path d="M8 6H5.5a2.5 2.5 0 0 0 2.6 3M16 6h2.5a2.5 2.5 0 0 1-2.6 3M12 13v4M8.5 20h7" />
+  </Svg>
+);
+export const ClockIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Svg>
+);
+export const DiscIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="2.2" />
+  </Svg>
+);
+export const SlidersIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M5 6h8M17 6h2M5 12h2M11 12h8M5 18h10M19 18h0" />
+    <circle cx="15" cy="6" r="2" />
+    <circle cx="9" cy="12" r="2" />
+    <circle cx="17" cy="18" r="2" />
+  </Svg>
+);
+export const PaletteIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.9 1.4-1.9-.5-1.2.2-2.6 1.6-2.6h1.6a3.9 3.9 0 0 0 3.9-3.9c0-4.8-3.8-8.6-8.5-8.6Z" />
+    <circle cx="7.8" cy="11" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="10.5" cy="7.6" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="14.8" cy="7.8" r="1.1" fill="currentColor" stroke="none" />
+  </Svg>
+);
+export const InfoIcon = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5M12 8h.01" strokeWidth={2.2} />
+  </Svg>
+);
+export const LogoMark = (p: P) => (
+  <Svg {...p} viewBox="0 0 24 24">
+    <defs>
+      <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="var(--accent-from)" />
+        <stop offset="1" stopColor="var(--accent-to)" />
+      </linearGradient>
+    </defs>
+    <rect x="2" y="2" width="20" height="20" rx="6.5" fill="url(#logo-grad)" stroke="none" />
+    <path d="M8 15.5V9.2l7.5-1.7v6.3" stroke="#fff" strokeWidth={1.8} />
+    <circle cx="6.9" cy="15.6" r="1.6" fill="#fff" stroke="none" />
+    <circle cx="14.4" cy="13.9" r="1.6" fill="#fff" stroke="none" />
+  </Svg>
+);

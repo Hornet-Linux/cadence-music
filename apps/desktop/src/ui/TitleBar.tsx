@@ -1,13 +1,10 @@
 import { CloseIcon, MaxIcon, MinIcon } from "./icons";
 
+/** Draggable strip across the top of the content, with window controls. */
 export function TitleBar() {
   const host = window.host;
   return (
     <div className="titlebar">
-      <div className="brand">
-        <span className="logo" />
-        Unnamed Music App
-      </div>
       <div className="win-controls">
         <button aria-label="Minimize" onClick={() => host?.window.minimize()}>
           <MinIcon />

@@ -29,3 +29,6 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# e2e output
+apps/desktop/e2e/screenshots/

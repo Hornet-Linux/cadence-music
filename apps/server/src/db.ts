@@ -44,6 +44,26 @@ const MIGRATIONS: string[] = [
   CREATE INDEX tracks_artist ON tracks (artist);
   CREATE INDEX tracks_album ON tracks (album);
   `,
+  // v2: listening history, synced across a user's devices. Tracks come from
+  // any source (Spotify, Apple Music, the server, local files), so the play
+  // stores the metadata needed to show it again.
+  `
+  CREATE TABLE plays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    track_id TEXT NOT NULL,
+    source TEXT,
+    title TEXT NOT NULL,
+    artists TEXT NOT NULL,
+    album TEXT,
+    artwork TEXT,
+    duration_sec REAL,
+    played_at INTEGER NOT NULL,
+    UNIQUE (user_id, track_id, played_at)
+  );
+  CREATE INDEX plays_user_time ON plays (user_id, played_at DESC);
+  CREATE INDEX plays_user_track ON plays (user_id, track_id);
+  `,
 ];
 
 function migrate(db: Db): void {

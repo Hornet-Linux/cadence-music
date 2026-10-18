@@ -4,7 +4,6 @@ export type Route =
   | { kind: "home" }
   | { kind: "search" }
   | { kind: "library" }
-  | { kind: "settings" }
   | { kind: "plugin"; itemId: string };
 
 interface NavState {

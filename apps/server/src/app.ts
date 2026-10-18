@@ -4,11 +4,12 @@ import type { Db } from "./db.js";
 import { OidcClient, type FetchFn } from "./auth/oidc.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { userForToken } from "./auth/sessions.js";
+import { historyPlugin } from "./history/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
 
-export const builtinPlugins: ServerPlugin[] = [libraryPlugin, integrationsPlugin];
+export const builtinPlugins: ServerPlugin[] = [libraryPlugin, integrationsPlugin, historyPlugin];
 
 export interface AppDeps {
   config: Config;

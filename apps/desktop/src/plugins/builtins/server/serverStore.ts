@@ -44,6 +44,8 @@ interface ServerState {
   streamUrl: (serverTrackId: string) => Promise<string | null>;
   /** A MusicKit developer token minted by the server. */
   appleMusicToken: () => Promise<AppleMusicTokenResponse>;
+  /** Authenticated call to the server API (route relative to the base URL). */
+  api: <T>(route: string, init?: RequestInit) => Promise<T>;
 }
 
 export function normalizeServerUrl(input: string): string {
@@ -303,5 +305,7 @@ export const useServer = create<ServerState>((set, get) => {
     appleMusicToken() {
       return request<AppleMusicTokenResponse>("api/integrations/apple-music/token");
     },
+
+    api: request,
   };
 });

@@ -1,5 +1,6 @@
-import { useNav } from "@/app/navStore";
+import { useSettingsModal } from "@/features/settings/settingsStore";
 import type { Plugin } from "../../types";
+import { NoteIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
 import { useServer } from "../server/serverStore";
 import { APPLE_CATALOG_PREFIX, APPLE_LIBRARY_PREFIX, useAppleMusic } from "./appleMusicStore";
@@ -71,7 +72,7 @@ function AppleMusicSettings() {
 
 function AppleMusicPage() {
   const { status, tracks, loading } = useAppleMusic();
-  const navigate = useNav((s) => s.navigate);
+  const openSettings = useSettingsModal((s) => s.show);
   return (
     <div className="view">
       <header className="view-header">
@@ -84,7 +85,7 @@ function AppleMusicPage() {
         <div className="card pad stack">
           <p className="muted">Apple Music isn't connected yet.</p>
           <div>
-            <button className="btn primary" onClick={() => navigate({ kind: "settings" })}>
+            <button className="btn primary" onClick={() => openSettings("apple-music")}>
               Open settings
             </button>
           </div>
@@ -127,7 +128,14 @@ export const appleMusicPlugin: Plugin = {
     }
     void useAppleMusic.getState().sync();
 
-    ctx.registerSettingsPanel({ id: "apple-music", title: "Apple Music", render: () => <AppleMusicSettings /> });
+    ctx.registerSettingsPanel({
+      id: "apple-music",
+      title: "Apple Music",
+      description: "Your Apple Music library, played in the app with a subscription.",
+      icon: <NoteIcon size={19} />,
+      keywords: ["account", "streaming", "musickit", "apple id"],
+      render: () => <AppleMusicSettings />,
+    });
     ctx.registerSetupStep({
       id: "apple-music",
       title: "Connect Apple Music",
@@ -135,7 +143,12 @@ export const appleMusicPlugin: Plugin = {
       weight: 40,
       render: () => <AppleMusicSettings />,
     });
-    ctx.registerSidebarItem({ id: "apple-music", label: "Apple Music", render: () => <AppleMusicPage /> });
+    ctx.registerSidebarItem({
+      id: "apple-music",
+      label: "Apple Music",
+      icon: <NoteIcon />,
+      render: () => <AppleMusicPage />,
+    });
     ctx.registerLibrarySource({
       id: "apple-music",
       label: "Apple Music",

@@ -89,6 +89,43 @@ export interface ScanResult {
   total: number;
 }
 
+/** A track as stored in listening history (from any source). */
+export interface HistoryTrack {
+  /** Source-specific id, e.g. "spotify:track:…", "apple:song:…", "server:…". */
+  id: string;
+  title: string;
+  artists: { id: string; name: string }[];
+  album?: string;
+  artwork?: string;
+  durationSec?: number;
+  source?: string;
+}
+
+export interface Play {
+  track: HistoryTrack;
+  /** Unix milliseconds. */
+  playedAt: number;
+}
+
+export interface RecordPlaysRequest {
+  /** Up to 200 plays; duplicates (same track and time) are ignored. */
+  plays: Play[];
+}
+
+export interface HistoryResponse {
+  items: Play[];
+}
+
+export interface TopTrack {
+  track: HistoryTrack;
+  plays: number;
+  lastPlayedAt: number;
+}
+
+export interface TopTracksResponse {
+  items: TopTrack[];
+}
+
 /** Streaming-service settings the server shares with signed-in apps. */
 export interface IntegrationsResponse {
   /** Spotify app (client) ID configured on the server, if any. Not a secret. */

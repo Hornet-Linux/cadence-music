@@ -118,9 +118,18 @@ jobs:
           restore-keys: ${{ runner.os }}-npm-desktop-
       - run: npm install --no-audit --no-fund
       - run: npm run build
-      - name: Launch the app (Linux, virtual display)
+      - name: Launch the app (Linux, virtual display) and take screenshots
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run e2e
+        env:
+          E2E_SCREENSHOTS: "1"
+        run: xvfb-run -a --server-args="-screen 0 1920x1080x24" npm run e2e
+      - name: Upload screenshots
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-screenshots
+          path: apps/desktop/e2e/screenshots/
+          if-no-files-found: warn
       - name: Launch the app (Windows, Widevine required)
         if: runner.os == 'Windows'
         env:
@@ -205,9 +214,9 @@ jobs:
       - name: Run the setup wizard with scripted answers
         working-directory: deploy
         run: |
-          # domain, port, music folder, create it, local admin, OIDC (+6 answers),
-          # Spotify (+id), Apple Music, start now
-          printf '%s\n' music.example.test '' /tmp/uma-setup-music y n \
+          # domain, port, music files? (+folder, create it), local admin,
+          # OIDC (+6 answers), Spotify (+id), Apple Music, start now
+          printf '%s\n' music.example.test '' y /tmp/uma-setup-music y n \
             y https://auth.example.test/application/o/music/ music-app s3cret-value '' music-users music-admins \
             y 0123456789abcdef0123456789abcdef n n | bash setup.sh
           test "$(stat -c %a .env)" = 600
@@ -227,6 +236,15 @@ jobs:
           printf 'n\n' | bash setup.sh
           test "$before" = "$(sha256sum .env)"
           rm .env
+      - name: Run the setup wizard for a streaming-only server
+        working-directory: deploy
+        run: |
+          # domain, port, music files? no, admin, OIDC, Spotify, Apple Music, start now
+          printf '%s\n' music.example.test '' n n n n n n | bash setup.sh
+          grep -qx "MUSIC_PATH='./music'" .env
+          test -d music
+          docker compose config --quiet
+          rm -rf .env music
       - name: Validate the compose file with the example env
         working-directory: deploy
         run: |
