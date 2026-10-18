@@ -3,8 +3,9 @@
 #   cp .env.example .env   # then edit it
 #   docker compose up -d --build
 #
-# The server listens on 127.0.0.1 only; put a TLS reverse proxy (e.g. Caddy)
-# in front of it for your domain. See docs/SELF_HOSTING.md.
+# The server listens on 127.0.0.1 only. For HTTPS, either enable the bundled
+# Caddy (COMPOSE_PROFILES=https in .env plus a ./Caddyfile; setup.sh does
+# both) or put your own reverse proxy in front. See docs/SELF_HOSTING.md.
 
 name: cadence
 
@@ -27,5 +28,22 @@ services:
       - music-data:/data
       - ${MUSIC_PATH:-./music}:/music:ro
 
+  # Optional HTTPS front door, enabled with COMPOSE_PROFILES=https.
+  caddy:
+    image: caddy:2.8.4
+    profiles: [https]
+    restart: unless-stopped
+    depends_on: [server]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
 volumes:
   music-data:
+  caddy-data:
+  caddy-config:

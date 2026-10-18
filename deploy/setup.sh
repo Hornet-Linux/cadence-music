@@ -77,8 +77,12 @@ envq() {
 printf '%sCadence — server setup%s\n' "$BOLD" "$RESET"
 info "This writes deploy/.env. Press Enter to accept a [default]."
 
+# Use sudo for Docker when this user isn't in the docker group.
+DOCKER=(docker)
 if ! command -v docker >/dev/null 2>&1; then
-  warn "Docker isn't installed or not on PATH. Install Docker with the compose plugin before starting the server."
+  warn "Docker isn't installed. The one-line installer can set it up: see the README."
+elif ! docker info >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+  DOCKER=(sudo docker)
 fi
 
 if [ -f "$ENV_FILE" ]; then
@@ -101,6 +105,21 @@ DOMAIN=${DOMAIN#http://}
 DOMAIN=${DOMAIN#https://}
 DOMAIN=${DOMAIN%/}
 PUBLIC_URL="https://$DOMAIN"
+
+# ---------------------------------------------------------------------------
+section "HTTPS"
+info "Cadence can run its own web server (Caddy) that gets a free HTTPS"
+info "certificate for $DOMAIN. Choose this unless something else on this"
+info "machine already serves websites on ports 80 and 443."
+proxy_default=n
+if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -qE "[:.](80|443) "; then
+  proxy_default=y
+  warn "Something is already using port 80 or 443 here, probably a web server."
+fi
+BUNDLED_HTTPS=1
+if confirm "Do you already run a web server (Caddy, nginx, Traefik) on this machine?" "$proxy_default"; then
+  BUNDLED_HTTPS=""
+fi
 
 ask_valid HOST_PORT "Local port for the reverse proxy to reach" '^[0-9]{2,5}$' \
   "Enter a port number such as 8787." 8787
@@ -210,6 +229,7 @@ umask 077
   echo "MUSIC_PATH=$(envq "$MUSIC_PATH")"
   echo "HOST_PORT=$(envq "$HOST_PORT")"
   echo "PUBLIC_URL=$(envq "$PUBLIC_URL")"
+  if [ -n "$BUNDLED_HTTPS" ]; then echo "COMPOSE_PROFILES='https'"; fi
   echo "SCAN_INTERVAL_MINUTES='60'"
   echo "LOG_LEVEL='info'"
   echo "SIGNUP_MODE=$(envq "$SIGNUP_MODE")"
@@ -238,15 +258,23 @@ umask 077
 info "Wrote $ENV_FILE (readable only by you)."
 
 # ---------------------------------------------------------------------------
-section "Reverse proxy"
-info "Add this to your Caddyfile and reload Caddy (it fetches the certificate):"
-printf '\n%s%s {\n\tencode zstd gzip\n\treverse_proxy 127.0.0.1:%s\n}%s\n' "$DIM" "$DOMAIN" "$HOST_PORT" "$RESET"
-info "Using nginx or Traefik instead? Proxy https://$DOMAIN to 127.0.0.1:$HOST_PORT."
+if [ -n "$BUNDLED_HTTPS" ]; then
+  section "HTTPS"
+  printf '%s {\n\tencode zstd gzip\n\treverse_proxy server:8787\n}\n' "$DOMAIN" >Caddyfile
+  info "Wrote Caddyfile. Cadence's own Caddy fetches the certificate when it starts."
+  info "Before starting, point $DOMAIN's DNS (an A record) at this machine's IP"
+  info "and make sure ports 80 and 443 are open in your firewall."
+else
+  section "Reverse proxy"
+  info "Add this to your Caddyfile and reload Caddy (it fetches the certificate):"
+  printf '\n%s%s {\n\tencode zstd gzip\n\treverse_proxy 127.0.0.1:%s\n}%s\n' "$DIM" "$DOMAIN" "$HOST_PORT" "$RESET"
+  info "Using nginx or Traefik instead? Proxy https://$DOMAIN to 127.0.0.1:$HOST_PORT."
+fi
 
 # ---------------------------------------------------------------------------
 if command -v docker >/dev/null 2>&1 && confirm "Build and start the server now?" y; then
   section "Starting"
-  docker compose up -d --build
+  "${DOCKER[@]}" compose up -d --build
   info "Waiting for the server to answer..."
   for _ in $(seq 1 60); do
     if curl -fsS "http://127.0.0.1:$HOST_PORT/api/health" >/dev/null 2>&1; then break; fi
@@ -254,10 +282,10 @@ if command -v docker >/dev/null 2>&1 && confirm "Build and start the server now?
   done
   if curl -fsS "http://127.0.0.1:$HOST_PORT/api/health" >/dev/null 2>&1; then
     info "The server is running."
-    code_line=$(docker compose logs server 2>/dev/null | grep -m1 "setup code" || true)
+    code_line=$("${DOCKER[@]}" compose logs server 2>/dev/null | grep -m1 "setup code" || true)
     if [ -n "$code_line" ]; then
       printf '\n  %s%s%s\n' "$BOLD" "${code_line#*| }" "$RESET"
-      info "Enter that code in the desktop app's setup wizard to create your admin account."
+      info "Open https://$DOMAIN/app (or the desktop app) and enter that code to create your admin account."
     fi
   else
     warn "The server didn't answer yet. Check: docker compose logs server"
@@ -268,4 +296,7 @@ else
   info "Find the setup code: docker compose logs server | grep \"setup code\""
 fi
 
-printf '\n%sDone.%s Open the desktop app and connect to %s\n' "$BOLD" "$RESET" "$DOMAIN"
+printf '\n%sDone.%s\n' "$BOLD" "$RESET"
+info "Web player:  https://$DOMAIN/app"
+info "Admin panel: https://$DOMAIN/admin"
+info "Windows app: https://github.com/Hornet-Linux/cadence-music/releases/latest"

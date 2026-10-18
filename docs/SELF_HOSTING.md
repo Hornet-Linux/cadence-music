@@ -6,15 +6,39 @@ database — no separate database to manage.
 
 ## Requirements
 
-- A Linux host with Docker and Docker Compose (any VPS works; it needs very
-  little RAM).
-- A domain or subdomain pointing at the host, e.g. `music.example.com`.
-- A TLS reverse proxy. Examples use [Caddy](https://caddyserver.com), which
-  handles certificates automatically.
-- Your music in a folder on the host. Formats: MP3, FLAC, M4A/AAC, Ogg/Opus,
-  WAV, WebM.
+- A Linux machine you can SSH into (any small VPS is plenty) with a public IP.
+- A domain or subdomain whose DNS **A record** points at that IP, e.g.
+  `music.example.com`. Set this up first; HTTPS certificates need it.
+- Ports **80 and 443** open in the machine's firewall (and your provider's).
 
-## Quick start: the setup wizard
+That's all. The installer sets up Docker if it's missing, and Cadence can run
+its own HTTPS server. Music files are optional: streaming services work
+without any.
+
+## Quick start: one command
+
+SSH into your server and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/install.sh | bash
+```
+
+It installs Docker (asking first), downloads Cadence to `~/cadence-music` and
+starts the setup wizard. The wizard asks for your domain and a few yes/no
+questions (press Enter for the defaults), then starts everything and prints a
+**one-time setup code**.
+
+Open `https://your-domain/app` in a browser (or the Windows app), enter the
+code, and pick your admin username and password. The code works once, so
+nobody who finds your new server before you can claim it. Afterwards, manage
+people and sign-up at `https://your-domain/admin`.
+
+Lost the code? `cd ~/cadence-music/deploy && docker compose logs server | grep "setup code"`
+
+**Already run Caddy, nginx or Traefik?** Answer "yes" when the wizard asks, and
+it prints the block to add to your own proxy instead of starting its own.
+
+Prefer to look before you run? The same thing by hand:
 
 ```bash
 git clone https://github.com/Hornet-Linux/cadence-music.git
@@ -22,23 +46,7 @@ cd cadence-music/deploy
 ./setup.sh
 ```
 
-The wizard asks for your domain, music folder and port, and optionally your
-OIDC provider (Authentik etc.), a Spotify app ID and an Apple Music key. It
-writes `deploy/.env` (readable only by you), prints the Caddy block for your
-domain, and can build and start the server. Re-run it any time; it backs up the
-old `.env` first.
-
-On first start, a server with no accounts prints a **one-time setup code**:
-
-```bash
-docker compose logs server | grep "setup code"
-```
-
-Open the desktop app. Its first-run wizard asks for your server's address,
-then for that code, and creates your admin account. The code works once, so
-nobody who finds your new server before you do can claim it.
-
-The sections below describe the same steps by hand, for when you'd rather edit
+The sections below describe each step manually, for when you'd rather edit
 files yourself.
 
 ## 1. Get the code and configure (manual)
@@ -202,12 +210,13 @@ to play.
 
 ## Updating
 
+Run the installer again; it pulls the latest version and rebuilds:
+
 ```bash
-cd cadence-music
-git pull
-cd deploy
-docker compose up -d --build
+curl -fsSL https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/install.sh | bash
 ```
+
+Or by hand: `cd ~/cadence-music && git pull && cd deploy && docker compose up -d --build`.
 
 Database migrations run automatically on start.
 

@@ -23,20 +23,23 @@ connections) is a plugin, on both the desktop and the server.
 
 ## Quick start
 
-**Server** (on your VPS — full guide in [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)):
+**1. Run the server** on any Linux VPS, after pointing a domain's DNS at it:
 
 ```bash
-git clone https://github.com/Hornet-Linux/cadence-music.git
-cd cadence-music/deploy
-./setup.sh             # asks about your domain, music folder, SSO, Spotify, Apple Music
+curl -fsSL https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/install.sh | bash
 ```
 
-The wizard writes `.env`, prints the Caddy config for your domain and starts the
-server. A new server prints a one-time setup code to its logs.
+That installs Docker if needed, asks a few questions (Enter accepts the
+defaults), sets up HTTPS and prints a one-time setup code. Details and
+troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
-**Desktop:** install the `.exe` from the latest CI run's `windows-installer`
-artifact. Its first-run wizard connects to your server (enter the setup code to
-create your admin account), then Spotify and Apple Music.
+**2. Claim it:** open `https://your-domain/app`, enter the setup code and choose
+your admin login. Manage people at `https://your-domain/admin`.
+
+**3. Listen** in the browser at `/app`, or install the Windows app:
+**[Download Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)**.
+
+To update the server later, run the same command again.
 
 ## Development
 
