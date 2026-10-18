@@ -215,8 +215,8 @@ jobs:
         working-directory: deploy
         run: |
           # domain, port, music files? (+folder, create it), local admin,
-          # OIDC (+6 answers), Spotify (+id), Apple Music, start now
-          printf '%s\n' music.example.test '' y /tmp/uma-setup-music y n \
+          # sign-up (+invite, code), OIDC (+6 answers), Spotify (+id), Apple Music, start now
+          printf '%s\n' music.example.test '' y /tmp/uma-setup-music y n y y friends-code \
             y https://auth.example.test/application/o/music/ music-app s3cret-value '' music-users music-admins \
             y 0123456789abcdef0123456789abcdef n n | bash setup.sh
           test "$(stat -c %a .env)" = 600
@@ -229,6 +229,8 @@ jobs:
           grep -qx "OIDC_NAME='Authentik'" .env
           grep -qx "OIDC_ALLOWED_GROUPS='music-users'" .env
           grep -qx "SPOTIFY_CLIENT_ID='0123456789abcdef0123456789abcdef'" .env
+          grep -qx "SIGNUP_MODE='invite'" .env
+          grep -qx "SIGNUP_INVITE_CODE='friends-code'" .env
           if grep -q ADMIN_PASSWORD .env; then echo "unexpected admin password"; exit 1; fi
           docker compose config --quiet
           # Re-running without confirming keeps the existing file.
@@ -239,9 +241,10 @@ jobs:
       - name: Run the setup wizard for a streaming-only server
         working-directory: deploy
         run: |
-          # domain, port, music files? no, admin, OIDC, Spotify, Apple Music, start now
-          printf '%s\n' music.example.test '' n n n n n n | bash setup.sh
+          # domain, port, music files? no, admin, sign-up, OIDC, Spotify, Apple Music, start now
+          printf '%s\n' music.example.test '' n n n n n n n | bash setup.sh
           grep -qx "MUSIC_PATH='./music'" .env
+          grep -qx "SIGNUP_MODE='closed'" .env
           test -d music
           docker compose config --quiet
           rm -rf .env music

@@ -26,7 +26,20 @@ export interface HealthResponse {
     password: boolean;
     /** Present when an OIDC provider (e.g. Authentik) is configured. */
     oidc: { name: string } | null;
+    /** Whether people can create their own accounts, and if an invite code is needed. */
+    signup: SignupMode;
   };
+}
+
+export type SignupMode = "closed" | "open" | "invite";
+
+export interface RegisterRequest {
+  username: string;
+  /** At least 10 characters. */
+  password: string;
+  displayName?: string;
+  /** Required when the server's sign-up mode is "invite". */
+  inviteCode?: string;
 }
 
 export interface LoginRequest {

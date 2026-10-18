@@ -228,6 +228,9 @@ Database migrations run automatically on start.
 | `OIDC_SCOPES` | `openid profile email` | Requested scopes. |
 | `OIDC_ALLOWED_GROUPS` | — | Restrict sign-in to these groups. |
 | `OIDC_ADMIN_GROUPS` | — | Grant admin to these groups. |
+| `SIGNUP_MODE` | `closed` | `open` or `invite` to allow self-service sign-up (page at `/` and in the app). |
+| `SIGNUP_INVITE_CODE` | — | Code people must enter when `SIGNUP_MODE=invite`. |
+| `APP_DOWNLOAD_URL` | GitHub releases | Download link shown on the sign-up page. |
 | `SPOTIFY_CLIENT_ID` | — | Spotify app ID shared with signed-in apps. |
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |

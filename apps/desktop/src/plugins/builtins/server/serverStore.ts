@@ -36,6 +36,8 @@ interface ServerState {
   loginPassword: (username: string, password: string) => Promise<void>;
   /** Create the first admin on a new server using its one-time setup code. */
   setupAdmin: (setupCode: string, username: string, password: string) => Promise<void>;
+  /** Create an account on a server that allows sign-up. */
+  register: (input: { username: string; password: string; inviteCode?: string }) => Promise<void>;
   loginOidc: () => Promise<void>;
   logout: () => Promise<void>;
   loadTracks: () => Promise<void>;
@@ -209,6 +211,31 @@ export const useServer = create<ServerState>((set, get) => {
         set({
           error: message.includes("401") ? "Wrong username or password." : message,
         });
+      } finally {
+        set({ busy: false });
+      }
+    },
+
+    async register({ username, password, inviteCode }) {
+      set({ busy: true, error: null, token: null });
+      try {
+        const auth = await request<AuthResponse>("api/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ username: username.trim(), password, inviteCode: inviteCode?.trim() }),
+        });
+        await signedIn(auth);
+      } catch (err) {
+        const message = (err as Error).message;
+        const friendly: Record<string, string> = {
+          "username taken": "That username is taken. Try another.",
+          "invalid username": "Usernames can use letters, numbers, dots, dashes, underscores and @.",
+          "weak password": "Use a password of at least 10 characters.",
+          "invalid invite code": "That invite code isn't right.",
+          "signup closed": "This server isn't accepting new accounts.",
+          "too many attempts": "Too many attempts. Try again later.",
+        };
+        const key = Object.keys(friendly).find((k) => message.includes(k));
+        set({ error: key ? friendly[key] : message });
       } finally {
         set({ busy: false });
       }

@@ -151,6 +151,18 @@ if confirm "Create a local admin account from this file instead?" n; then
   [ -n "$ADMIN_PASSWORD" ] || fail "no valid admin password was entered"
 fi
 
+SIGNUP_MODE="closed" SIGNUP_INVITE_CODE=""
+if confirm "Let people create their own accounts (a sign-up page at https://$DOMAIN)?" n; then
+  if confirm "Require an invite code? (recommended for a server on the internet)" y; then
+    SIGNUP_MODE="invite"
+    default_code=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom 2>/dev/null | head -c 10 || true)
+    ask_valid SIGNUP_INVITE_CODE "Invite code to share with friends" '^[A-Za-z0-9_-]{6,64}$' \
+      "Use 6-64 letters, numbers, dashes or underscores." "${default_code:-change-me-123}"
+  else
+    SIGNUP_MODE="open"
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 section "Single sign-on (optional)"
 OIDC_ISSUER="" OIDC_CLIENT_ID="" OIDC_CLIENT_SECRET="" OIDC_NAME="" OIDC_ALLOWED_GROUPS="" OIDC_ADMIN_GROUPS=""
@@ -200,6 +212,8 @@ umask 077
   echo "PUBLIC_URL=$(envq "$PUBLIC_URL")"
   echo "SCAN_INTERVAL_MINUTES='60'"
   echo "LOG_LEVEL='info'"
+  echo "SIGNUP_MODE=$(envq "$SIGNUP_MODE")"
+  if [ -n "$SIGNUP_INVITE_CODE" ]; then echo "SIGNUP_INVITE_CODE=$(envq "$SIGNUP_INVITE_CODE")"; fi
   if [ -n "$ADMIN_USERNAME" ]; then
     echo "ADMIN_USERNAME=$(envq "$ADMIN_USERNAME")"
     echo "ADMIN_PASSWORD=$(envq "$ADMIN_PASSWORD")"

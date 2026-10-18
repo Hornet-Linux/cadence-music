@@ -81,6 +81,74 @@ function SetupAdminForm() {
   );
 }
 
+/** Create an account on a server whose owner allows sign-up. */
+function RegisterForm({ invite, onBack }: { invite: boolean; onBack: () => void }) {
+  const s = useServer();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const ready = username.trim() && password.length >= 10 && confirm === password && (!invite || inviteCode.trim());
+
+  return (
+    <form
+      className="stack"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void s.register({ username, password, inviteCode: invite ? inviteCode : undefined });
+      }}
+    >
+      <input
+        className="text-input"
+        placeholder="Choose a username"
+        autoComplete="username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        aria-label="Username"
+      />
+      <input
+        className="text-input"
+        type="password"
+        placeholder="Password (at least 10 characters)"
+        autoComplete="new-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        aria-label="Password"
+      />
+      <input
+        className="text-input"
+        type="password"
+        placeholder="Repeat password"
+        autoComplete="new-password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        aria-label="Repeat password"
+      />
+      {invite && (
+        <input
+          className="text-input"
+          placeholder="Invite code"
+          autoComplete="off"
+          spellCheck={false}
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          aria-label="Invite code"
+        />
+      )}
+      {mismatch && <p className="muted small">The passwords don't match.</p>}
+      <div className="row">
+        <button className="btn primary" type="submit" disabled={s.busy || !ready}>
+          {s.busy ? "Creating…" : "Create account"}
+        </button>
+        <button className="btn ghost" type="button" onClick={onBack}>
+          I already have an account
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function ServerSettings() {
   const s = useServer();
   // null until the user edits it, so the saved URL shows once it has loaded.
@@ -88,6 +156,9 @@ export function ServerSettings() {
   const urlInput = editedUrl ?? s.url;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [creating, setCreating] = useState(false);
+  // Older servers don't report sign-up; treat that as closed.
+  const signupOpen = !!s.health?.auth.signup && s.health.auth.signup !== "closed";
 
   const statusText =
     s.status === "online"
@@ -133,7 +204,11 @@ export function ServerSettings() {
 
       {s.status === "online" && !s.user && s.health?.setupRequired && <SetupAdminForm />}
 
-      {s.status === "online" && !s.user && !s.health?.setupRequired && (
+      {s.status === "online" && !s.user && !s.health?.setupRequired && creating && (
+        <RegisterForm invite={s.health?.auth.signup === "invite"} onBack={() => setCreating(false)} />
+      )}
+
+      {s.status === "online" && !s.user && !s.health?.setupRequired && !creating && (
         <div className="stack">
           {s.health?.auth.oidc && (
             <button className="btn primary" disabled={s.busy} onClick={() => void s.loginOidc()}>
@@ -169,7 +244,12 @@ export function ServerSettings() {
               </button>
             </form>
           )}
-          {!s.health?.auth.oidc && !s.health?.auth.password && (
+          {signupOpen && (
+            <button className="btn ghost" onClick={() => setCreating(true)}>
+              New here? Create an account
+            </button>
+          )}
+          {!s.health?.auth.oidc && !s.health?.auth.password && !signupOpen && (
             <p className="muted small">
               This server has no sign-in method configured yet. Set ADMIN_USERNAME/ADMIN_PASSWORD
               or OIDC on the server.

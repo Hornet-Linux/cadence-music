@@ -40,6 +40,10 @@ export interface Config {
   spotifyClientId?: string;
   /** Enables Apple Music by letting the server mint MusicKit developer tokens. */
   appleMusic?: AppleMusicConfig;
+  /** Self-service sign-up. Absent means closed (only the admin can add people). */
+  signup?: { mode: "open" } | { mode: "invite"; inviteCode: string };
+  /** Where the sign-up page sends people to download the desktop app. */
+  appDownloadUrl?: string;
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
   trustProxy: boolean;
@@ -60,6 +64,20 @@ function int(value: string | undefined, fallback: number, name: string): number 
   const n = Number(value);
   if (!Number.isInteger(n) || n < 0) throw new Error(`${name} must be a non-negative integer`);
   return n;
+}
+
+function parseSignup(env: Env): Config["signup"] {
+  const mode = (env.SIGNUP_MODE ?? "closed").trim().toLowerCase();
+  if (mode === "" || mode === "closed") return undefined;
+  if (mode === "open") return { mode: "open" };
+  if (mode === "invite") {
+    const inviteCode = env.SIGNUP_INVITE_CODE?.trim();
+    if (!inviteCode || inviteCode.length < 6) {
+      throw new Error("SIGNUP_MODE=invite needs SIGNUP_INVITE_CODE (at least 6 characters)");
+    }
+    return { mode: "invite", inviteCode };
+  }
+  throw new Error("SIGNUP_MODE must be closed, open or invite");
 }
 
 export function loadConfig(env: Env = process.env): Config {
@@ -120,6 +138,8 @@ export function loadConfig(env: Env = process.env): Config {
     oidc,
     spotifyClientId,
     appleMusic,
+    signup: parseSignup(env),
+    appDownloadUrl: env.APP_DOWNLOAD_URL?.trim() || undefined,
     scanIntervalMinutes: int(env.SCAN_INTERVAL_MINUTES, 60, "SCAN_INTERVAL_MINUTES"),
     trustProxy: (env.TRUST_PROXY ?? "true").toLowerCase() !== "false",
     logLevel: env.LOG_LEVEL?.trim() || "info",

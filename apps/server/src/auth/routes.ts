@@ -5,8 +5,10 @@ import type {
   HealthResponse,
   LoginRequest,
   PublicUser,
+  RegisterRequest,
   SetupAdminRequest,
 } from "@uma/shared";
+import { registerSignupPage } from "../web/signupPage.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import type { PreHandler } from "../plugins/types.js";
@@ -55,6 +57,7 @@ const LOGIN_MAX_FAILURES = 10;
 
 const USERNAME_RE = /^[\w.@-]{1,48}$/;
 const MIN_PASSWORD = 10;
+const MAX_SIGNUPS_PER_HOUR = 5;
 
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const STATE_RE = /^[A-Za-z0-9._~-]{8,256}$/;
@@ -144,8 +147,54 @@ export function registerAuthRoutes(
     auth: {
       password: countPasswordUsers(db) > 0,
       oidc: oidc ? { name: oidc.displayName } : null,
+      signup: setupRequired() ? "closed" : (config.signup?.mode ?? "closed"),
     },
   }));
+
+  // ---- Self-service sign-up ----------------------------------------------
+  // Off unless the owner enables it (SIGNUP_MODE=open|invite), and never
+  // before the owner has claimed the server with the setup code.
+  const signups = new Map<string, { count: number; resetAt: number }>();
+  app.post<{ Body: RegisterRequest }>("/api/auth/register", async (req, reply) => {
+    const signup = config.signup;
+    if (!signup || setupRequired()) return reply.code(403).send({ error: "signup_closed" });
+
+    const now = Date.now();
+    const record = signups.get(req.ip);
+    if (record && record.resetAt > now && record.count >= MAX_SIGNUPS_PER_HOUR) {
+      return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
+    }
+
+    const body = (req.body ?? {}) as Partial<RegisterRequest>;
+    if (signup.mode === "invite") {
+      if (typeof body.inviteCode !== "string" || !safeEqual(body.inviteCode.trim(), signup.inviteCode)) {
+        recordFailure(req.ip);
+        return reply.code(403).send({ error: "invalid_invite_code" });
+      }
+    }
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    if (!USERNAME_RE.test(username)) return reply.code(400).send({ error: "invalid_username" });
+    if (typeof body.password !== "string" || body.password.length < MIN_PASSWORD) {
+      return reply.code(400).send({ error: "weak_password" });
+    }
+    if (findUserByUsername(db, username)) return reply.code(409).send({ error: "username_taken" });
+
+    const displayName =
+      typeof body.displayName === "string" && body.displayName.trim()
+        ? body.displayName.trim().slice(0, 80)
+        : undefined;
+    const user = createLocalUser(db, { username, password: body.password, displayName });
+    signups.set(
+      req.ip,
+      record && record.resetAt > now
+        ? { count: record.count + 1, resetAt: record.resetAt }
+        : { count: 1, resetAt: now + 60 * 60 * 1000 },
+    );
+    if (signups.size > 10_000) signups.clear();
+    return respond(user.id);
+  });
+
+  registerSignupPage(app, { config, signupOpen: () => !!config.signup && !setupRequired() });
 
   app.post<{ Body: SetupAdminRequest }>("/api/setup/admin", async (req, reply) => {
     if (!setupRequired()) return reply.code(409).send({ error: "already_set_up" });
