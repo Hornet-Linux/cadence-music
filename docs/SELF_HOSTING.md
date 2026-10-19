@@ -1,7 +1,7 @@
 # Self-hosting the server
 
-The server stores accounts, scans your music folder and streams it to the
-desktop app. It runs as a single Docker container with an embedded SQLite
+The server stores accounts, listening history, liked songs and playlists,
+scans your music folder and streams it to the apps. It runs as a single Docker container with an embedded SQLite
 database — no separate database to manage.
 
 ## Requirements
@@ -28,7 +28,7 @@ starts the setup wizard. The wizard asks for your domain and a few yes/no
 questions (press Enter for the defaults), then starts everything and prints a
 **one-time setup code**.
 
-Open `https://your-domain/app` in a browser (or the Windows app), enter the
+Open `https://your-domain/app` in a browser (or the desktop app), enter the
 code, and pick your admin username and password. The code works once, so
 nobody who finds your new server before you can claim it. Afterwards, manage
 people and sign-up at `https://your-domain/admin`.
@@ -80,7 +80,8 @@ docker compose logs -f server   # watch the first library scan
 The server binds to `127.0.0.1:${HOST_PORT}` only, so it is not reachable from
 the internet until you put the proxy in front of it.
 
-Data (database, generated secret) lives in the `music-data` Docker volume.
+Data (the database with accounts, history, likes and playlists, and the
+generated secret) lives in the `music-data` Docker volume.
 Back it up with your usual volume backups.
 
 ## 3. Reverse proxy (Caddy)
@@ -97,13 +98,18 @@ music.example.com {
 Reload Caddy. Once DNS points at the host, `https://music.example.com/api/health`
 should return JSON.
 
-## 4. Connect the desktop app
+## 4. Connect the apps
 
 Install the app. The first-run wizard opens on its own (or use **Settings →
 About → Run setup again**). Enter `music.example.com` and click **Connect**.
 On a new server you'll be asked for the setup code to create the admin;
 otherwise sign in with your account or your SSO provider. The remaining steps
-connect Spotify and Apple Music, and you can skip any of them.
+connect Spotify and Apple Music, and you can skip any of them. The web player
+at `https://music.example.com/app` and the iOS app ([IOS.md](IOS.md)) ask
+for the same address and sign-in.
+
+Step-by-step guides for beginners are in the
+[wiki](https://github.com/Hornet-Linux/cadence-music/wiki).
 
 ## Single sign-on with Authentik (OIDC)
 
@@ -158,7 +164,8 @@ desktop build's Widevine DRM support (castlabs Electron).
 
 1. Go to the [Spotify developer dashboard](https://developer.spotify.com/dashboard)
    and create an app.
-2. Add the redirect URI `http://127.0.0.1:43821/callback`, and select
+2. Add the redirect URIs `http://127.0.0.1:43821/callback` (desktop) and
+   `https://music.example.com/app/spotify/callback` (web player), and select
    **Web API** and **Web Playback SDK**.
 3. Under **User Management**, add the email of every Spotify account that will
    use it. Apps that Spotify hasn't reviewed are limited to a small allowlist

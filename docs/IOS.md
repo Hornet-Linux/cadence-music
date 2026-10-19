@@ -53,5 +53,6 @@ open Cadence.xcodeproj
 
 To run on your phone straight from Xcode, pick your free Apple ID under
 Signing & Capabilities (set `CODE_SIGNING_ALLOWED` back to `YES` locally) and
-change the bundle ID to something unique. Without a Mac, push to GitHub —
+change the bundle ID to something unique. A full walkthrough is in the wiki:
+[iOS App with Xcode](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App-with-Xcode). Without a Mac, push to GitHub —
 the **iOS** workflow builds the IPA on a macOS runner.
