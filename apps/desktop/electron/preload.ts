@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthResponse } from "@uma/shared";
+import type { LlmConfig, LlmJsonRequest, LlmStatus } from "./llm";
 import type { SpotifyAccessToken, SpotifyStatus } from "./spotify";
 
 // The only surface the renderer (and, through it, plugins) can touch in the
@@ -28,6 +29,12 @@ const api = {
     /** A short-lived access token, refreshed as needed; null when signed out. */
     token: () => ipcRenderer.invoke("spotify:token") as Promise<SpotifyAccessToken | null>,
     logout: () => ipcRenderer.invoke("spotify:logout") as Promise<void>,
+  },
+  /** LLM calls for the AI DJ, made from the main process. */
+  llm: {
+    status: (config: LlmConfig) => ipcRenderer.invoke("llm:status", config) as Promise<LlmStatus>,
+    chatJson: <T = unknown>(config: LlmConfig, req: LlmJsonRequest) =>
+      ipcRenderer.invoke("llm:chat-json", config, req) as Promise<T>,
   },
   platform: process.platform,
 };

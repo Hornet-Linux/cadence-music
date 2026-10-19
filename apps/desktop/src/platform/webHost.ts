@@ -1,5 +1,6 @@
 import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
+import { createLlmProvider } from "../../electron/llm";
 
 // Browser stand-in for the Electron preload bridge (window.host), so the same
 // UI runs as a website served by the Cadence server at /app. Differences:
@@ -168,11 +169,20 @@ const auth: HostBridge["auth"] = {
   },
 };
 
+// ---- LLM (AI DJ) -------------------------------------------------------------
+// Called straight from the page; Ollama must allow this origin (OLLAMA_ORIGINS).
+
+const llm: HostBridge["llm"] = {
+  status: (config) => createLlmProvider(config).status(),
+  chatJson: (config, req) => createLlmProvider(config).chatJson(req),
+};
+
 export const webHost: HostBridge = {
   window: { minimize: () => undefined, toggleMaximize: () => undefined, close: () => undefined },
   secrets,
   auth,
   spotify,
+  llm,
   platform: "web" as unknown as HostBridge["platform"],
 };
 
