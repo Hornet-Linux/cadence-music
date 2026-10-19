@@ -161,3 +161,23 @@ export interface ApiError {
   error: string;
   message?: string;
 }
+
+// ---- Liked songs and playlists ---------------------------------------------
+
+export interface LikesResponse {
+  /** Newest first. */
+  items: { track: HistoryTrack; likedAt: number }[];
+}
+
+export interface PlaylistResponse {
+  id: string;
+  name: string;
+  tracks: HistoryTrack[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PlaylistsResponse {
+  /** Most recently changed first. */
+  items: PlaylistResponse[];
+}

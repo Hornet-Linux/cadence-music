@@ -6,6 +6,7 @@ import { HomeView } from "@/features/home/HomeView";
 import { SetupWizard } from "@/features/onboarding/SetupWizard";
 import { SearchView } from "@/features/search/SearchView";
 import { LibraryView } from "@/features/library/LibraryView";
+import { LikedView, PlaylistView } from "@/features/collection/CollectionUi";
 import { SettingsModal } from "@/features/settings/SettingsModal";
 import { startPlayerIntegrations } from "@/player/integrations";
 import { Sidebar } from "@/ui/Sidebar";
@@ -25,6 +26,10 @@ function MainView({ route }: { route: Route }) {
       return <SearchView />;
     case "library":
       return <LibraryView />;
+    case "liked":
+      return <LikedView />;
+    case "playlist":
+      return <PlaylistView playlistId={route.playlistId} />;
     case "plugin": {
       const item = sidebarItems.find((i) => i.id === route.itemId);
       return item ? (

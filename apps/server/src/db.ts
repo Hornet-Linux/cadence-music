@@ -72,6 +72,27 @@ const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  // v4: liked songs and playlists, synced across a user's devices. Like plays,
+  // they keep each track's metadata because tracks come from any source.
+  `
+  CREATE TABLE likes (
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    track_id TEXT NOT NULL,
+    track TEXT NOT NULL,
+    liked_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, track_id)
+  );
+  CREATE INDEX likes_user_time ON likes (user_id, liked_at DESC);
+  CREATE TABLE playlists (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    tracks TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX playlists_user ON playlists (user_id, updated_at DESC);
+  `,
 ];
 
 function migrate(db: Db): void {

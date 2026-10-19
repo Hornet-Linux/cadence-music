@@ -4,6 +4,8 @@ export type Route =
   | { kind: "home" }
   | { kind: "search" }
   | { kind: "library" }
+  | { kind: "liked" }
+  | { kind: "playlist"; playlistId: string }
   | { kind: "plugin"; itemId: string };
 
 const MAX_HISTORY = 50;

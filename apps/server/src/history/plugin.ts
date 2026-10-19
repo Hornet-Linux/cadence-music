@@ -26,18 +26,13 @@ interface PlayRow {
 const str = (v: unknown, max: number): string | undefined =>
   typeof v === "string" && v.length > 0 && v.length <= max ? v : undefined;
 
-/** Validate an untrusted play; returns null if it is unusable. */
-export function sanitizePlay(input: unknown, now = Date.now()): Play | null {
+/** Validate an untrusted track (from any source); returns null if it is unusable. */
+export function sanitizeTrack(input: unknown): HistoryTrack | null {
   if (!input || typeof input !== "object") return null;
-  const { track, playedAt } = input as { track?: Partial<HistoryTrack>; playedAt?: unknown };
-  if (!track || typeof track !== "object") return null;
+  const track = input as Partial<HistoryTrack>;
   const id = str(track.id, MAX_TEXT);
   const title = str(track.title, MAX_TEXT);
   if (!id || !title) return null;
-  // Plays may be uploaded late (offline), but not from the future.
-  if (typeof playedAt !== "number" || !Number.isFinite(playedAt) || playedAt <= 0 || playedAt > now + 60_000) {
-    return null;
-  }
   const artists = Array.isArray(track.artists)
     ? track.artists
         .slice(0, 20)
@@ -46,21 +41,31 @@ export function sanitizePlay(input: unknown, now = Date.now()): Play | null {
     : [];
   const artwork = str(track.artwork, MAX_URL);
   return {
-    playedAt: Math.floor(playedAt),
-    track: {
-      id,
-      title,
-      artists,
-      album: str(track.album, MAX_TEXT),
-      // Only web artwork; never let a client store arbitrary schemes.
-      artwork: artwork && /^https:\/\//.test(artwork) ? artwork : undefined,
-      durationSec:
-        typeof track.durationSec === "number" && Number.isFinite(track.durationSec) && track.durationSec > 0
-          ? track.durationSec
-          : undefined,
-      source: str(track.source, 50),
-    },
+    id,
+    title,
+    artists,
+    album: str(track.album, MAX_TEXT),
+    // Only web artwork; never let a client store arbitrary schemes.
+    artwork: artwork && /^https:\/\//.test(artwork) ? artwork : undefined,
+    durationSec:
+      typeof track.durationSec === "number" && Number.isFinite(track.durationSec) && track.durationSec > 0
+        ? track.durationSec
+        : undefined,
+    source: str(track.source, 50),
   };
+}
+
+/** Validate an untrusted play; returns null if it is unusable. */
+export function sanitizePlay(input: unknown, now = Date.now()): Play | null {
+  if (!input || typeof input !== "object") return null;
+  const { track: rawTrack, playedAt } = input as { track?: unknown; playedAt?: unknown };
+  const track = sanitizeTrack(rawTrack);
+  if (!track) return null;
+  // Plays may be uploaded late (offline), but not from the future.
+  if (typeof playedAt !== "number" || !Number.isFinite(playedAt) || playedAt <= 0 || playedAt > now + 60_000) {
+    return null;
+  }
+  return { playedAt: Math.floor(playedAt), track };
 }
 
 function rowToTrack(row: PlayRow): HistoryTrack {

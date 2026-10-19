@@ -2,8 +2,9 @@ import { useRef, type ReactNode } from "react";
 import { usePrefs } from "@/features/preferences/prefsStore";
 import { usePlayer } from "@/player/playerStore";
 import { formatDuration, primaryArtist, type Track } from "@/shared/types";
+import { AddToPlaylistButton, LikeButton } from "./CollectionButtons";
 import { CoverArt } from "./CoverArt";
-import { PauseIcon, PlayIcon, PlusIcon } from "./icons";
+import { CloseIcon, PauseIcon, PlayIcon, PlusIcon } from "./icons";
 
 function useIsCurrent(track: Track) {
   return usePlayer((s) => s.current?.id === track.id);
@@ -52,11 +53,14 @@ export function TrackRow({
   index,
   queue,
   showAlbum = true,
+  onRemove,
 }: {
   track: Track;
   index: number;
   queue: Track[];
   showAlbum?: boolean;
+  /** Shows a remove button (e.g. in a playlist). */
+  onRemove?: () => void;
 }) {
   const playQueue = usePlayer((s) => s.playQueue);
   const addToQueue = usePlayer((s) => s.addToQueue);
@@ -93,6 +97,13 @@ export function TrackRow({
       </span>
       {showAlbum && <span className="album">{track.album ?? ""}</span>}
       <span className="row-actions">
+        <LikeButton track={track} />
+        <AddToPlaylistButton tracks={[track]} label={`Add ${track.title} to a playlist`} />
+        {onRemove && (
+          <button className="icon-btn" onClick={onRemove} aria-label={`Remove ${track.title} from this playlist`} data-tip="Remove">
+            <CloseIcon size={14} />
+          </button>
+        )}
         <button
           className="icon-btn"
           onClick={() => addToQueue(track)}
