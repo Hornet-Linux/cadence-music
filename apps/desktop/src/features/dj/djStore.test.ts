@@ -99,6 +99,7 @@ describe("useDj", () => {
 
 describe("setup check", () => {
   it("points to Settings when Ollama isn't running", async () => {
+    planDjSet.mockReset();
     vi.stubGlobal("host", { llm: { status: async () => ({ available: false, models: [] }) } });
     await useDj.getState().start();
     expect(useDj.getState()).toMatchObject({ status: "idle", needsSetup: true });
