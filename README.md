@@ -43,10 +43,10 @@ your admin login. Manage people at `https://your-domain/admin`.
 - **Windows:** [Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)
 - **macOS (Apple Silicon):** [Cadence-mac-arm64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-arm64.dmg)
 - **macOS (Intel):** [Cadence-mac-x64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-x64.dmg)
+- **iPhone / iPad:** [Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.ipa), sideloaded with a free Apple ID ([how](docs/IOS.md))
 
 The Mac app isn't notarized by Apple, so the first time, open it with
 right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
-On iPhone or iPad, sideload the iOS app with a free Apple ID: [docs/IOS.md](docs/IOS.md).
 
 To update the server later, run the same command again.
 
