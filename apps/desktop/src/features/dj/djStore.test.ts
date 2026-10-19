@@ -6,6 +6,8 @@ const track = (id: string): Track => ({ id: `spotify:track:${id}`, title: id, ar
 const set = (...ids: string[]): DjTrack[] => ids.map((id) => ({ track: track(id), intro: `intro ${id}` }));
 
 const planDjSet = vi.fn();
+const speakIntro = vi.fn();
+vi.mock("./voice", () => ({ speakIntro: (t: string) => speakIntro(t), stopSpeaking: () => undefined }));
 vi.mock("./dj", () => ({ planDjSet: (...args: unknown[]) => planDjSet(...args) }));
 vi.mock("./tasteProfile", () => ({
   buildTasteProfile: async () => ({ topArtists: ["A"], genres: [], topTracks: [], recentTracks: [] }),
@@ -42,6 +44,7 @@ describe("useDj", () => {
     useDj.setState({ history: [], intros: {}, error: null });
     Object.assign(player, { queue: [], index: 0, current: null });
     planDjSet.mockReset();
+    speakIntro.mockReset();
   });
 
   it("starts playing the first set", async () => {
@@ -50,6 +53,15 @@ describe("useDj", () => {
     expect(useDj.getState().status).toBe("on");
     expect(player.queue.map((t) => t.title)).toEqual(["1", "2", "3", "4", "5"]);
     expect(useDj.getState().intros["spotify:track:1"]).toBe("intro 1");
+    expect(speakIntro).toHaveBeenCalledWith("intro 1");
+  });
+
+  it("stays quiet when spoken intros are off", async () => {
+    useDj.setState({ voice: false });
+    planDjSet.mockResolvedValueOnce(set("1", "2", "3", "4", "5"));
+    await useDj.getState().start();
+    expect(speakIntro).not.toHaveBeenCalled();
+    useDj.setState({ voice: true });
   });
 
   it("shows the error and stays off when the first set fails", async () => {

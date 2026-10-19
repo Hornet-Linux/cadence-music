@@ -4,9 +4,11 @@ import { usePlayer } from "@/player/playerStore";
 import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { planDjSet } from "./dj";
 import type { DjTrack } from "./resolve";
+import { speakIntro, stopSpeaking } from "./voice";
 import { buildTasteProfile, isEmptyProfile, type TasteProfile } from "./tasteProfile";
 
 const CONFIG_KEY = "dj:llm";
+const VOICE_KEY = "dj:voice";
 /** Fetch the next set when this many DJ tracks are left in the queue. */
 const REFILL_AT = 2;
 
@@ -19,11 +21,14 @@ interface DjState {
   config: LlmConfig;
   /** Every track the DJ queued this session, in order. */
   history: DjTrack[];
-  /** Spoken intro per track id, for step 4. */
+  /** Spoken intro per track id. */
   intros: Record<string, string>;
+  /** Speak intros between tracks. */
+  voice: boolean;
 
   setMood: (mood: string) => void;
   setConfig: (config: LlmConfig) => void;
+  setVoice: (on: boolean) => void;
   start: () => Promise<void>;
   switchUp: () => Promise<void>;
   /** Append the next set when the DJ queue runs low. */
@@ -39,6 +44,14 @@ function loadConfig(): LlmConfig {
     // Fall through to the default.
   }
   return DEFAULT_LLM_CONFIG;
+}
+
+function loadVoice(): boolean {
+  try {
+    return localStorage.getItem(VOICE_KEY) !== "0";
+  } catch {
+    return true;
+  }
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -89,12 +102,23 @@ export const useDj = create<DjState>((set, get) => {
     config: loadConfig(),
     history: [],
     intros: {},
+    voice: loadVoice(),
 
     setMood: (mood) => set({ mood }),
     setConfig(config) {
       set({ config });
       try {
         localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+      } catch {
+        // Storage is optional.
+      }
+    },
+
+    setVoice(voice) {
+      set({ voice });
+      if (!voice) stopSpeaking();
+      try {
+        localStorage.setItem(VOICE_KEY, voice ? "1" : "0");
       } catch {
         // Storage is optional.
       }
@@ -136,14 +160,26 @@ export const useDj = create<DjState>((set, get) => {
 
     stop() {
       session++;
+      stopSpeaking();
       set({ status: "idle", error: null });
     },
   };
 });
 
-// Top up the DJ queue, and turn the DJ off when the user plays something else.
+// Introduce each new DJ track, top up the queue, and turn the DJ off when the
+// user plays something else.
+let lastIntroduced: string | null = null;
 usePlayer.subscribe((p) => {
   const dj = useDj.getState();
+  if (dj.status === "idle") {
+    lastIntroduced = null;
+    return;
+  }
+  const id = p.current?.id ?? null;
+  if (id && id !== lastIntroduced && dj.intros[id]) {
+    lastIntroduced = id;
+    if (dj.voice) speakIntro(dj.intros[id]);
+  }
   if (dj.status !== "on") return;
   if (p.current && !dj.intros[p.current.id]) return dj.stop();
   if (p.queue.length - 1 - p.index <= REFILL_AT) void dj.refill();

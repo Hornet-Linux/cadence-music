@@ -7,7 +7,7 @@ import { useDj } from "./djStore";
 /** Home banner that starts, steers and stops the AI DJ. */
 export function DjCard() {
   const spotify = useSpotify((s) => s.status);
-  const { status, error, mood, intros, setMood, start, switchUp, stop } = useDj();
+  const { status, error, mood, intros, voice, setMood, setVoice, start, switchUp, stop } = useDj();
   const current = usePlayer((s) => s.current);
   if (spotify !== "signed-in") return null;
 
@@ -59,6 +59,9 @@ export function DjCard() {
               <PlayIcon size={18} /> Start DJ
             </button>
           )}
+          <label className="dj-voice">
+            <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /> Spoken intros
+          </label>
         </div>
         {error && (
           <p className="dj-error" role="alert">

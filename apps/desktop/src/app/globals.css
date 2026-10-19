@@ -562,7 +562,16 @@ code {
 .dj-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
+}
+.dj-voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 .dj-error {
   margin: 14px 0 0;
