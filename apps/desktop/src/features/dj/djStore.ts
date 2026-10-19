@@ -4,6 +4,7 @@ import { usePlayer } from "@/player/playerStore";
 import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { planDjSet } from "./dj";
 import type { DjTrack } from "./resolve";
+import { djSetup, setupMessage } from "./setup";
 import { speakIntro, stopSpeaking } from "./voice";
 import { buildTasteProfile, isEmptyProfile, type TasteProfile } from "./tasteProfile";
 
@@ -17,6 +18,8 @@ type Status = "idle" | "thinking" | "on";
 interface DjState {
   status: Status;
   error: string | null;
+  /** Set when the error is fixed in Settings (Ollama or the model is missing). */
+  needsSetup: boolean;
   mood: string;
   config: LlmConfig;
   /** Every track the DJ queued this session, in order. */
@@ -98,6 +101,7 @@ export const useDj = create<DjState>((set, get) => {
   return {
     status: "idle",
     error: null,
+    needsSetup: false,
     mood: "",
     config: loadConfig(),
     history: [],
@@ -129,9 +133,18 @@ export const useDj = create<DjState>((set, get) => {
         set({ error: "Connect Spotify to use the DJ." });
         return;
       }
+      const llm = window.host?.llm;
+      if (llm) {
+        const setup = djSetup(get().config, await llm.status(get().config).catch(() => ({ available: false, models: [] })));
+        const msg = setupMessage(setup);
+        if (msg) {
+          set({ status: "idle", error: msg, needsSetup: true });
+          return;
+        }
+      }
       session++;
       profile = null;
-      set({ history: [], intros: {} });
+      set({ history: [], intros: {}, needsSetup: false });
       await think(async () => {
         const first = await fetchSet();
         if (first) await usePlayer.getState().playQueue(first.map((d) => d.track), 0);
@@ -161,7 +174,7 @@ export const useDj = create<DjState>((set, get) => {
     stop() {
       session++;
       stopSpeaking();
-      set({ status: "idle", error: null });
+      set({ status: "idle", error: null, needsSetup: false });
     },
   };
 });

@@ -96,3 +96,14 @@ describe("useDj", () => {
     expect(useDj.getState().status).toBe("idle");
   });
 });
+
+describe("setup check", () => {
+  it("points to Settings when Ollama isn't running", async () => {
+    vi.stubGlobal("host", { llm: { status: async () => ({ available: false, models: [] }) } });
+    await useDj.getState().start();
+    expect(useDj.getState()).toMatchObject({ status: "idle", needsSetup: true });
+    expect(useDj.getState().error).toContain("Ollama");
+    expect(planDjSet).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
