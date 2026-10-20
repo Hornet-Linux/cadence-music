@@ -20,6 +20,10 @@ connections) is a plugin, on both the desktop and the server.
 - **Spotify and Apple Music** — official sign-in, your library in the app, and
   full in-app playback (Premium / subscription), mixed in one queue with your
   own music. See [setup](docs/SELF_HOSTING.md#spotify-and-apple-music).
+- **AI DJ** — a nonstop, personalised mix with short spoken intros, like
+  Spotify's DJ. Songs are picked by a small LLM running **locally through
+  [Ollama](https://ollama.com)**, so your listening history never leaves your
+  computer. Needs Spotify. See [AI DJ](#ai-dj).
 - **Plugins** — capability-based plugins on the desktop, and the same plugin
   seam on the server.
 
@@ -49,6 +53,37 @@ The Mac app isn't notarized by Apple, so the first time, open it with
 right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 
 To update the server later, run the same command again.
+
+## AI DJ
+
+The DJ on the Home page uses a local LLM through [Ollama](https://ollama.com).
+No cloud service or API key is involved: the app sends your top artists and
+recent plays to Ollama on your own machine, and checks every song it suggests
+against Spotify so made-up tracks are skipped. Intros are spoken with your
+operating system's built-in voices.
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download).
+2. Download the default model (about 2 GB):
+   ```bash
+   ollama pull llama3.2:3b
+   ```
+3. Connect Spotify, then press **Start DJ** on Home. Settings → **AI DJ** has
+   the Ollama address, the model and the voice toggle.
+
+**System requirements** (for Ollama and the default model, on top of the app):
+
+| | Minimum | Recommended |
+| --- | --- | --- |
+| Memory (RAM) | 8 GB | 16 GB |
+| Processor | 64-bit, 4 cores (AVX2 support recommended) | 6+ cores, or Apple Silicon |
+| Graphics | Not required, runs on the CPU | Any GPU with 4 GB+ VRAM that Ollama supports |
+| Free disk | 3 GB | 5 GB |
+| Time to pick a set | ~30–90 s on CPU | a few seconds |
+
+On very old or low-memory machines (4–8 GB RAM), pick `llama3.2:1b` instead
+(about 1.3 GB). It's faster but suggests more songs that don't exist, so sets
+can come out shorter. Larger models such as `qwen3:8b` pick better songs if you
+have 16 GB of RAM or a GPU. See the [AI DJ wiki page](https://github.com/Hornet-Linux/cadence-music/wiki/AI-DJ) for more.
 
 ## Development
 

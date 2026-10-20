@@ -55,7 +55,7 @@ export function DjSettings() {
         />
       </SettingRow>
 
-      <SettingRow title="Model" description="Bigger models pick better songs but are slower. 7–9B is a good start.">
+      <SettingRow title="Model" description="Bigger models pick better songs but need more memory and are slower. llama3.2:3b runs on most computers.">
         <div className="row">
           <select
             className="text-input"

@@ -9,9 +9,9 @@ function fakeFetch(status: number, body: unknown) {
 
 describe("OllamaProvider", () => {
   it("lists installed models", async () => {
-    const f = fakeFetch(200, { models: [{ name: "qwen3:8b" }, { name: "llama3.1:8b" }] });
+    const f = fakeFetch(200, { models: [{ name: "llama3.2:3b" }, { name: "qwen3:8b" }] });
     const status = await createLlmProvider(DEFAULT_LLM_CONFIG, f).status();
-    expect(status).toEqual({ available: true, models: ["qwen3:8b", "llama3.1:8b"] });
+    expect(status).toEqual({ available: true, models: ["llama3.2:3b", "qwen3:8b"] });
     expect(f.mock.calls[0][0]).toBe("http://localhost:11434/api/tags");
   });
 
@@ -33,14 +33,14 @@ describe("OllamaProvider", () => {
     });
     expect(out).toEqual({ picks: [{ artist: "A", title: "B" }] });
     const sent = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string);
-    expect(sent).toMatchObject({ model: "qwen3:8b", format: schema, stream: false });
+    expect(sent).toMatchObject({ model: "llama3.2:3b", format: schema, stream: false });
   });
 
   it("explains a missing model", async () => {
-    const f = fakeFetch(404, '{"error":"model \\"qwen3:8b\\" not found"}');
+    const f = fakeFetch(404, '{"error":"model \\"llama3.2:3b\\" not found"}');
     await expect(
       createLlmProvider(DEFAULT_LLM_CONFIG, f).chatJson({ messages: [], schema: {} }),
-    ).rejects.toThrow("ollama pull qwen3:8b");
+    ).rejects.toThrow("ollama pull llama3.2:3b");
   });
 
   it("rejects non-JSON replies", async () => {

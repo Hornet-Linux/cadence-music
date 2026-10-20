@@ -39,10 +39,12 @@ export interface LlmProvider {
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
   provider: "ollama",
   baseUrl: "http://localhost:11434",
-  model: "qwen3:8b",
+  // Small enough for CPU-only machines with 8 GB of RAM (about a 2 GB download).
+  model: "llama3.2:3b",
 };
 
-const TIMEOUT_MS = 120_000;
+const TIMEOUT_MS = 180_000;
+const REASONING_MODEL = /qwen3|deepseek-r1|gpt-oss|magistral/i;
 
 function endpoint(baseUrl: string, path: string): string {
   const url = new URL(baseUrl);
@@ -80,7 +82,8 @@ export class OllamaProvider implements LlmProvider {
         format: req.schema,
         stream: false,
         // Reasoning models spend minutes "thinking"; the DJ doesn't need it.
-        think: false,
+        // Only sent to models that support it, since others reject the field.
+        ...(REASONING_MODEL.test(this.config.model) ? { think: false } : {}),
         options: { temperature: req.temperature ?? 0.8 },
       }),
     });
