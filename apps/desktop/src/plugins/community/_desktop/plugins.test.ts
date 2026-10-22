@@ -3,6 +3,11 @@ import type { Track } from "@/shared/types";
 import { emptyContributions, setPlayerApi, usePluginHost } from "../../host";
 import type { Plugin, PlayerApi } from "../../types";
 
+// Every test re-imports the real plugin modules (and their whole React/zustand graph) from scratch, because
+// the desktop-only gate is decided when each module loads. That is quick on an idle machine but takes
+// several seconds when all cores are busy, so the default 5 s limit made these tests fail under load.
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
+
 const ids = ["discord-presence", "media-keys", "obs-overlay", "control-api", "status-sync"] as const;
 const manifestIds = [
   "cadence.discord-presence",
