@@ -134,8 +134,9 @@ function useIsAdmin(): boolean {
 }
 
 /** Why the service can't be used yet, or null when it can. */
-function Gate({ store, info, onSettings }: { store: StreamingStore; info: ServiceInfo; onSettings?: () => void }) {
+function Gate({ store, info }: { store: StreamingStore; info: ServiceInfo }) {
   const signedIn = useServer((s) => !!s.user);
+  const admin = useIsAdmin();
   const status = store((s) => s.status);
   const missing = store((s) => s.missing);
   const checking = store((s) => s.checking);
@@ -151,15 +152,8 @@ function Gate({ store, info, onSettings }: { store: StreamingStore; info: Servic
   if (!status.configured) {
     return (
       <p className="notice">
-        {info.name} isn't set up on this server yet. The server owner needs to add API credentials in this panel.
-        {onSettings && (
-          <>
-            {" "}
-            <button className="btn ghost" onClick={onSettings}>
-              Open settings
-            </button>
-          </>
-        )}
+        {info.name} isn't set up on this server yet.{" "}
+        {admin ? "Add its API credentials in the settings panel." : "Ask the server owner to add its API credentials."}
       </p>
     );
   }
@@ -246,6 +240,7 @@ export function ServiceSettings({ store, info }: { store: StreamingStore; info: 
 export function ServicePage({ store, info, extra }: { store: StreamingStore; info: ServiceInfo; extra?: ReactNode }) {
   const openSettings = useSettingsModal((s) => s.show);
   const signedIn = useServer((s) => !!s.user);
+  const admin = useIsAdmin();
   const status = store((s) => s.status);
   const links = store((s) => s.links);
   const library = store((s) => s.library);
@@ -308,12 +303,14 @@ export function ServicePage({ store, info, extra }: { store: StreamingStore; inf
 
       {!usable ? (
         <div className="card pad stack">
-          <Gate store={store} info={info} onSettings={() => openSettings(info.slug)} />
-          <div>
-            <button className="btn primary" onClick={() => openSettings(info.slug)}>
-              Open settings
-            </button>
-          </div>
+          <Gate store={store} info={info} />
+          {admin && status && (
+            <div>
+              <button className="btn primary" onClick={() => openSettings(info.slug)}>
+                Open settings
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>
