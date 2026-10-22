@@ -126,3 +126,11 @@
     flex: 1 1 auto;
   }
 }
+.scrb-owner summary::after {
+  content: "+";
+  margin-left: 8px;
+  color: var(--text-faint);
+}
+.scrb-owner[open] summary::after {
+  content: "\2212";
+}
