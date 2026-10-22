@@ -22,7 +22,9 @@ const TYPES: Record<string, string> = {
  * The web player keeps the Cadence session token and the Spotify refresh token
  * in localStorage, so the part that matters is script-src: only our own bundle,
  * the Spotify Web Playback SDK and MusicKit JS can run, with no inline scripts
- * and no eval, so injected markup can't execute. object-src, base-uri,
+ * and no eval, so injected markup can't execute. YouTube and SoundCloud are listed for their
+ * official embedded players (the opt-in streaming plugins); Deezer's widget is an iframe only.
+ * object-src, base-uri,
  * frame-ancestors and form-action close the other routes.
  *
  * connect-src can't be narrowed to Spotify/Apple: the AI DJ lets people call an
@@ -34,13 +36,13 @@ const TYPES: Record<string, string> = {
  */
 export const WEB_APP_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com",
+  "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com https://www.youtube.com https://w.soundcloud.com",
   "style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com",
   "img-src 'self' https: data: blob:",
   "media-src 'self' https: blob:",
   "font-src 'self' https: data:",
   "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
-  "frame-src https://sdk.scdn.co https://*.apple.com",
+  "frame-src https://sdk.scdn.co https://*.apple.com https://www.youtube.com https://www.youtube-nocookie.com https://w.soundcloud.com https://widget.deezer.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",
