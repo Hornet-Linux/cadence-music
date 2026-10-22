@@ -5,7 +5,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
@@ -43,6 +45,8 @@ object ServerProbe {
     /** A person-readable reason for a network exception. */
     fun describe(e: IOException): String = when (e) {
         is UnknownHostException -> "Couldn't find that server. Check the spelling, and that this phone is online."
+        is ConnectException, is NoRouteToHostException ->
+            "Nothing answered at that address. Is the server running, and is the port right?"
         is SocketTimeoutException -> "The server took too long to answer. Check the address and your connection."
         is SSLException -> "The server's security certificate was rejected. If it has no certificate, type http:// before the address."
         else -> "Couldn't reach the server (${e.localizedMessage ?: e.javaClass.simpleName}). Check the address and your connection."

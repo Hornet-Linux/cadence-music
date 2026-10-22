@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +91,14 @@ fun PlayerScreen(playerUrl: String, onChangeServer: () -> Unit) {
     DisposableEffect(failure != null, player) {
         val manager = activity?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         val callback = object : ConnectivityManager.NetworkCallback() {
+            // Registering reports the network that is already up; only a later (re)connection should retry.
+            private var first = true
+
             override fun onAvailable(network: Network) {
+                if (first) {
+                    first = false
+                    return
+                }
                 player.web.post {
                     failure = null
                     player.reload()
@@ -130,7 +138,11 @@ fun PlayerScreen(playerUrl: String, onChangeServer: () -> Unit) {
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
-        AndroidView(factory = { player.web }, modifier = Modifier.fillMaxSize())
+        // The factory only runs once per composition, so key it on the player: after a renderer crash
+        // a new WebView has to be attached.
+        key(player) {
+            AndroidView(factory = { player.web }, modifier = Modifier.fillMaxSize())
+        }
 
         failure?.let { message ->
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

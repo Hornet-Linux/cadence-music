@@ -34,6 +34,7 @@ class ServerProbeTest {
     fun networkErrorsGetPlainLanguage() {
         assertTrue(ServerProbe.describe(UnknownHostException("x")).contains("find that server"))
         assertTrue(ServerProbe.describe(SocketTimeoutException()).contains("too long"))
+        assertTrue(ServerProbe.describe(java.net.ConnectException("refused")).contains("Nothing answered"))
     }
 
     @Test
