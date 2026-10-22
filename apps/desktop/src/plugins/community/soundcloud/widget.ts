@@ -81,7 +81,7 @@ export function soundcloudDriver(trackId: string, deps: SoundCloudDriverDeps = {
       const iframe = document.createElement("iframe");
       iframe.title = "SoundCloud player";
       iframe.className = "stream-dock-frame";
-      iframe.setAttribute("allow", "autoplay");
+      iframe.setAttribute("allow", "autoplay; encrypted-media");
       iframe.setAttribute("scrolling", "no");
       iframe.src = widgetSrc(trackId);
       body.append(iframe);

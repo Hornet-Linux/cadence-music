@@ -212,3 +212,21 @@ describe("settings panel", () => {
     expect(hrefs).toEqual(["https://demo.example/", "https://demo.example/terms"]);
   });
 });
+
+describe("Deezer full-length widget", () => {
+  it("shows Deezer's own player in the visible panel with its credit, and pauses Cadence first", async () => {
+    const { openDeezerWidget } = await import("../deezer");
+    const { usePlayer } = await import("@/player/playerStore");
+    const toggle = vi.fn();
+    usePlayer.setState({ isPlaying: true, toggle });
+    openDeezerWidget("3135556");
+    expect(toggle).toHaveBeenCalledTimes(1);
+    const frame = document.querySelector(".stream-dock-body iframe") as HTMLIFrameElement;
+    expect(frame.src).toBe("https://widget.deezer.com/widget/auto/track/3135556");
+    expect(frame.getAttribute("allow")).toContain("encrypted-media");
+    expect(document.querySelector(".stream-dock-credit a")!.textContent).toBe("Powered by Deezer");
+    expect(document.querySelector(".stream-dock-note")!.textContent).toMatch(/Deezer's own player/);
+    document.querySelector<HTMLButtonElement>(".stream-dock-close")!.click();
+    expect(document.querySelector(".stream-dock")).toBeNull();
+  });
+});

@@ -32,6 +32,11 @@ export const tidalPlugin = buildStreamingPlugin({
   store: useTidal,
   description: "Search TIDAL and see your saved tracks and playlists. Tracks open in TIDAL; they do not play in Cadence.",
   icon: <DiscIcon />,
+  pageExtra: (
+    <p className="notice small stream-note">
+      TIDAL tracks don't play in Cadence. Use the open icon on a row to play it in TIDAL.
+    </p>
+  ),
 });
 
 export default tidalPlugin;

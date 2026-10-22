@@ -89,7 +89,7 @@ describe("SoundCloud widget driver", () => {
   it("puts the widget iframe in the visible panel and starts it only on play", async () => {
     const { widget, iframe, events } = await started();
     expect(iframe().src).toContain("w.soundcloud.com/player/");
-    expect(iframe().getAttribute("allow")).toBe("autoplay");
+    expect(iframe().getAttribute("allow")).toBe("autoplay; encrypted-media");
     expect(document.querySelector(".stream-dock-body iframe")).toBe(iframe());
     expect(widget.calls).toEqual(["volume 100", "play"]);
     expect(events[0]).toEqual({ duration: 215 });

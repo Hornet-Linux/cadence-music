@@ -52,12 +52,35 @@ export function openDeezerWidget(trackId: string, href?: string) {
   dock.setNote("Deezer's own player. Full tracks need a Deezer account; otherwise Deezer plays a preview.");
 }
 
+/** Under the page header: the full-length option for whatever Deezer track is selected. */
+function FullTrackPlayer() {
+  const current = usePlayer((s) => s.current);
+  const links = useDeezer((s) => s.links);
+  const id = current?.source === "deezer" ? current.id.slice(deezerInfo.prefix.length) : null;
+  return (
+    <div className="notice small stream-note">
+      Cadence plays 30-second previews from Deezer. For the full track, Deezer only allows its own player.
+      {id && current ? (
+        <>
+          {" "}
+          <button className="btn" onClick={() => openDeezerWidget(id, links[current.id])}>
+            Play "{current.title}" in Deezer's player
+          </button>
+        </>
+      ) : (
+        " Select a Deezer track, then use this button."
+      )}
+    </div>
+  );
+}
+
 /** Deezer search and library with 30-second previews, plus Deezer's own widget for full tracks. */
 export const deezerPlugin = buildStreamingPlugin({
   info: deezerInfo,
   store: useDeezer,
   description: "Search Deezer, see your favourites and playlists, and play 30-second previews. Full tracks open in Deezer's own player.",
   icon: <NoteIcon />,
+  pageExtra: <FullTrackPlayer />,
   async resolve(track) {
     if (useDeezer.getState().playback[track.id] === "link") return null;
     const id = track.id.slice(deezerInfo.prefix.length);

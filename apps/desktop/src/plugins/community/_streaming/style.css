@@ -63,6 +63,14 @@
   min-height: 44px;
 }
 
+.stream-note {
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+.stream-note .btn {
+  margin-top: 8px;
+}
+
 .stream-tabs {
   margin-bottom: 16px;
 }
