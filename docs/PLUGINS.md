@@ -75,7 +75,8 @@ at the same time (as built-ins do at start-up) never overwrite each other.
 
 - `builtin: true` plugins ship with the app, are trusted, and enable
   automatically: `core.server` (your self-hosted server, and syncing history, likes and playlists),
-  `core.spotify`, `core.apple-music`, `core.local-files` and `core.now-playing-log`.
+  `core.spotify`, `core.apple-music`, `core.jellyfin` (your Jellyfin library,
+  streamed through the server; see [JELLYFIN.md](JELLYFIN.md)), `core.local-files` and `core.now-playing-log`.
 - Sample plugins start **disabled** and demonstrate the consent flow — e.g.
   `obsoletelabs.tracking-bridge`, a stub that shows where a bridge to a
   self-hosted Unnamed Tracking App instance would live.

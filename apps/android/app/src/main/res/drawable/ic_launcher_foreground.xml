@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Cadence bars, traced from the iOS app icon (apps/ios/.../icon.png), scaled into the adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.085"
+        android:scaleY="0.085"
+        android:translateX="10.48"
+        android:translateY="10.48">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M245,297a41,41 0 0 1 82,0v430a41,41 0 0 1 -82,0z M369,356a41,41 0 0 1 82,0v312a41,41 0 0 1 -82,0z M492,416a41,41 0 0 1 82,0v192a41,41 0 0 1 -82,0z M616,471a41,41 0 0 1 82,0v82a41,41 0 0 1 -82,0z M740,511a41,41 0 1 1 82,0a41,41 0 1 1 -82,0z" />
+    </group>
+</vector>

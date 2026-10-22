@@ -12,7 +12,7 @@ import { createLocalUser } from "../auth/users.js";
 async function setup(signup: Config["signup"], withAdmin = true) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-signup-"));
   const db = openDb(":memory:");
-  if (withAdmin) createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
+  if (withAdmin) await createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
   const app = await buildApp({
     config: {
       host: "127.0.0.1",
@@ -104,6 +104,19 @@ test("invite sign-up requires the code", async () => {
   assert.equal(ok.statusCode, 200, ok.body);
   const page = await app.inject({ method: "GET", url: "/signup" });
   assert.match(page.body, /Invite code/);
+  await close();
+});
+
+test("invite codes cannot be brute-forced", async () => {
+  const { register, close } = await setup({ mode: "invite", inviteCode: "abc123" });
+  for (let i = 0; i < 10; i++) {
+    const res = await register({ username: "eve", password: "a-long-password", inviteCode: `guess${i}` });
+    assert.equal(res.statusCode, 403);
+  }
+  // Even the right code is refused once the address has used up its guesses.
+  const locked = await register({ username: "eve", password: "a-long-password", inviteCode: "abc123" });
+  assert.equal(locked.statusCode, 429);
+  assert.equal(locked.json().error, "too_many_attempts");
   await close();
 });
 

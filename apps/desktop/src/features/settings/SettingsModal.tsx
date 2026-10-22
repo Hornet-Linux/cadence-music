@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { version } from "../../../package.json";
+import { DjSettings } from "@/features/dj/DjSettings";
 import { useHistory } from "@/features/history/historyStore";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { ACCENTS, usePrefs } from "@/features/preferences/prefsStore";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
-import { CloseIcon, InfoIcon, PaletteIcon, PlugIcon, SearchIcon, SlidersIcon } from "@/ui/icons";
+import { CloseIcon, InfoIcon, PaletteIcon, PlugIcon, SearchIcon, SlidersIcon, SparkleIcon } from "@/ui/icons";
 import { Segmented, SettingRow, Toggle } from "./controls";
 import { useSettingsModal } from "./settingsStore";
 
@@ -240,6 +241,15 @@ export function SettingsModal() {
         icon: <PaletteIcon size={19} />,
         keywords: ["accent", "colour", "color", "theme", "background", "ambient", "motion", "animation"],
         render: () => <AppearanceSection />,
+      },
+      {
+        id: "dj",
+        group: "Services",
+        title: "AI DJ",
+        description: "Your personal DJ. Choose whether its model runs on the server, this device or another computer.",
+        icon: <SparkleIcon size={19} />,
+        keywords: ["dj", "ai", "ollama", "llm", "model", "voice", "intros", "speech"],
+        render: () => <DjSettings />,
       },
       ...panels.map<Section>((p) => ({
         id: p.id,

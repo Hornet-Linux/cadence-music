@@ -50,6 +50,14 @@ struct WebPlayer: UIViewRepresentable {
         config.websiteDataStore = .default() // keeps the sign-in between launches
         // The page's "Change server" button (Settings → Server) posts here.
         config.userContentController.add(WeakMessageHandler(context.coordinator), name: "cadence")
+        // Exposes window.CadenceNative so the AI DJ can use Apple Intelligence on this phone.
+        // Both the handler and the script only work for the server's own pages.
+        config.userContentController.addScriptMessageHandler(
+            AIMessageHandler(serverURL: url), contentWorld: .page, name: "cadenceAI")
+        if let script = AIMessageHandler.bridgeScript(serverURL: url) {
+            config.userContentController.addUserScript(WKUserScript(
+                source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
@@ -76,6 +84,7 @@ struct WebPlayer: UIViewRepresentable {
 
     static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
         web.configuration.userContentController.removeScriptMessageHandler(forName: "cadence")
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "cadenceAI", contentWorld: .page)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
@@ -90,7 +99,9 @@ struct WebPlayer: UIViewRepresentable {
         }
 
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard let body = message.body as? [String: Any], body["action"] as? String == "changeServer" else { return }
+            guard BridgeOrigin.isTrusted(message.frameInfo, server: parent.url),
+                  let body = message.body as? [String: Any], body["action"] as? String == "changeServer"
+            else { return }
             parent.onChangeServer()
         }
 
@@ -171,5 +182,65 @@ private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         target?.userContentController(controller, didReceive: message)
+    }
+}
+
+/// Answers the page's AI requests (`window.CadenceNative`), but only for the
+/// server's own pages. It holds just the server URL, so the controller
+/// retaining it is harmless.
+final class AIMessageHandler: NSObject, WKScriptMessageHandlerWithReply {
+    let serverURL: URL
+
+    init(serverURL: URL) {
+        self.serverURL = serverURL
+    }
+
+    /// The contract the web player expects; Android's shell implements the same one.
+    /// It defines `window.CadenceNative` only when the page's origin is the server's,
+    /// so third-party pages the web view reaches never see it. Nil if the URL has no usable origin.
+    static func bridgeScript(serverURL: URL) -> String? {
+        guard let origin = BridgeOrigin.originString(of: serverURL),
+              let data = try? JSONSerialization.data(withJSONObject: origin, options: [.fragmentsAllowed]),
+              let literal = String(data: data, encoding: .utf8)
+        else { return nil }
+        return """
+        (function () {
+          if (window.location.origin !== \(literal)) return;
+          window.CadenceNative = {
+            aiName: "Apple Intelligence",
+            aiAvailable: function () {
+              return window.webkit.messageHandlers.cadenceAI.postMessage({ op: "available" });
+            },
+            aiChatJson: function (requestJson) {
+              return window.webkit.messageHandlers.cadenceAI.postMessage({ op: "chat", request: requestJson });
+            }
+          };
+        })();
+        """
+    }
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        guard BridgeOrigin.isTrusted(message.frameInfo, server: serverURL) else {
+            return replyHandler(nil, "Not available on this page")
+        }
+        guard let body = message.body as? [String: Any], let op = body["op"] as? String else {
+            return replyHandler(nil, "Unrecognised request")
+        }
+        switch op {
+        case "available":
+            replyHandler(AppleIntelligence.availability().available, nil)
+        case "chat":
+            guard let request = body["request"] as? String else { return replyHandler(nil, "Missing request") }
+            Task {
+                do {
+                    replyHandler(try await AppleIntelligence.chatJson(requestJSON: request), nil)
+                } catch {
+                    replyHandler(nil, error.localizedDescription)
+                }
+            }
+        default:
+            replyHandler(nil, "Unrecognised request")
+        }
     }
 }

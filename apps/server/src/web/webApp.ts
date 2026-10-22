@@ -17,6 +17,38 @@ const TYPES: Record<string, string> = {
 };
 
 /**
+ * Content-Security-Policy sent with every /app response.
+ *
+ * The web player keeps the Cadence session token and the Spotify refresh token
+ * in localStorage, so the part that matters is script-src: only our own bundle,
+ * the Spotify Web Playback SDK and MusicKit JS can run, with no inline scripts
+ * and no eval, so injected markup can't execute. object-src, base-uri,
+ * frame-ancestors and form-action close the other routes.
+ *
+ * connect-src can't be narrowed to Spotify/Apple: the AI DJ lets people call an
+ * LLM provider of their choice straight from the page (OpenAI, a local Ollama
+ * on http://localhost:11434, ...). So any https host and loopback http are
+ * allowed; script-src, not connect-src, is the defence against injected code.
+ * (Chrome rejects a port wildcard on an IPv6 literal, so there is no [::1]
+ * entry; "localhost" covers it.) style-src needs 'unsafe-inline' for React style attributes.
+ */
+export const WEB_APP_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com",
+  "style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com",
+  "img-src 'self' https: data: blob:",
+  "media-src 'self' https: blob:",
+  "font-src 'self' https: data:",
+  "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
+  "frame-src https://sdk.scdn.co https://*.apple.com",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join("; ");
+
+/**
  * Serves the web player (the desktop UI built with `npm run build:web`) at
  * /app. Unknown paths fall back to index.html so in-app routes and sign-in
  * callbacks load the app.
@@ -53,6 +85,8 @@ function sendFile(reply: FastifyReply, file: string, immutable: boolean) {
   reply
     .type(TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream")
     .header("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache")
+    .header("Content-Security-Policy", WEB_APP_CSP)
+    .header("X-Content-Type-Options", "nosniff")
     .header("X-Frame-Options", "DENY")
     .header("Referrer-Policy", "no-referrer");
   return reply.send(fs.createReadStream(file));

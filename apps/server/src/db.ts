@@ -93,6 +93,37 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX playlists_user ON playlists (user_id, updated_at DESC);
   `,
+  // v5: LLM providers the server owner configures for the AI DJ. API keys are
+  // stored encrypted and are never sent to any client.
+  `
+  CREATE TABLE llm_providers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    model TEXT NOT NULL,
+    api_key_enc TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
+  // v6: each person's own Jellyfin sign-in. The token is stored encrypted and
+  // never sent to a client; server_url records which Jellyfin it belongs to, so
+  // it is never sent to a different address if the owner changes it.
+  `
+  CREATE TABLE jellyfin_connections (
+    user_id INTEGER PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    jellyfin_user_id TEXT NOT NULL,
+    jellyfin_user_name TEXT NOT NULL,
+    server_name TEXT,
+    server_url TEXT NOT NULL,
+    token_enc TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 function migrate(db: Db): void {

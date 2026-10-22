@@ -3,7 +3,7 @@ import type { Config } from "./config.js";
 import type { Db } from "./db.js";
 import { OidcClient, type FetchFn } from "./auth/oidc.js";
 import { registerAuthRoutes } from "./auth/routes.js";
-import { userForToken } from "./auth/sessions.js";
+import { startSessionPurge, userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
 import { Settings } from "./settings.js";
 import { adminPlugin } from "./admin/plugin.js";
@@ -11,6 +11,8 @@ import { historyPlugin } from "./history/plugin.js";
 import { collectionPlugin } from "./collection/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
+import { jellyfinPlugin } from "./jellyfin/plugin.js";
+import { llmPlugin } from "./llm/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
 
 export const builtinPlugins: ServerPlugin[] = [
@@ -18,6 +20,8 @@ export const builtinPlugins: ServerPlugin[] = [
   integrationsPlugin,
   historyPlugin,
   collectionPlugin,
+  llmPlugin,
+  jellyfinPlugin,
   adminPlugin,
 ];
 
@@ -36,13 +40,22 @@ export interface AppDeps {
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, db, secret } = deps;
+  // Fastify 5 refuses a bare hop count (it can't tell whether the immediate peer
+  // is a proxy), so a count is spelled out as "believe the first N hops". Only
+  // use it when clients can't reach the server without going through the proxy.
+  const hops = typeof config.trustProxy === "number" ? config.trustProxy : null;
+  const trustProxy = hops === null ? (config.trustProxy as boolean | string[]) : (_address: string, hop: number) => hop < hops;
   const app = Fastify({
     logger: deps.logger ?? { level: config.logLevel },
-    trustProxy: config.trustProxy,
+    trustProxy,
     bodyLimit: 1024 * 1024,
   });
 
   app.decorateRequest("user", null);
+
+  // Sessions idle past the limit are useless; sweep them out now and then.
+  const stopSessionPurge = startSessionPurge(db);
+  app.addHook("onClose", async () => stopSessionPurge());
 
   // The desktop app calls the API from its own origin with bearer tokens (no
   // cookies), so allowing any origin does not expose sessions.

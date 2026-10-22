@@ -530,6 +530,54 @@ code {
   display: none;
 }
 
+/* ---------- AI DJ ---------- */
+.hero.dj {
+  min-height: 0;
+  background:
+    radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--accent-to) 40%, transparent), transparent 70%),
+    radial-gradient(520px 280px at 0% 100%, color-mix(in srgb, var(--accent-from) 30%, transparent), transparent 70%),
+    var(--bg-elevated);
+}
+.hero.dj::after {
+  display: none;
+}
+.hero.dj .hero-text {
+  flex: 1;
+}
+.hero.dj .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero.dj.live .eyebrow {
+  color: var(--accent-to);
+}
+.dj-intro {
+  font-style: italic;
+}
+.dj-mood {
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+.dj-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.dj-voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.dj-error {
+  margin: 14px 0 0;
+  color: #ff8a8a;
+}
+
 /* ---------- Track rows ---------- */
 .track-list {
   display: flex;
@@ -2085,4 +2133,47 @@ code {
     width: 160px;
     height: 160px;
   }
+}
+
+/* AI DJ providers */
+.settings-subhead {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.provider-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+}
+.provider-row.on {
+  border-color: var(--accent, #1db954);
+}
+.provider-text {
+  display: block;
+  min-width: 0;
+}
+.provider-text input[type="radio"] {
+  margin-right: 8px;
+}
+.provider-form {
+  padding: 12px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.2));
+  border-radius: 10px;
+}
+.badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
 }

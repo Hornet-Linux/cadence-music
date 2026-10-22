@@ -56,3 +56,21 @@ Signing & Capabilities (set `CODE_SIGNING_ALLOWED` back to `YES` locally) and
 change the bundle ID to something unique. A full walkthrough is in the wiki:
 [iOS App with Xcode](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App-with-Xcode). Without a Mac, push to GitHub —
 the **iOS** workflow builds the IPA on a macOS runner.
+
+## AI DJ on the phone
+
+The AI DJ runs on your server, so it works on the iPhone with no setup if the
+server owner added an AI provider. On **iOS 26 or later** with **Apple
+Intelligence** available (iPhone 15 Pro or newer, turned on in Settings), the
+app also offers Apple's on-device model as a provider: Settings → **AI DJ** →
+**Apple Intelligence**. Nothing leaves the phone and no key is needed. The
+on-device model is small, so its picks are simpler than a big server model's.
+
+The unit tests (`apps/ios/CadenceTests`) include one real generation that runs
+only on hardware with Apple Intelligence and is skipped everywhere else, so run
+them from Xcode on a supported device to check it:
+
+```bash
+cd apps/ios && xcodegen generate
+xcodebuild test -project Cadence.xcodeproj -scheme Cadence   -destination 'platform=iOS,name=<your iPhone>'
+```

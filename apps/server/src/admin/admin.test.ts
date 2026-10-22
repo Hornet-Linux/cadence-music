@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import vm from "node:vm";
 import { buildApp } from "../app.js";
 import { openDb } from "../db.js";
 import { createLocalUser } from "../auth/users.js";
@@ -10,8 +11,8 @@ import { createLocalUser } from "../auth/users.js";
 async function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-admin-"));
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
-  createLocalUser(db, { username: "member", password: "member-password" });
+  await createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
+  await createLocalUser(db, { username: "member", password: "member-password" });
   const app = await buildApp({
     config: { host: "127.0.0.1", port: 0, dataDir: dir, musicDir: dir, scanIntervalMinutes: 0, trustProxy: false, logLevel: "silent" },
     db,
@@ -36,6 +37,20 @@ test("the admin page is served", async () => {
   const res = await app.inject({ method: "GET", url: "/admin" });
   assert.equal(res.statusCode, 200);
   assert.match(res.headers["content-security-policy"] as string, /nonce-/);
+  await close();
+});
+
+test("the admin page's script is valid, has the Jellyfin and AI sections, and never writes HTML", async () => {
+  const { app, close } = await setup();
+  const html = (await app.inject({ method: "GET", url: "/admin" })).body;
+  const script = /<script nonce="[^"]+">([\s\S]*)<\/script>/.exec(html)![1];
+  assert.doesNotThrow(() => new vm.Script(script), "the inline script parses");
+  for (const label of ["Jellyfin", "AI providers"]) assert.ok(script.includes(`"${label}"`), label);
+  for (const endpoint of ["/api/admin/jellyfin", "/api/admin/jellyfin/test", "/api/admin/llm/providers", "/api/admin/llm/test", "/api/llm/presets"]) {
+    assert.ok(script.includes(endpoint), endpoint);
+  }
+  assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write/.test(script), "text only goes through textContent");
+  assert.match(script, /opts\.body != null \? \{ "content-type": "application\/json" \}/, "JSON content type only when there is a body (DELETE/POST without one would be rejected)");
   await close();
 });
 

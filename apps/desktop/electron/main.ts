@@ -1,6 +1,7 @@
 import electron, { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createLlmProvider, parseJsonRequest, parseLlmConfig } from "./llm";
 import { oidcLogin } from "./oidc";
 import { deleteSecret, getSecret, setSecret } from "./secrets";
 import { spotifyAccessToken, spotifyLogin, spotifyLogout, spotifyStatus } from "./spotify";
@@ -139,6 +140,12 @@ ipcMain.handle("spotify:login", (_e, clientId: unknown) => {
 });
 ipcMain.handle("spotify:token", () => spotifyAccessToken());
 ipcMain.handle("spotify:logout", () => spotifyLogout());
+
+// ---- LLM (AI DJ) -----------------------------------------------------------
+ipcMain.handle("llm:status", (_e, config: unknown) => createLlmProvider(parseLlmConfig(config)).status());
+ipcMain.handle("llm:chat-json", (_e, config: unknown, req: unknown) => {
+  return createLlmProvider(parseLlmConfig(config)).chatJson(parseJsonRequest(req));
+});
 
 // ---- Widevine self-check ---------------------------------------------------
 // `--widevine-probe` installs the CDM, checks the key system in a hidden

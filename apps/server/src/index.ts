@@ -14,7 +14,7 @@ async function main() {
   // Bootstrap an admin account from the environment on first start.
   if (config.adminUsername && config.adminPassword) {
     if (!findUserByUsername(db, config.adminUsername)) {
-      createLocalUser(db, {
+      await createLocalUser(db, {
         username: config.adminUsername,
         password: config.adminPassword,
         isAdmin: true,

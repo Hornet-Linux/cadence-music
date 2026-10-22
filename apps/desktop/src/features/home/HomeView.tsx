@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { recentTracks, topTracks, useHistory } from "@/features/history/historyStore";
+import { DjCard } from "@/features/dj/DjCard";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { usePlayer } from "@/player/playerStore";
 import { usePluginHost } from "@/plugins/host";
@@ -56,7 +57,7 @@ function Welcome() {
       <div className="hero-text">
         <span className="eyebrow">Welcome</span>
         <h2>Your music, all in one place</h2>
-        <p>Connect Spotify, Apple Music or your own server and your library and listening show up here.</p>
+        <p>Connect Spotify, Apple Music, Jellyfin or your own server and your library and listening show up here.</p>
         <button className="btn primary big" onClick={startSetup}>
           <SparkleIcon size={16} /> Set up sources
         </button>
@@ -90,6 +91,8 @@ export function HomeView() {
       </header>
 
       {recent.length > 0 ? <Hero track={recent[0]} queue={recent} /> : <Welcome />}
+
+      <DjCard />
 
       {recent.length > 0 && (
         <Shelf icon={<FlameIcon size={20} />} title="Listening right now">

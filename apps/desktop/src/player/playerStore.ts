@@ -15,6 +15,8 @@ interface PlayerState {
   /** Track duration in seconds. */
   duration: number;
   volume: number;
+  /** Temporary volume multiplier, e.g. lowered while the DJ talks. Not shown in the UI. */
+  duck: number;
   muted: boolean;
   shuffle: boolean;
   repeat: RepeatMode;
@@ -35,6 +37,7 @@ interface PlayerState {
   previous: () => Promise<void>;
   seek: (seconds: number) => void;
   setVolume: (v: number) => void;
+  setDuck: (factor: number) => void;
   toggleMute: () => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
@@ -57,7 +60,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
   // Position to resume a restored track at once it is first played.
   let pendingSeek = 0;
 
-  const effectiveVolume = () => (get().muted ? 0 : get().volume);
+  const effectiveVolume = () => (get().muted ? 0 : get().volume * get().duck);
 
   async function releaseBackend() {
     const previous = backend;
@@ -144,6 +147,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     position: 0,
     duration: 0,
     volume: 0.8,
+    duck: 1,
     muted: false,
     shuffle: false,
     repeat: "off",
@@ -264,9 +268,15 @@ export const usePlayer = create<PlayerState>((set, get) => {
     setVolume(v) {
       const volume = Math.min(1, Math.max(0, v));
       set({ volume, muted: false });
-      audio.volume = volume;
+      audio.volume = volume * get().duck;
       audio.muted = false;
-      if (backend.kind === "external") void backend.handle.setVolume(volume).catch(ignore);
+      if (backend.kind === "external") void backend.handle.setVolume(effectiveVolume()).catch(ignore);
+    },
+
+    setDuck(factor) {
+      set({ duck: Math.min(1, Math.max(0, factor)) });
+      audio.volume = get().volume * get().duck;
+      if (backend.kind === "external") void backend.handle.setVolume(effectiveVolume()).catch(ignore);
     },
 
     toggleMute() {

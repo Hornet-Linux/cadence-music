@@ -43,10 +43,16 @@ export function countPasswordUsers(db: Db): number {
   return row.n;
 }
 
-export function createLocalUser(
+/** True for a SQLite UNIQUE constraint failure (e.g. a username taken a moment ago). */
+export function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Error && /UNIQUE constraint failed/i.test(err.message);
+}
+
+export async function createLocalUser(
   db: Db,
   input: { username: string; password: string; isAdmin?: boolean; displayName?: string },
-): UserRow {
+): Promise<UserRow> {
+  const passwordHash = await hashPassword(input.password);
   const result = db
     .prepare(
       `INSERT INTO users (username, display_name, password_hash, is_admin, created_at)
@@ -55,7 +61,7 @@ export function createLocalUser(
     .run(
       input.username,
       input.displayName ?? null,
-      hashPassword(input.password),
+      passwordHash,
       input.isAdmin ? 1 : 0,
       Date.now(),
     );

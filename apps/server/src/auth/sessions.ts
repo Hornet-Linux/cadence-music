@@ -3,7 +3,23 @@ import { randomToken, sha256 } from "../util/crypto.js";
 import { findUserById, type UserRow } from "./users.js";
 
 /** Sessions unused for this long expire. */
-const IDLE_LIMIT_MS = 90 * 24 * 60 * 60 * 1000;
+export const IDLE_LIMIT_MS = 90 * 24 * 60 * 60 * 1000;
+/** How often idle sessions are swept out of the database. */
+export const PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+/** Delete sessions idle past the limit. Returns how many were removed. */
+export function purgeExpiredSessions(db: Db, now = Date.now()): number {
+  const result = db.prepare("DELETE FROM sessions WHERE last_used_at < ?").run(now - IDLE_LIMIT_MS);
+  return Number(result.changes);
+}
+
+/** Purge now and then periodically; the timer never keeps the process alive. */
+export function startSessionPurge(db: Db, intervalMs = PURGE_INTERVAL_MS): () => void {
+  purgeExpiredSessions(db);
+  const timer = setInterval(() => purgeExpiredSessions(db), intervalMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}
 /** Avoid a write on every request: only bump last_used_at this often. */
 const TOUCH_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -25,7 +41,7 @@ export function userForToken(db: Db, token: string): UserRow | null {
   if (!session) return null;
 
   const now = Date.now();
-  if (now - session.last_used_at > IDLE_LIMIT_MS) {
+  if (session.last_used_at < now - IDLE_LIMIT_MS) {
     db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hash);
     return null;
   }

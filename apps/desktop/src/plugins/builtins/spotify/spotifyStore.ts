@@ -8,12 +8,12 @@ const CLIENT_ID_KEY = "spotify:clientId";
 /** Liked songs to import (50 per request). */
 const MAX_TRACKS = 2000;
 
-interface SpotifyImage {
+export interface SpotifyImage {
   url: string;
   width: number | null;
 }
 
-interface SavedTrackItem {
+export interface SavedTrackItem {
   track: {
     uri: string;
     name: string;
@@ -58,12 +58,12 @@ interface SpotifyState {
   setError: (error: string | null) => void;
 }
 
-function pickArtwork(images: SpotifyImage[]): string | undefined {
+export function pickArtwork(images: SpotifyImage[]): string | undefined {
   // Images are ordered largest first; prefer one around 300px.
   return (images.find((i) => (i.width ?? 0) <= 320) ?? images[0])?.url;
 }
 
-function toTrack(item: SavedTrackItem): Track | null {
+export function toTrack(item: SavedTrackItem): Track | null {
   const t = item.track;
   if (!t || t.is_local || !t.uri.startsWith("spotify:track:")) return null;
   return {

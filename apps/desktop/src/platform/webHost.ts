@@ -1,5 +1,7 @@
 import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
+import type { CadenceNativeBridge } from "../host";
+import { createLlmProvider } from "../../electron/llm";
 
 // Browser stand-in for the Electron preload bridge (window.host), so the same
 // UI runs as a website served by the Cadence server at /app. Differences:
@@ -17,6 +19,8 @@ const SPOTIFY_SCOPES = [
   "user-read-email",
   "user-read-private",
   "user-library-read",
+  "user-top-read",
+  "user-read-recently-played",
   "playlist-read-private",
   "playlist-read-collaborative",
   "user-read-playback-state",
@@ -168,11 +172,20 @@ const auth: HostBridge["auth"] = {
   },
 };
 
+// ---- LLM (AI DJ) -------------------------------------------------------------
+// Called straight from the page; Ollama must allow this origin (OLLAMA_ORIGINS).
+
+const llm: HostBridge["llm"] = {
+  status: (config) => createLlmProvider(config).status(),
+  chatJson: (config, req) => createLlmProvider(config).chatJson(req),
+};
+
 export const webHost: HostBridge = {
   window: { minimize: () => undefined, toggleMaximize: () => undefined, close: () => undefined },
   secrets,
   auth,
   spotify,
+  llm,
   platform: "web" as unknown as HostBridge["platform"],
 };
 
@@ -236,13 +249,24 @@ function iosApp(): NativeBridge | undefined {
     ?.cadence;
 }
 
-export function isIosApp(): boolean {
-  return !!iosApp();
+/** The Android app's bridge, when the web player runs inside it (apps/android). */
+function androidApp(): Required<Pick<CadenceNativeBridge, "changeServer">> | undefined {
+  const bridge = window.CadenceNative;
+  return bridge?.platform === "android" && typeof bridge.changeServer === "function"
+    ? { changeServer: () => bridge.changeServer?.() }
+    : undefined;
 }
 
-/** Ask the iOS app to go back to its server address screen. */
-export function changeIosServer(): void {
-  iosApp()?.postMessage({ action: "changeServer" });
+/** True inside the iOS or Android app, which can go back to their server address screen. */
+export function isNativeApp(): boolean {
+  return !!iosApp() || !!androidApp();
+}
+
+/** Ask the iOS or Android app to go back to its server address screen. */
+export function changeNativeServer(): void {
+  const ios = iosApp();
+  if (ios) ios.postMessage({ action: "changeServer" });
+  else androidApp()?.changeServer();
 }
 
 /** True when running as the website rather than the desktop app. */

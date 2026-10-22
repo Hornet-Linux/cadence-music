@@ -98,15 +98,32 @@ music.example.com {
 Reload Caddy. Once DNS points at the host, `https://music.example.com/api/health`
 should return JSON.
 
+### Client addresses and rate limits
+
+Sign-in, sign-up and first-run setup are rate limited per client address, so the
+server has to know the real address behind your proxy. By default it believes
+`X-Forwarded-For` only from a proxy on the same machine or a private network
+(loopback, `10.x`, `172.16-31.x`, `192.168.x`, link-local and unique-local),
+and then uses the address that proxy appended. That covers the bundled Caddy,
+Caddy or nginx on the host, and other containers on your Docker network (nginx
+needs `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`; Caddy and
+Traefik do this out of the box). A client on the open internet is never in those
+ranges, so it can't forge the header to dodge the limits. If your proxy reaches
+the server from a public address, list it: `TRUST_PROXY=203.0.113.10` or a
+CIDR range (`TRUST_PROXY=172.18.0.0/16,10.0.0.5`). If clients reach the server
+directly with no proxy, set `TRUST_PROXY=false`. A plain number (`TRUST_PROXY=2`)
+means "believe that many hops" and is only safe when nobody can reach the
+server except through your proxy.
+
 ## 4. Connect the apps
 
 Install the app. The first-run wizard opens on its own (or use **Settings →
 About → Run setup again**). Enter `music.example.com` and click **Connect**.
 On a new server you'll be asked for the setup code to create the admin;
 otherwise sign in with your account or your SSO provider. The remaining steps
-connect Spotify and Apple Music, and you can skip any of them. The web player
-at `https://music.example.com/app` and the iOS app ([IOS.md](IOS.md)) ask
-for the same address and sign-in.
+connect Spotify, Apple Music and Jellyfin, and you can skip any of them. The web player
+at `https://music.example.com/app`, the iOS app ([IOS.md](IOS.md)) and the
+Android app ([ANDROID.md](ANDROID.md)) ask for the same address and sign-in.
 
 Step-by-step guides for beginners are in the
 [wiki](https://github.com/Hornet-Linux/cadence-music/wiki).
@@ -236,7 +253,7 @@ Database migrations run automatically on start.
 | `MUSIC_DIR` | `/music` | Music library root (read-only is fine). |
 | `PUBLIC_URL` | — | Public base URL; required for OIDC. |
 | `SCAN_INTERVAL_MINUTES` | `60` | Periodic rescan; `0` disables. |
-| `TRUST_PROXY` | `true` | Trust `X-Forwarded-*` from the proxy. |
+| `TRUST_PROXY` | private-network proxies | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is proxies on this machine or a private network. |
 | `SERVER_SECRET` | generated | Signs stream URLs; generated into `DATA_DIR` if unset. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | — | Bootstrap admin account. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | — | Enable OIDC. |
@@ -248,6 +265,7 @@ Database migrations run automatically on start.
 | `SIGNUP_INVITE_CODE` | — | Code people must enter when `SIGNUP_MODE=invite`. |
 | `APP_DOWNLOAD_URL` | GitHub releases | Download link shown on the sign-up page. |
 | `SPOTIFY_CLIENT_ID` | — | Spotify app ID shared with signed-in apps. |
+| `JELLYFIN_URL` | — | Address of your Jellyfin server, as the Cadence server reaches it (e.g. `http://jellyfin:8096`). Only the owner sets it. See [Jellyfin](JELLYFIN.md). |
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
