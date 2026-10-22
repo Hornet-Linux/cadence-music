@@ -1655,7 +1655,11 @@ code {
   .web .app {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-    height: 100dvh;
+    /* Fill the screen directly: 100dvh can resolve to ~0 inside an embedded Android WebView,
+       which collapsed the whole page to just the tab bar. */
+    position: fixed;
+    inset: 0;
+    height: auto;
   }
   .web .stage {
     grid-row: 1;
