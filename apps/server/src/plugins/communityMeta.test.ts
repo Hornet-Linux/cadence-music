@@ -54,3 +54,22 @@ test("plugins whose settings the form cannot edit say where to go instead", asyn
   const transcode = byId.get("cadence.transcode");
   assert.deepEqual(transcode?.configFields?.map((f) => f.key), ["maxCacheMb", "defaultProfile", "liveStartAfterSec"]);
 });
+
+test("the streaming plugins describe their credentials with the shared metadata", async () => {
+  const byId = new Map((await discover()).map((p) => [p.id, p]));
+  const expected: Record<string, { plain: string[]; sealed: string[] }> = {
+    "cadence.youtube-music": { plain: [], sealed: ["apiKey"] },
+    "cadence.deezer": { plain: ["appId"], sealed: ["appSecret"] },
+    "cadence.soundcloud": { plain: ["clientId"], sealed: ["clientSecret"] },
+    "cadence.tidal": { plain: ["clientId", "countryCode"], sealed: ["clientSecret"] },
+  };
+  for (const [id, want] of Object.entries(expected)) {
+    const p = byId.get(id);
+    assert.ok(p, `${id} is installed`);
+    const fields = p.configFields ?? [];
+    assert.deepEqual(fields.filter((f) => !f.sealed).map((f) => f.key), want.plain, id);
+    assert.deepEqual(fields.filter((f) => f.sealed).map((f) => f.key), want.sealed, id);
+    assert.ok(fields.every((f) => (f.sealed ? f.type === "secret" : f.type === "text")));
+    assert.ok(p.configNote?.includes("stored encrypted"), `${id} says where the secrets are entered`);
+  }
+});

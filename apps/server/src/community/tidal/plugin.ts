@@ -1,6 +1,6 @@
 import type { ServerPlugin } from "../../plugins/types.js";
 import { callJson, clean, hosts, isoSeconds, safeUrl, UpstreamError, type FetchFn } from "../_streaming/http.js";
-import { idParam, intParam, StreamingKit, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
+import { idParam, intParam, StreamingKit, streamingMeta, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
 import type { StreamPlaylist, StreamTrack } from "../_streaming/types.js";
 
 /**
@@ -188,6 +188,7 @@ export function createTidalPlugin(options: { fetchFn?: FetchFn } = {}): ServerPl
     id: tidalDef.id,
     name: "TIDAL (catalogue and library, link-out)",
     version: "1.0.0",
+    ...streamingMeta(tidalDef, "Search TIDAL and browse each person's playlists and saved tracks. TIDAL does not allow third-party playback here, so every track opens in TIDAL. Needs your own client id and secret from the TIDAL developer portal."),
     register(app, ctx) {
       const kit = new StreamingKit(tidalDef, app, ctx, options.fetchFn);
       kit.registerCommon();

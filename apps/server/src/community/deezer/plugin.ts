@@ -1,6 +1,6 @@
 import type { ServerPlugin } from "../../plugins/types.js";
 import { callJson, clean, hosts, safeUrl, UpstreamError, type FetchFn } from "../_streaming/http.js";
-import { idParam, intParam, StreamingKit, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
+import { idParam, intParam, StreamingKit, streamingMeta, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
 import type { StreamPlaylist, StreamTrack } from "../_streaming/types.js";
 
 /**
@@ -129,6 +129,7 @@ export function createDeezerPlugin(options: { fetchFn?: FetchFn } = {}): ServerP
     id: deezerDef.id,
     name: "Deezer (previews and library)",
     version: "1.0.0",
+    ...streamingMeta(deezerDef, "Search Deezer, browse each person's favourites and playlists, and play the official 30-second previews. Full tracks are only available through Deezer's own widget. Free and non-commercial use only; needs your own Deezer application id and secret."),
     register(app, ctx) {
       const kit = new StreamingKit(deezerDef, app, ctx, options.fetchFn);
       kit.registerCommon();

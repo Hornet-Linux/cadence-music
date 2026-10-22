@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { RateLimiter } from "../../auth/rateLimit.js";
 import { open, seal } from "../../llm/secretBox.js";
-import type { ServerPluginContext } from "../../plugins/types.js";
+import type { PluginConfigField, ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { publicMessage, testUpstream, UpstreamError, type FetchFn } from "./http.js";
 import { newPkce, newState } from "./pkce.js";
 import type { StreamStatus } from "./types.js";
@@ -46,6 +46,25 @@ export interface ServiceDef {
   isConfigured(cfg: Cfg | undefined): boolean;
   oauth?: OAuthDef;
   features: StreamStatus["features"];
+}
+
+/**
+ * The admin-page metadata every streaming plugin shares, derived from its credential fields.
+ * Secrets are stored encrypted by the kit's own save route, so the generic form only shows whether they are set.
+ */
+export function streamingMeta(def: ServiceDef, description: string): Pick<ServerPlugin, "description" | "configFields" | "configNote"> {
+  const configFields: PluginConfigField[] = def.fields.map((f) => ({
+    key: f.key,
+    label: f.label + (f.optional ? " (optional)" : ""),
+    type: f.secret ? "secret" : "text",
+    help: f.hint,
+    ...(f.secret ? { sealed: true } : {}),
+  }));
+  return {
+    description,
+    configFields,
+    configNote: `Secrets are stored encrypted: enter or replace them in the player under Settings > Plugins, where each person also connects their own account. Without these credentials the plugin stays idle and makes no calls to ${def.name}.`,
+  };
 }
 
 /** Why a signed-in call cannot be made. Becomes a 409 (never a 401, which would sign the person out of Cadence). */

@@ -1,6 +1,6 @@
 import type { ServerPlugin } from "../../plugins/types.js";
 import { callJson, clean, hosts, isoSeconds, safeUrl, UpstreamError, type FetchFn } from "../_streaming/http.js";
-import { intParam, StreamingKit, textParam, type ServiceDef } from "../_streaming/kit.js";
+import { intParam, StreamingKit, streamingMeta, textParam, type ServiceDef } from "../_streaming/kit.js";
 import type { StreamTrack } from "../_streaming/types.js";
 
 /**
@@ -71,6 +71,7 @@ export function createYouTubePlugin(options: { fetchFn?: FetchFn } = {}): Server
     id: youtubeDef.id,
     name: "YouTube (search and official player)",
     version: "1.0.0",
+    ...streamingMeta(youtubeDef, "Search embeddable YouTube music videos and play them in the official YouTube player in a visible panel (YouTube Music itself has no public API, and audio-only playback is not allowed). Needs your own YouTube Data API key. Adds YouTube's player hosts to the web player's security policy once enabled."),
     register(app, ctx) {
       const kit = new StreamingKit(youtubeDef, app, ctx, options.fetchFn);
       kit.registerCommon();

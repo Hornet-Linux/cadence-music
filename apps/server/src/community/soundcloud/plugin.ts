@@ -1,6 +1,6 @@
 import type { ServerPlugin } from "../../plugins/types.js";
 import { callJson, clean, hosts, safeUrl, UpstreamError, type FetchFn } from "../_streaming/http.js";
-import { idParam, intParam, StreamingKit, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
+import { idParam, intParam, StreamingKit, streamingMeta, textParam, type OAuthDef, type ServiceDef } from "../_streaming/kit.js";
 import type { StreamPlaylist, StreamTrack } from "../_streaming/types.js";
 
 /**
@@ -140,6 +140,7 @@ export function createSoundCloudPlugin(options: { fetchFn?: FetchFn } = {}): Ser
     id: soundcloudDef.id,
     name: "SoundCloud (search, library, widget player)",
     version: "1.0.0",
+    ...streamingMeta(soundcloudDef, "Search SoundCloud, browse each person's likes and playlists, and play tracks through SoundCloud's official widget in a visible panel. Needs your own SoundCloud app client id and secret. Adds SoundCloud's widget host to the web player's security policy once enabled."),
     register(app, ctx) {
       const kit = new StreamingKit(soundcloudDef, app, ctx, options.fetchFn);
       kit.registerCommon();
