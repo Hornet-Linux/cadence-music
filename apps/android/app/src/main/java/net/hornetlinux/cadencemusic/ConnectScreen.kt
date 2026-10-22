@@ -2,15 +2,18 @@ package net.hornetlinux.cadencemusic
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -24,108 +27,140 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
-/** First launch: ask for the Cadence server's address and check it serves /app. */
+/**
+ * Asks for the Cadence server's address, checks that it really is a Cadence server
+ * (its /api/health answers), then hands back the address it answered from.
+ */
 @Composable
-fun ConnectScreen(onConnected: (address: String) -> Unit) {
-    var draft by remember { mutableStateOf("") }
+fun ConnectScreen(initialAddress: String, versionName: String, onConnected: (address: String) -> Unit) {
+    var draft by remember { mutableStateOf(initialAddress) }
     var error by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val shortScreen = LocalConfiguration.current.screenHeightDp < 500
 
     fun connect() {
         if (checking) return
         val url = ServerAddress.playerUrl(draft)
         if (url == null) {
-            error = "That doesn't look like a server address."
+            error = "That doesn't look like a server address. Try something like music.example.com."
             return
         }
         checking = true
         error = null
         scope.launch {
-            val problem = checkServer(url)
-            checking = false
-            if (problem == null) onConnected(draft) else error = problem
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .padding(24.dp)
-            .widthIn(max = 480.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.cadence_logo),
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
-        )
-        Text("Cadence", style = MaterialTheme.typography.displaySmall)
-        Text(
-            "Enter the address of your Cadence server.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        OutlinedTextField(
-            value = draft,
-            onValueChange = { draft = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("music.example.com") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                keyboardType = KeyboardType.Uri,
-                imeAction = ImeAction.Go,
-            ),
-            keyboardActions = KeyboardActions(onGo = { connect() }),
-        )
-        error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
-        }
-        Button(onClick = ::connect, enabled = draft.isNotBlank() && !checking, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            if (checking) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp) else Text("Connect")
-        }
-        Spacer(Modifier.height(1.dp))
-    }
-}
-
-/** Returns null if [playerUrl] answers 200, otherwise a message to show. Follows redirects, including http to https. */
-private suspend fun checkServer(playerUrl: String): String? = withContext(Dispatchers.IO) {
-    try {
-        var url = URL(playerUrl)
-        repeat(6) {
-            val connection = url.openConnection() as HttpURLConnection
-            try {
-                connection.connectTimeout = 10_000
-                connection.readTimeout = 10_000
-                connection.instanceFollowRedirects = false
-                val code = connection.responseCode
-                val location = connection.getHeaderField("Location")
-                if (code in listOf(301, 302, 303, 307, 308) && location != null) {
-                    url = URL(url, location)
-                    return@repeat
+            var result = ServerProbe.probe(url)
+            if (result is ProbeResult.Failed) {
+                // A bare LAN address usually has no certificate: try plain http before giving up.
+                val lan = ServerAddress.lanHttpFallback(draft)
+                if (lan != null) {
+                    val retry = ServerProbe.probe(lan)
+                    if (retry is ProbeResult.Ok) result = retry
                 }
-                return@withContext if (code == 200) null else "Reached the server, but it has no web player at /app."
-            } finally {
-                connection.disconnect()
             }
+            when (result) {
+                is ProbeResult.Ok -> onConnected(result.address)
+                is ProbeResult.Failed -> error = result.message
+            }
+            checking = false
         }
-        "Couldn't reach the server: too many redirects"
-    } catch (e: IOException) {
-        "Couldn't reach the server: ${e.localizedMessage ?: e.javaClass.simpleName}"
+    }
+
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 480.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            if (shortScreen) {
+                // Landscape phones: keep the field and button on screen without scrolling.
+                Text(
+                    "Cadence",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.cadence_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                )
+                Text(
+                    "Cadence",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    "Connect to your Cadence server",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Text(
+                "This is the web address you use to open Cadence in a browser. " +
+                    "Examples: music.example.com, or http://192.168.1.20:8787 on your home network.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            OutlinedTextField(
+                value = draft,
+                onValueChange = {
+                    draft = it
+                    error = null
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                label = { Text("Server address") },
+                placeholder = { Text("music.example.com") },
+                singleLine = true,
+                isError = error != null,
+                supportingText = {
+                    Text(
+                        error ?: "No http:// or https:// needed for a normal secure server.",
+                        color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    keyboardType = KeyboardType.Uri,
+                    imeAction = ImeAction.Go,
+                ),
+                keyboardActions = KeyboardActions(onGo = { connect() }),
+            )
+            Button(
+                onClick = ::connect,
+                enabled = draft.isNotBlank() && !checking,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            ) {
+                if (checking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("Connect", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            Text(
+                "Version $versionName",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
