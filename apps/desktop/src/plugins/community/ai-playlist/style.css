@@ -87,3 +87,7 @@
     flex: 1 1 auto;
   }
 }
+.ai-playlist .ai-options .segmented button,
+.ai-playlist .btn.big {
+  min-height: 44px;
+}
