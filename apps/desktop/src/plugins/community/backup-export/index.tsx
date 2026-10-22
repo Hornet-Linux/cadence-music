@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Plugin } from "../../types";
-import { FolderIcon } from "@/ui/icons";
+import { ClockIcon } from "@/ui/icons";
 import { Check, Field, Notice, NeedServer, OpsPage, Section, downloadFile, formatBytes, formatWhen, useAction, useLoad, useOps } from "../_ops/ui";
 import "./style.css";
 
@@ -251,7 +251,7 @@ const plugin: Plugin = {
     apiRange: "^1.0.0",
   },
   activate(ctx) {
-    ctx.registerSidebarItem({ id: "backup-export", label: "Backup", icon: <FolderIcon />, render: () => <BackupPage /> });
+    ctx.registerSidebarItem({ id: "backup-export", label: "Backup", icon: <ClockIcon />, render: () => <BackupPage /> });
   },
 };
 

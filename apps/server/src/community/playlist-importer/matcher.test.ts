@@ -198,6 +198,12 @@ test("matching 300 tracks against a 20,000 track library is fast", () => {
   assert.ok(Date.now() - started < 8000, `took ${Date.now() - started} ms`);
 });
 
+test("track numbers in the title of untagged files are ignored, but not when there is an artist", () => {
+  assert.equal(scoreMatch(w("Warm Sine", "Test Artist"), { id: "x", title: "01 Warm Sine", artists: [] }).score > 0.6, true);
+  assert.equal(scoreMatch({ title: "02 - Low Hum", artists: [] }, { id: "x", title: "Low Hum", artists: ["Band"] }).score > 0.6, true);
+  assert.equal(scoreMatch(w("99 Luftballons", "Nena"), c("99 Luftballons", "Nena")).confidence, "high");
+});
+
 test("wantedKey merges duplicates of the same song", () => {
   assert.equal(wantedKey(w("Heroes - 2017 Remaster", "David Bowie")), wantedKey(w("HEROES", "david bowie")));
   assert.notEqual(wantedKey(w("Heroes", "David Bowie")), wantedKey(w("Heroes", "Other")));

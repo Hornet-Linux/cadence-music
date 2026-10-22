@@ -56,8 +56,16 @@ export interface Prepared {
   durationSec: number | null;
 }
 
+/**
+ * Untagged files often carry the track number in the title ("01 Warm Sine"). With no artist to go by, a leading
+ * number followed by a word is taken as a track number ("99 Luftballons" keeps its number when it has an artist).
+ */
+export function stripTrackNumber(title: string, hasArtist: boolean): string {
+  return hasArtist ? title : title.replace(/^d{1,3}[s._)-]+(?=D)/, "");
+}
+
 export function prepare(t: { title: string; artists: string[]; album?: string; durationSec?: number }): Prepared {
-  const title = parseTitle(t.title);
+  const title = parseTitle(stripTrackNumber(t.title, t.artists.length > 0));
   return {
     title,
     // Featured artists from the title count as artists of the track.

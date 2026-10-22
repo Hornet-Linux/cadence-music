@@ -259,4 +259,34 @@
     color: var(--text-muted);
     flex-shrink: 0;
   }
+}.ops details summary,
+.ops-panel details summary {
+  list-style: none;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ops details summary::-webkit-details-marker,
+.ops-panel details summary::-webkit-details-marker {
+  display: none;
+}
+.ops details summary::after,
+.ops-panel details summary::after {
+  content: "+";
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+.ops details[open] summary::after,
+.ops-panel details[open] summary::after {
+  content: "\2212";
+}
+.ops-panel details summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.ops-panel > .ops-section-head {
+  margin-top: 10px;
 }
