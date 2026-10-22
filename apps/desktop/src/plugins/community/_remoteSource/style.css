@@ -1,0 +1,233 @@
+/* Shared by the "music from files elsewhere" plugins (WebDAV, S3, Google Drive, OneDrive). Existing tokens only; calm and plain. */
+
+.rs-root .btn,
+.rs-root .text-input,
+.rs-root .segmented button {
+  min-height: 44px;
+}
+.rs-root .text-input {
+  font-size: 16px; /* stops phones zooming into the field */
+}
+
+.rs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.rs-field .muted {
+  margin-top: 6px;
+}
+
+.rs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+}
+
+.rs-index {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rs-index .small {
+  flex: 1;
+  min-width: 140px;
+}
+.rs-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex: none;
+}
+.rs-dot.busy {
+  background: var(--text-muted);
+  animation: rs-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rs-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-dot.busy {
+    animation: none;
+  }
+}
+
+.rs-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  font-size: 0.88rem;
+}
+.rs-facts dt {
+  color: var(--text-muted);
+}
+.rs-facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Folder picker */
+.rs-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+.rs-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+.rs-sep {
+  color: var(--text-faint);
+  padding: 0 2px;
+}
+.rs-crumb {
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+.rs-crumb:disabled {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.rs-crumb:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.rs-folder-list {
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.rs-folder {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--border);
+}
+.rs-folder:first-child {
+  border-top: none;
+}
+.rs-check {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  flex: none;
+  cursor: pointer;
+}
+.rs-check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent-from);
+}
+.rs-folder-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 0 4px;
+  text-align: left;
+}
+.rs-folder-open:hover {
+  background: var(--surface-hover);
+}
+.rs-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rs-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.rs-chip {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Owner options */
+.rs-admin {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+}
+.rs-admin > summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.rs-admin[open] > summary {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.rs-admin[open] {
+  padding-bottom: 14px;
+}
+.rs-switch-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* Browse page */
+.rs-album-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rs-album {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.rs-album:hover {
+  background: var(--surface-hover);
+}
+.rs-album-name {
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .rs-switch-row {
+    flex-direction: column;
+  }
+  .rs-facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .rs-facts dd {
+    margin-bottom: 8px;
+  }
+}

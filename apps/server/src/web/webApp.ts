@@ -40,7 +40,7 @@ export const WEB_APP_CSP = [
   "media-src 'self' https: blob:",
   "font-src 'self' https: data:",
   "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
-  "frame-src https://sdk.scdn.co https://*.apple.com",
+  "frame-src https://sdk.scdn.co https://*.apple.com https://bandcamp.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",
