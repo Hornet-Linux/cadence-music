@@ -5,7 +5,7 @@
 # Used by the optional loudness, audio-analysis, transcode and library-health
 # community plugins. To build without it, delete the COPY line further down:
 # those plugins then report "ffmpeg missing" and everything else is unaffected.
-FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
+FROM mwader/static-ffmpeg:7.1.1@sha256:11a44711684c0b9f754c047dcd64235b8b52deab251bd0e0a86f22faa160749c AS ffmpeg
 
 # ---- Web player: the desktop UI built as a website (served at /app) --------
 FROM node:22-slim AS web
