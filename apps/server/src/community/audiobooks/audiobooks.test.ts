@@ -244,7 +244,8 @@ test("an expired or revoked sign-in is forgotten and reported", async () => {
   await r.connect(r.h.alice);
   r.abs.tokens.clear();
   const res = await r.call("GET", "/api/audiobooks/libraries", r.h.alice);
-  assert.equal(res.statusCode, 401);
+  // 409, not 401: a 401 would make apps think the Cadence session itself ended.
+  assert.equal(res.statusCode, 409);
   assert.equal(res.json().error, "audiobooks_session_expired");
   assert.deepEqual((await r.call("GET", "/api/audiobooks/status", r.h.alice)).json(), { configured: true, connected: false });
   await r.close();

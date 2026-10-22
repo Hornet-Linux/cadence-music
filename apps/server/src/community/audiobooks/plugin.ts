@@ -137,7 +137,7 @@ export function createAudiobooksPlugin(options: AudiobooksOptions = {}): ServerP
         if (e instanceof AbsError) {
           if (e.kind === "unauthorized") {
             if (conn) store.deleteIfToken(conn.userId, conn.tokenEnc);
-            return reply.code(401).send(EXPIRED);
+            return reply.code(409).send(EXPIRED);
           }
           if (e.kind === "not_found") return reply.code(404).send({ error: "not_found" });
           req.log.warn({ kind: e.kind, status: e.status }, "Audiobookshelf call failed");

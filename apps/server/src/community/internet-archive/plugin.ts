@@ -227,6 +227,23 @@ export function createArchivePlugin(options: ArchiveOptions = {}): ServerPlugin 
         }
       });
 
+      /** A fresh signed address for one file (queued tracks outlive the address they were listed with). */
+      app.get<{ Querystring: { id?: string; f?: string } }>("/api/archive/stream-url", { preHandler: requireUser }, async (req, reply) => {
+        const id = req.query.id;
+        const file = req.query.f;
+        if (!validIdentifier(id) || typeof file !== "string" || !file || file.length > 300) return reply.code(400).send({ error: "invalid_request" });
+        try {
+          const m = await metadataOf(id);
+          if (restricted(m)) return reply.code(403).send({ error: "restricted" });
+          if (!(m.files ?? []).some((f) => f.name === file && kindOfFormat(f.format))) return reply.code(404).send({ error: "not_found" });
+          const exp = nowSec() + STREAM_TTL_SEC;
+          return { path: `api/archive/stream/${id}?f=${encodeURIComponent(file)}&${signedQuery(secret, "archive-stream", req.user!.id, `${id}
+${file}`, exp)}`, expiresAt: exp };
+        } catch (e) {
+          return failure(req, reply, e);
+        }
+      });
+
       // ---- audio and cover art (signed) ------------------------------------------------------------
 
       app.get<{ Params: { id: string }; Querystring: SignedParams & { f?: string } }>("/api/archive/stream/:id", async (req, reply) => {

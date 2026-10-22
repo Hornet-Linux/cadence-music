@@ -264,6 +264,20 @@ test("stream: a signed request for a file that is not audio in the metadata is r
   await r.close();
 });
 
+test("stream-url: a fresh signed address for a listed file only", async () => {
+  const r = await rig();
+  const ok = await r.call("/api/archive/stream-url?id=gd77-05-08&f=gd77-05-08d1t01.mp3", r.h.alice);
+  assert.equal(ok.statusCode, 200, ok.body);
+  const played = await r.call(`/${(ok.json() as { path: string }).path}`, null);
+  assert.equal(played.statusCode, 200);
+  assert.equal(played.rawPayload.equals(AUDIO), true);
+  assert.equal((await r.call("/api/archive/stream-url?id=gd77-05-08&f=gd77-05-08.jpg", r.h.alice)).statusCode, 404);
+  assert.equal((await r.call("/api/archive/stream-url?id=lending&f=a.mp3", r.h.alice)).statusCode, 403);
+  assert.equal((await r.call("/api/archive/stream-url?id=..&f=a.mp3", r.h.alice)).statusCode, 400);
+  assert.equal((await r.call("/api/archive/stream-url?id=gd77-05-08&f=gd77-05-08d1t01.mp3", null)).statusCode, 401);
+  await r.close();
+});
+
 test("cover art is proxied and signed", async () => {
   const r = await rig();
   const search = (await r.call("/api/archive/search?q=dead", r.h.alice)).json() as { items: { cover: string }[] };
