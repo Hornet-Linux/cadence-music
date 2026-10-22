@@ -189,3 +189,11 @@
   background: var(--surface-hover);
   font-size: 0.88rem;
 }
+
+/* A pressed toggle reads clearly without bright colour. */
+.sx-page .btn[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: transparent;
+  box-shadow: none;
+}

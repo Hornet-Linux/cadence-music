@@ -26,7 +26,7 @@ export class SnippetPlayer {
 
   async play(track: Track, startSec: number, lengthSec: number): Promise<boolean> {
     const seq = ++this.seq;
-    this.stop(false);
+    this.halt(false);
     this.set("loading");
     try {
       const resolved = await usePluginHost.getState().resolveAudio(track);
@@ -66,15 +66,23 @@ export class SnippetPlayer {
       await this.audio.play();
       if (seq !== this.seq) return true;
       this.set("playing");
-      this.timer = setTimeout(() => this.stop(true), lengthSec * 1000);
+      this.timer = setTimeout(() => this.halt(true), lengthSec * 1000);
       return true;
     } catch {
-      if (seq === this.seq) this.set("failed");
+      // A newer request took over (the person moved on): that is not a failure.
+      if (seq !== this.seq) return true;
+      this.set("failed");
       return false;
     }
   }
 
-  stop(report = true) {
+  /** Stop now, and cancel any snippet that is still loading. */
+  stop() {
+    this.seq += 1;
+    this.halt(true);
+  }
+
+  private halt(report: boolean) {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.audio.pause();
@@ -83,7 +91,7 @@ export class SnippetPlayer {
 
   dispose() {
     this.seq += 1;
-    this.stop(false);
+    this.halt(false);
     this.audio.removeAttribute("src");
     this.audio.load();
   }

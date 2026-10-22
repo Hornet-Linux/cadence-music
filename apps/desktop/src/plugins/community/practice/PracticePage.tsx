@@ -86,7 +86,7 @@ export function PracticePage() {
               </div>
             </div>
             <div className="sx-row" style={{ marginTop: 12 }}>
-              <button className={`btn${loop.enabled ? " primary" : ""}`} aria-pressed={loop.enabled} disabled={loop.a === null || loop.b === null} onClick={p.toggleLoop}>
+              <button className="btn" aria-pressed={loop.enabled} disabled={loop.a === null || loop.b === null} onClick={p.toggleLoop}>
                 {loop.enabled ? "Looping" : "Loop off"}
               </button>
               <button className="btn" disabled={!isActive(loop)} onClick={() => isActive(loop) && seek(loop.a)}>
@@ -113,7 +113,7 @@ export function PracticePage() {
               <>
                 <div className="pr-rates" role="group" aria-label="Speed presets">
                   {RATES.map((r) => (
-                    <button key={r} className={`btn${Math.abs(p.rate - r) < 0.005 ? " primary" : ""}`} aria-pressed={Math.abs(p.rate - r) < 0.005} onClick={() => p.setRate(r)}>
+                    <button key={r} className="btn" aria-pressed={Math.abs(p.rate - r) < 0.005} onClick={() => p.setRate(r)}>
                       {Math.round(r * 100)}%
                     </button>
                   ))}

@@ -33,9 +33,10 @@ export function drawTrackCard(ctx: CanvasRenderingContext2D, track: Track, forma
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  const coverSize = format === "portrait" ? W - pad * 2 : 560;
-  const coverX = format === "portrait" ? pad : pad;
-  const coverY = format === "portrait" ? 150 : 150;
+  // Everything is centred: a calm, symmetrical card.
+  const coverSize = format === "portrait" ? 720 : 560;
+  const coverX = (W - coverSize) / 2;
+  const coverY = format === "portrait" ? 160 : 130;
   // A soft shadow under the cover keeps it from floating.
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.35)";
@@ -50,49 +51,33 @@ export function drawTrackCard(ctx: CanvasRenderingContext2D, track: Track, forma
     ctx.font = font;
     return ctx.measureText(s).width;
   };
-  ctx.textAlign = "left";
+  ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  if (format === "portrait") {
-    let y = coverY + coverSize + 110;
-    const titleFont = `700 64px ${FONT}`;
-    const lines = wrapLines(text.title, W - pad * 2, measure(titleFont), 2);
-    ctx.font = titleFont;
-    ctx.fillStyle = p.text;
-    for (const line of lines) {
-      ctx.fillText(line, pad, y);
-      y += 78;
-    }
-    y += 4;
-    ctx.font = `500 42px ${FONT}`;
-    ctx.fillStyle = p.muted;
-    ctx.fillText(fitLine(text.artist, W - pad * 2, measure(`500 42px ${FONT}`)), pad, y);
-    if (text.album) {
-      y += 56;
-      ctx.font = `400 32px ${FONT}`;
-      ctx.fillText(fitLine(text.album, W - pad * 2, measure(`400 32px ${FONT}`)), pad, y);
-    }
-  } else {
-    // Square: cover on the left, text on the right would be cramped, so text sits under a smaller cover.
-    let y = coverY + coverSize + 100;
-    const titleFont = `700 58px ${FONT}`;
-    const lines = wrapLines(text.title, W - pad * 2, measure(titleFont), 1);
-    ctx.font = titleFont;
-    ctx.fillStyle = p.text;
-    for (const line of lines) {
-      ctx.fillText(line, pad, y);
-      y += 66;
-    }
-    ctx.font = `500 38px ${FONT}`;
-    ctx.fillStyle = p.muted;
-    ctx.fillText(fitLine(text.artist, W - pad * 2, measure(`500 38px ${FONT}`)), pad, y);
+  const cx = W / 2;
+  const maxW = W - pad * 2;
+  const titleSize = format === "portrait" ? 62 : 54;
+  const titleFont = `700 ${titleSize}px ${FONT}`;
+  let y = coverY + coverSize + (format === "portrait" ? 110 : 90);
+  ctx.font = titleFont;
+  ctx.fillStyle = p.text;
+  for (const line of wrapLines(text.title, maxW, measure(titleFont), format === "portrait" ? 2 : 1)) {
+    ctx.fillText(line, cx, y);
+    y += titleSize + 14;
+  }
+  const artistFont = `500 ${format === "portrait" ? 40 : 36}px ${FONT}`;
+  ctx.font = artistFont;
+  ctx.fillStyle = p.muted;
+  ctx.fillText(fitLine(text.artist, maxW, measure(artistFont)), cx, y + 6);
+  if (text.album && format === "portrait") {
+    const albumFont = `400 30px ${FONT}`;
+    ctx.font = albumFont;
+    ctx.fillText(fitLine(text.album, maxW, measure(albumFont)), cx, y + 62);
   }
 
   ctx.font = `700 24px ${FONT}`;
   ctx.fillStyle = p.muted;
-  ctx.textAlign = "left";
-  ctx.fillText("NOW PLAYING ON CADENCE", pad, H - 70);
+  ctx.fillText("NOW PLAYING ON CADENCE", cx, H - 64);
 }
-
 /** Render the card for a track to a PNG. The cover is used when its host allows it, otherwise a placeholder. */
 export async function renderTrackCard(track: Track, format: CardFormat): Promise<Blob> {
   const { width, height } = FORMATS[format];

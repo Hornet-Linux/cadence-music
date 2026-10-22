@@ -25,17 +25,6 @@
   animation: vw-in 0.5s ease-out both;
   animation-delay: var(--vw-delay, 0ms);
 }
-/* The ledge each row of records rests on. */
-.vw-item::after {
-  content: "";
-  position: absolute;
-  left: -8px;
-  right: -8px;
-  top: calc(100% - 3.4em);
-  height: 0;
-  border-bottom: 1px solid var(--border);
-  pointer-events: none;
-}
 @keyframes vw-in {
   from {
     opacity: 0;
@@ -74,14 +63,27 @@
   background:
     radial-gradient(circle, var(--vw-label, #6b6f78) 0 15%, #14151a 15.5% 17%, transparent 17.5%),
     repeating-radial-gradient(circle, #1d1e24 0 2px, #17181d 2px 4px);
+  transform: translateX(9%);
   transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* The board each record rests on. */
+.vw-sleeve::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: -10px;
+  right: -10px;
+  bottom: -8px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--surface-hover);
 }
 @media (hover: hover) {
   .vw-sleeve:hover .vw-cover,
   .vw-sleeve:focus-visible .vw-cover {
     transform: translateX(-6%) rotate(-1deg);
   }
-  .vw-sleeve:hover .vw-disc,
+    .vw-sleeve:hover .vw-disc,
   .vw-sleeve:focus-visible .vw-disc {
     transform: translateX(26%);
   }
@@ -197,10 +199,12 @@
   transition: none;
 }
 .reduce-motion .vw-sleeve:hover .vw-cover,
-.reduce-motion .vw-sleeve:hover .vw-disc,
-.reduce-motion .vw-sleeve:focus-visible .vw-cover,
-.reduce-motion .vw-sleeve:focus-visible .vw-disc {
+.reduce-motion .vw-sleeve:focus-visible .vw-cover {
   transform: none;
+}
+.reduce-motion .vw-sleeve:hover .vw-disc,
+.reduce-motion .vw-sleeve:focus-visible .vw-disc {
+  transform: translateX(9%);
 }
 @media (prefers-reduced-motion: reduce) {
   .vw-item,
@@ -213,9 +217,11 @@
     transition: none;
   }
   .vw-sleeve:hover .vw-cover,
-  .vw-sleeve:hover .vw-disc,
-  .vw-sleeve:focus-visible .vw-cover,
-  .vw-sleeve:focus-visible .vw-disc {
+  .vw-sleeve:focus-visible .vw-cover {
     transform: none;
+  }
+  .vw-sleeve:hover .vw-disc,
+  .vw-sleeve:focus-visible .vw-disc {
+    transform: translateX(9%);
   }
 }

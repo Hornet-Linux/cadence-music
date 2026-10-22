@@ -46,27 +46,27 @@ export function drawSummaryCard(ctx: CanvasRenderingContext2D, stats: Stats, lab
   drawCover(ctx, cover, W - pad - coverSize, 160, coverSize, 28, top?.album ?? label, top?.album ?? "?");
 
   // Top artists.
-  let y = 480;
+  let y = 450;
   text("TOP ARTISTS", pad, y, font(700, 24), p.muted);
   y += 20;
   const maxArtist = Math.max(1, stats.topArtists[0]?.plays ?? 1);
   stats.topArtists.slice(0, 5).forEach((a, i) => {
-    y += 70;
+    y += 56;
     text(String(i + 1), pad, y, font(600, 34), p.muted);
     text(fitLine(a.name, W - pad * 2 - 260, measure(font(i === 0 ? 700 : 500, 40))), pad + 56, y, font(i === 0 ? 700 : 500, 40));
     text(`${a.plays}`, W - pad, y, font(500, 30), p.muted, "right");
     // A quiet bar under each name.
     const barW = (W - pad * 2 - 56) * (a.plays / maxArtist);
     ctx.fillStyle = "rgba(255,255,255,0.10)";
-    roundRectPath(ctx, pad + 56, y + 14, barW, 6, 3);
+    roundRectPath(ctx, pad + 56, y + 12, barW, 5, 3);
     ctx.fill();
   });
 
   // Top tracks.
-  y += 100;
+  y += 74;
   text("TOP SONGS", pad, y, font(700, 24), p.muted);
   stats.topTracks.slice(0, 5).forEach((t, i) => {
-    y += 62;
+    y += 50;
     text(String(i + 1), pad, y, font(600, 30), p.muted);
     const title = fitLine(t.track.title, W - pad * 2 - 150, measure(font(500, 34)));
     text(title, pad + 56, y, font(500, 34));
@@ -81,12 +81,12 @@ export function drawSummaryCard(ctx: CanvasRenderingContext2D, stats: Stats, lab
   ];
   const colW = (W - pad * 2) / facts.length;
   ctx.fillStyle = "rgba(255,255,255,0.07)";
-  roundRectPath(ctx, pad, H - 250, W - pad * 2, 150, 28);
+  roundRectPath(ctx, pad, H - 240, W - pad * 2, 140, 28);
   ctx.fill();
   facts.forEach(([value, caption], i) => {
     const cx = pad + colW * i + colW / 2;
-    text(value, cx, H - 175, font(700, 54), p.text, "center");
-    text(caption, cx, H - 128, font(500, 26), p.muted, "center");
+    text(value, cx, H - 165, font(700, 54), p.text, "center");
+    text(caption, cx, H - 120, font(500, 26), p.muted, "center");
   });
 }
 
