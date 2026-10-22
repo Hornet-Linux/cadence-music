@@ -9,7 +9,8 @@ import type { AuthResponse, DjPicksResponse, LlmProvidersResponse, LlmRelayJob }
 import { buildApp } from "../app.js";
 import { createLocalUser } from "../auth/users.js";
 import { openDb } from "../db.js";
-import { createLlmPlugin } from "./plugin.js";
+import { LlmError } from "./core/index.js";
+import { createLlmPlugin, publicMessage } from "./plugin.js";
 
 const PROFILE = { topArtists: ["Daft Punk"], genres: ["house"], topTracks: [], recentTracks: [] };
 
@@ -375,4 +376,11 @@ test("device relay: another device uses a provider on a person's computer, and n
   }
   assert.deepEqual((await app.inject({ method: "GET", url: "/api/llm/providers", headers: alice })).json(), { items: [] });
   await app.close();
+});
+
+test("a timeout is described as slow, not unreachable, to ordinary users", () => {
+  const timeout = new LlmError("Couldn't reach the LLM server: the request timed out");
+  assert.match(publicMessage(timeout), /took too long/);
+  assert.match(publicMessage(new LlmError("Couldn't reach Ollama: ECONNREFUSED")), /couldn't be reached/);
+  assert.ok(!/ECONN|127\.0\.0\.1|timed out/.test(publicMessage(timeout)), "no upstream detail");
 });

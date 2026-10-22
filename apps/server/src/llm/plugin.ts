@@ -65,6 +65,9 @@ export function publicMessage(e: unknown): string {
   if (/wasn't found on that server|isn't installed/i.test(text)) {
     return "The AI provider doesn't have the configured model. Ask the server owner to check it.";
   }
+  if (/timed out|took too long/i.test(text)) {
+    return "The AI provider took too long to answer. Ask the server owner to check it.";
+  }
   if (/^Couldn't reach/i.test(text)) return "The AI provider couldn't be reached. Ask the server owner to check it.";
   return GENERIC_FAILURE;
 }
