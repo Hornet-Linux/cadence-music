@@ -1,5 +1,15 @@
 import { CHAT_TIMEOUT_MS, describeFetchError, endpoint, errorText, STATUS_TIMEOUT_MS } from "./http.js";
-import { LlmError, type FetchFn, type LlmJsonRequest, type LlmProvider, type LlmStatus, type ProviderConfig } from "./types.js";
+import { sseData, withTimeout } from "./stream.js";
+import {
+  LlmError,
+  type FetchFn,
+  type LlmJsonRequest,
+  type LlmProvider,
+  type LlmStatus,
+  type LlmTextOptions,
+  type LlmTextRequest,
+  type ProviderConfig,
+} from "./types.js";
 
 interface MessagesBody {
   content?: { type: string; input?: unknown }[];
@@ -75,5 +85,54 @@ export class AnthropicProvider implements LlmProvider {
       throw new LlmError("The model returned an empty reply");
     }
     return block.input as T;
+  }
+
+  /** Plain chat, streamed with server-sent events. */
+  async chatText(req: LlmTextRequest, options: LlmTextOptions = {}): Promise<string> {
+    const system = req.messages
+      .filter((m) => m.role === "system")
+      .map((m) => m.content)
+      .join("\n\n");
+    const messages = req.messages.filter((m) => m.role !== "system");
+    let res: Response;
+    try {
+      res = await this.fetchImpl(endpoint(this.config.baseUrl, "v1/messages"), {
+        method: "POST",
+        headers: this.headers(),
+        signal: withTimeout(CHAT_TIMEOUT_MS, options.signal),
+        body: JSON.stringify({
+          model: this.config.model,
+          max_tokens: 2048,
+          temperature: Math.min(1, req.temperature ?? 0.7),
+          stream: true,
+          ...(system ? { system } : {}),
+          messages,
+        }),
+      });
+    } catch (e) {
+      if (options.signal?.aborted) throw e;
+      throw new LlmError(`Couldn't reach Anthropic: ${describeFetchError(e)}`);
+    }
+    if (!res.ok) {
+      const text = await errorText(res);
+      if (res.status === 401 || res.status === 403) throw new LlmError("Anthropic rejected the API key", res.status);
+      throw new LlmError(`Anthropic returned ${res.status}${text ? `: ${text}` : ""}`, res.status);
+    }
+    let text = "";
+    for await (const data of sseData(res)) {
+      let event: { type?: string; delta?: { type?: string; text?: string }; error?: { message?: string } };
+      try {
+        event = JSON.parse(data);
+      } catch {
+        continue;
+      }
+      if (event.type === "error") throw new LlmError(`Anthropic: ${event.error?.message ?? "the stream failed"}`);
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
+        text += event.delta.text;
+        options.onDelta?.(event.delta.text);
+      }
+    }
+    if (!text.trim()) throw new LlmError("The model returned an empty reply");
+    return text;
   }
 }
