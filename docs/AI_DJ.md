@@ -112,10 +112,33 @@ sign-in redirect) can't use Apple Intelligence or change the server.
 
 ## Limits
 
-`POST /api/dj/picks` is the only endpoint that runs a model for ordinary
-users, so a signed-in account can't use the server's API credits for arbitrary
-prompts. It is limited to 20 requests per person per 10 minutes and one at a
-time.
+`POST /api/dj/picks` builds its own prompt, so a signed-in account can't use
+the server's API credits for arbitrary prompts through it. It is limited to 20
+requests per person per 10 minutes and one at a time.
+
+The AI plugins below (song chat, playlist builder, taste summary) need
+free-form questions, so they use `POST /api/llm/chat`, which relays a prompt the
+app built. That does let a signed-in person spend the server's credits on their
+own prompts, within tight bounds: 60 requests per person per 10 minutes, at most
+3 answers at once, 32,000 characters in and 20,000 out, and errors from the
+provider are hidden from non-admins as for the DJ. Set `LLM_CHAT_DISABLED=1` in
+the server's environment to switch the route off (the DJ keeps working).
+
+## AI plugins
+
+Six community plugins build on the DJ and use the provider chosen in Settings →
+AI DJ (the same server, device, local or on-device providers). Turn them on in
+Settings → Plugins; each shows a pointer to Settings → AI DJ when no provider
+works.
+
+| Plugin | What it does |
+| --- | --- |
+| DJ personalities | Warm, dry, calm, hype or minimal hosts, or your own. Changes how the model words intros (`style`) and the system voice's rate, pitch and voice. |
+| AI playlist builder | "Rainy Sunday cooking" becomes a playlist. Every song is looked up in your server library, Jellyfin or Spotify; made-up songs are never played. |
+| Ask about this song | A chat with the current song as context, streamed when the provider can stream. |
+| Mood radio | Focus, workout, sleep, party and commute radio that tops up the queue and feeds skips and finished songs back to the model. |
+| Neural voices | Speaks intros through an OpenAI-compatible `/v1/audio/speech` server (OpenAI, Kokoro, Piper). Falls back to the system voice. The server must allow browser requests (CORS). |
+| Taste summary | "Your taste in three paragraphs". Only aggregate counts are sent, only when you press the button, and the screen shows exactly what is sent. |
 
 Whatever a model (or a device) returns is bounded before it reaches an app: at
 most 25 picks, artist and title cut to 200 characters, the intro to 400, and

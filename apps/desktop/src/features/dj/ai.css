@@ -86,3 +86,16 @@ textarea.text-input {
     flex: 1;
   }
 }
+.ai-playlist .text-input,
+.ai-chat .text-input,
+.ai-radio .text-input,
+.taste .text-input,
+.dj-persona .text-input,
+.tts-panel .text-input {
+  min-height: 44px;
+}
+.ai-check input,
+.dj-persona input[type="range"],
+.tts-panel input[type="range"] {
+  accent-color: var(--accent-from);
+}

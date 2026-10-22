@@ -323,6 +323,8 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
       // With `schema` the reply is JSON ({ data }); otherwise text ({ text }), or
       // server-sent events (delta / done / error) with `stream: true`.
       app.post<{ Body: ChatBody }>("/api/llm/chat", { preHandler: requireUser }, async (req, reply) => {
+        // A server owner who only wants the DJ to spend API credits can switch the free-form routes off.
+        if (process.env.LLM_CHAT_DISABLED === "1") return reply.code(403).send({ error: "chat_disabled" });
         const userId = req.user!.id;
         const body = req.body ?? {};
         const ref = typeof body.provider === "string" ? body.provider : defaultRef();

@@ -61,6 +61,7 @@ export function describeAiError(e: unknown): string {
     if (e.code === "rate_limited") return "You've asked a lot in the last few minutes. Try again shortly.";
     if (e.code === "busy") return "The AI is still answering your other request. Try again in a moment.";
     if (e.code === "no_provider") return NO_PROVIDER_MESSAGE;
+    if (e.code === "chat_disabled") return "The server owner has turned off AI chat features. The DJ still works.";
     if (e.code === "provider_not_found") return "That AI provider is no longer available. Pick another in Settings → AI DJ.";
     return e.message.replace(/^Request failed \(\d+\):?\s*/, "") || "The AI request failed.";
   }

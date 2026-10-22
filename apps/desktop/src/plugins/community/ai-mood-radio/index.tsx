@@ -1,7 +1,7 @@
 import type { Plugin } from "../../types";
 import { useDj } from "@/features/dj/djStore";
 import { setFeedbackSource } from "@/features/dj/hooks";
-import { WavesIcon } from "@/ui/icons";
+import { SlidersIcon } from "@/ui/icons";
 import { RadioPage } from "./RadioPage";
 import { feedbackNotes, ListenTracker } from "./mood";
 import { useRadio } from "./store";
@@ -30,7 +30,7 @@ const plugin: Plugin = {
       if (s.spoken !== prev.spoken) ctx.storage.set(SPOKEN_KEY, s.spoken);
     });
 
-    ctx.registerSidebarItem({ id: "ai-mood-radio", label: "Mood radio", icon: <WavesIcon size={22} />, render: () => <RadioPage /> });
+    ctx.registerSidebarItem({ id: "ai-mood-radio", label: "Mood radio", icon: <SlidersIcon size={22} />, render: () => <RadioPage /> });
 
     // The radio learns from skips; the regular AI DJ gets the same skip-aware notes.
     setFeedbackSource(() => feedbackNotes(djListens.reactions));

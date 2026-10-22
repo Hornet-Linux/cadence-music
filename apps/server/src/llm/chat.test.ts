@@ -201,6 +201,9 @@ test("POST /api/llm/chat: text, JSON, streaming and errors", async () => {
     app.inject({ method: "POST", url: "/api/llm/chat", headers, payload: payload as object });
 
   assert.equal((await chat(undefined, { messages: MESSAGES })).statusCode, 401);
+  process.env.LLM_CHAT_DISABLED = "1";
+  assert.equal((await chat(alice, { messages: MESSAGES })).json().error, "chat_disabled");
+  delete process.env.LLM_CHAT_DISABLED;
   assert.equal((await chat(alice, { messages: MESSAGES })).statusCode, 409, "no provider yet");
 
   await app.inject({
