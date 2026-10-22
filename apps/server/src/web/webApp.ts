@@ -29,7 +29,8 @@ const TYPES: Record<string, string> = {
  * LLM provider of their choice straight from the page (OpenAI, a local Ollama
  * on http://localhost:11434, ...). So any https host and loopback http are
  * allowed; script-src, not connect-src, is the defence against injected code.
- * style-src needs 'unsafe-inline' for React style attributes.
+ * (Chrome rejects a port wildcard on an IPv6 literal, so there is no [::1]
+ * entry; "localhost" covers it.) style-src needs 'unsafe-inline' for React style attributes.
  */
 export const WEB_APP_CSP = [
   "default-src 'self'",
@@ -38,7 +39,7 @@ export const WEB_APP_CSP = [
   "img-src 'self' https: data: blob:",
   "media-src 'self' https: blob:",
   "font-src 'self' https: data:",
-  "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* http://[::1]:*",
+  "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
   "frame-src https://sdk.scdn.co https://*.apple.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
