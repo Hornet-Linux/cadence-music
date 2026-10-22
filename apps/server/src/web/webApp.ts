@@ -22,9 +22,8 @@ const TYPES: Record<string, string> = {
  * The web player keeps the Cadence session token and the Spotify refresh token
  * in localStorage, so the part that matters is script-src: only our own bundle,
  * the Spotify Web Playback SDK and MusicKit JS can run, with no inline scripts
- * and no eval, so injected markup can't execute. YouTube and SoundCloud are listed for their
- * official embedded players (the opt-in streaming plugins); Deezer's widget is an iframe only.
- * object-src, base-uri,
+ * and no eval, so injected markup can't execute. (The opt-in streaming plugins add their official
+ * embed hosts, but only when the admin enables them; see EMBED_CSP_SOURCES.) object-src, base-uri,
  * frame-ancestors and form-action close the other routes.
  *
  * connect-src can't be narrowed to Spotify/Apple: the AI DJ lets people call an
@@ -34,28 +33,62 @@ const TYPES: Record<string, string> = {
  * (Chrome rejects a port wildcard on an IPv6 literal, so there is no [::1]
  * entry; "localhost" covers it.) style-src needs 'unsafe-inline' for React style attributes.
  */
-export const WEB_APP_CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com https://www.youtube.com https://w.soundcloud.com",
-  "style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com",
-  "img-src 'self' https: data: blob:",
-  "media-src 'self' https: blob:",
-  "font-src 'self' https: data:",
-  "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
-  "frame-src https://sdk.scdn.co https://*.apple.com https://www.youtube.com https://www.youtube-nocookie.com https://w.soundcloud.com https://widget.deezer.com",
-  "worker-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-].join("; ");
+/**
+ * Extra Content-Security-Policy sources for the opt-in streaming plugins' official embedded players.
+ * A source is added only when the admin has enabled the matching server plugin, so a server that
+ * never enables them keeps the default policy exactly.
+ */
+export const EMBED_CSP_SOURCES: Record<string, { script?: string[]; frame?: string[] }> = {
+  // YouTube IFrame Player API: its loader script, and the embedded player frame.
+  "cadence.youtube-music": { script: ["https://www.youtube.com"], frame: ["https://www.youtube.com", "https://www.youtube-nocookie.com"] },
+  // SoundCloud HTML5 Widget API: api.js, and the widget frame.
+  "cadence.soundcloud": { script: ["https://w.soundcloud.com"], frame: ["https://w.soundcloud.com"] },
+  // Deezer's widget is a plain iframe (no script).
+  "cadence.deezer": { frame: ["https://widget.deezer.com"] },
+};
+
+/** The policy for the web player, with the embed sources of the given enabled plugin ids added. */
+export function buildWebAppCsp(enabledPlugins: Iterable<string> = []): string {
+  const script = ["'self'", "'wasm-unsafe-eval'", "https://sdk.scdn.co", "https://js-cdn.music.apple.com"];
+  const frame = ["https://sdk.scdn.co", "https://*.apple.com"];
+  for (const id of enabledPlugins) {
+    const extra = EMBED_CSP_SOURCES[id];
+    if (!extra) continue;
+    for (const src of extra.script ?? []) if (!script.includes(src)) script.push(src);
+    for (const src of extra.frame ?? []) if (!frame.includes(src)) frame.push(src);
+  }
+  return [
+    "default-src 'self'",
+    `script-src ${script.join(" ")}`,
+    "style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com",
+    "img-src 'self' https: data: blob:",
+    "media-src 'self' https: blob:",
+    "font-src 'self' https: data:",
+    "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
+    `frame-src ${frame.join(" ")}`,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+  ].join("; ");
+}
+
+/** The default policy (no streaming plugins enabled). */
+export const WEB_APP_CSP = buildWebAppCsp();
 
 /**
  * Serves the web player (the desktop UI built with `npm run build:web`) at
  * /app. Unknown paths fall back to index.html so in-app routes and sign-in
  * callbacks load the app.
  */
-export function registerWebApp(app: FastifyInstance, webDir: string | undefined): void {
+export function registerWebApp(
+  app: FastifyInstance,
+  webDir: string | undefined,
+  /** Whether the admin turned a community server plugin on; decides which embed sources the CSP adds. */
+  pluginEnabled: (id: string) => boolean = () => false,
+): void {
+  const csp = buildWebAppCsp(Object.keys(EMBED_CSP_SOURCES).filter(pluginEnabled));
   const root = webDir ? path.resolve(webDir) : null;
   const index = root ? path.join(root, "index.html") : null;
   const available = !!index && fs.existsSync(index);
@@ -75,19 +108,19 @@ export function registerWebApp(app: FastifyInstance, webDir: string | undefined)
     const file = path.resolve(root, rel);
     const inside = file === root || file.startsWith(root + path.sep);
     if (inside && rel && fs.existsSync(file) && fs.statSync(file).isFile()) {
-      return sendFile(reply, file, rel.startsWith("assets/"));
+      return sendFile(reply, file, rel.startsWith("assets/"), csp);
     }
     // Asset requests that miss are real 404s; everything else is an app route.
     if (rel.startsWith("assets/")) return reply.code(404).send();
-    return sendFile(reply, index, false);
+    return sendFile(reply, index, false, csp);
   });
 }
 
-function sendFile(reply: FastifyReply, file: string, immutable: boolean) {
+function sendFile(reply: FastifyReply, file: string, immutable: boolean, csp: string) {
   reply
     .type(TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream")
     .header("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache")
-    .header("Content-Security-Policy", WEB_APP_CSP)
+    .header("Content-Security-Policy", csp)
     .header("X-Content-Type-Options", "nosniff")
     .header("X-Frame-Options", "DENY")
     .header("Referrer-Policy", "no-referrer");

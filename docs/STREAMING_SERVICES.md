@@ -49,17 +49,33 @@ cadence.<svc> (desktop plugin)  --/api/streaming/<svc>/...-->  cadence.<svc> (se
 
 ## Content-Security-Policy
 
-The web player's CSP (`WEB_APP_CSP` in `apps/server/src/web/webApp.ts`, and the meta tag in
-`apps/desktop/index.html`) now also allows the official embed hosts: scripts from `www.youtube.com` and
-`w.soundcloud.com`, frames from `www.youtube.com`, `www.youtube-nocookie.com`, `w.soundcloud.com` and
-`widget.deezer.com`. This applies to every user of the web player, whether or not they enable these plugins.
+The server-served web player (`/app`) keeps its default CSP exactly as before. `EMBED_CSP_SOURCES` in
+`apps/server/src/web/webApp.ts` adds each official embed host **only when the admin has enabled the matching
+server plugin** (read at start-up, so, like the plugin itself, it applies after a restart):
+
+| Plugin enabled on the server | Added to `script-src` | Added to `frame-src` |
+| --- | --- | --- |
+| `cadence.youtube-music` | `https://www.youtube.com` | `https://www.youtube.com`, `https://www.youtube-nocookie.com` |
+| `cadence.soundcloud` | `https://w.soundcloud.com` | `https://w.soundcloud.com` |
+| `cadence.deezer` | none (plain iframe) | `https://widget.deezer.com` |
+| `cadence.tidal` | none | none |
+
+The web build (`vite build --mode web`) drops the `<meta>` CSP from `index.html`, because a fixed meta policy
+would be intersected with the server's header and block these embeds; the header is stricter anyway.
+
+The Electron app's own policy (the meta tag in `apps/desktop/index.html`, no admin toggle) gains only
+`frame-src https://widget.deezer.com`, because the Deezer widget is an iframe with no script. Its `script-src` is
+**not** widened, so the YouTube and SoundCloud plugins (which need their loader scripts) work in the web player and
+Android app, not in the Electron app. (YouTube's player also refuses `file://` origins.)
 
 ## Testing
 
-Unit tests use mocked network and mocked widget/iframe APIs. For end-to-end checks without live
-credentials, the server honours `CADENCE_STREAMING_TEST_UPSTREAM=<origin>`: every service endpoint then points
-at `<origin>/<slug>/<host-key>/...` (see `hosts()` in `apps/server/src/community/_streaming/http.ts`).
-Never set it in production.
+Unit tests use mocked network and mocked widget/iframe APIs. For end-to-end checks without live credentials,
+the server can redirect every service endpoint, token exchange included, to a fake host, but **only when both**
+`CADENCE_TESTING=1` and `CADENCE_STREAMING_TEST_UPSTREAM=<origin>` are set (endpoints become
+`<origin>/<slug>/<host-key>/...`; see `hosts()` in `apps/server/src/community/_streaming/http.ts`). Either variable
+alone is ignored, and when it is active each streaming plugin logs a WARN at start-up naming itself and the target.
+Never set these in production.
 
 ## Redirect URIs to register
 

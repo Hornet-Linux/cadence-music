@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { RateLimiter } from "../../auth/rateLimit.js";
 import { open, seal } from "../../llm/secretBox.js";
 import type { ServerPluginContext } from "../../plugins/types.js";
-import { publicMessage, UpstreamError, type FetchFn } from "./http.js";
+import { publicMessage, testUpstream, UpstreamError, type FetchFn } from "./http.js";
 import { newPkce, newState } from "./pkce.js";
 import type { StreamStatus } from "./types.js";
 
@@ -99,7 +99,15 @@ export class StreamingKit {
     readonly app: FastifyInstance,
     readonly ctx: ServerPluginContext,
     readonly fetchFn?: FetchFn,
-  ) {}
+  ) {
+    const target = testUpstream();
+    if (target) {
+      ctx.log.warn(
+        { plugin: def.id, target },
+        "CADENCE_STREAMING_TEST_UPSTREAM is active: this plugin sends its API calls, including OAuth token exchange, to a test host instead of the real service. Never use this in production.",
+      );
+    }
+  }
 
   get base(): string {
     return `/api/streaming/${this.def.slug}`;

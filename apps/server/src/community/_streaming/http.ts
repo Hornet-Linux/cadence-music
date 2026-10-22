@@ -45,9 +45,19 @@ export interface CallOptions {
   timeoutMs?: number;
 }
 
-/** Where a service's endpoints live. Tests (and only tests) may point them at a fake. */
+/**
+ * Test-only: when BOTH `CADENCE_TESTING=1` and `CADENCE_STREAMING_TEST_UPSTREAM=<origin>` are set, every
+ * service endpoint (token exchange included) points at that origin instead of the real service. Either
+ * variable alone does nothing. `StreamingKit` logs a loud warning at start-up when this is active.
+ */
+export function testUpstream(env: NodeJS.ProcessEnv = process.env): string | null {
+  const target = env.CADENCE_STREAMING_TEST_UPSTREAM?.trim().replace(/\/+$/, "");
+  return env.CADENCE_TESTING === "1" && target ? target : null;
+}
+
+/** Where a service's endpoints live. */
 export function hosts<K extends string>(slug: string, defaults: Record<K, string>): Record<K, string> {
-  const fake = process.env.CADENCE_STREAMING_TEST_UPSTREAM?.replace(/\/+$/, "");
+  const fake = testUpstream();
   if (!fake) return defaults;
   const out = {} as Record<K, string>;
   for (const key of Object.keys(defaults) as K[]) out[key] = `${fake}/${slug}/${key}`;
