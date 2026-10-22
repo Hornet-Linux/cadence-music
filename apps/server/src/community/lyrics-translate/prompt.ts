@@ -20,7 +20,7 @@ export const MAX_LINE_CHARS = 400;
 
 /** A language name such as "English" or "Chinese (Simplified)". Anything odd is refused. */
 export function validLanguage(value: unknown): value is string {
-  return typeof value === "string" && /^[\p{L}][\p{L} ()\-]{1,38}$/u.test(value.trim());
+  return typeof value === "string" && /^[\p{L}][\p{L} ()-]{1,38}$/u.test(value.trim());
 }
 
 export function buildTranslateMessages(lines: string[], target: string): TranslateMessage[] {
