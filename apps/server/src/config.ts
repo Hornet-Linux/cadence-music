@@ -85,17 +85,27 @@ function validProxyEntry(entry: string): boolean {
 }
 
 /**
- * TRUST_PROXY: unset = trust one proxy hop (the usual Caddy/nginx/Traefik in
- * front). `false`/`0` = trust none; a number = that many hops; otherwise a
- * comma-separated list of proxy addresses or CIDR ranges. Trusting every hop
- * would let clients spoof their address and dodge the rate limits, so it is
- * not offered; "true" is treated as one hop.
+ * Proxies on this machine or a private network (loopback, link-local, RFC 1918
+ * and unique-local ranges). This is where a reverse proxy normally sits (Caddy
+ * on the same host or on the Docker network), and a client on the open
+ * internet is never in these ranges, so it can't pass off its own
+ * X-Forwarded-For as a proxy's.
+ */
+export const PRIVATE_PROXIES = ["loopback", "linklocal", "uniquelocal"];
+
+/**
+ * TRUST_PROXY: unset = believe X-Forwarded-For only from a proxy on this
+ * machine or a private network (PRIVATE_PROXIES). `false`/`0` = trust none; a
+ * number = that many hops (only safe if clients can't reach the server
+ * directly); otherwise a comma-separated list of proxy addresses, CIDR ranges
+ * or the keywords loopback/linklocal/uniquelocal. Trusting every hop would let
+ * clients spoof their address and dodge the rate limits, so it is not
+ * offered; "true" means the default.
  */
 export function parseTrustProxy(value: string | undefined): Config["trustProxy"] {
   const v = (value ?? "").trim().toLowerCase();
-  if (v === "") return 1;
+  if (v === "" || v === "true") return [...PRIVATE_PROXIES];
   if (v === "false") return false;
-  if (v === "true") return 1;
   if (/^\d+$/.test(v)) {
     const hops = Number(v);
     if (hops > 10) throw new Error("TRUST_PROXY hop count must be between 0 and 10");

@@ -6,7 +6,7 @@ import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { AuthResponse, StreamUrlResponse, TrackListResponse } from "@uma/shared";
 import { buildApp } from "./app.js";
-import type { Config } from "./config.js";
+import { PRIVATE_PROXIES, type Config } from "./config.js";
 import { openDb, type Db } from "./db.js";
 import { createLocalUser } from "./auth/users.js";
 import type { FetchFn } from "./auth/oidc.js";
@@ -223,6 +223,25 @@ test("behind one trusted proxy, a forged X-Forwarded-For cannot dodge the rate l
   assert.equal((await attempt(app, "admin", "admin-password", "10.0.1.1, 9.9.9.9")).statusCode, 429);
   // A genuinely different client is unaffected.
   assert.equal((await attempt(app, "admin", "admin-password", "8.8.8.8")).statusCode, 200);
+  await app.close();
+  db.close();
+});
+
+test("by default only a proxy on this machine or a private network is believed", async () => {
+  const { app, db } = await setup({ trustProxy: PRIVATE_PROXIES });
+  const login = (remoteAddress: string, forwardedFor: string, password: string) =>
+    app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      remoteAddress,
+      headers: { "x-forwarded-for": forwardedFor },
+      payload: { username: "admin", password },
+    });
+  // A client straight from the internet can't pick its own address.
+  for (let i = 0; i < 10; i++) assert.equal((await login("203.0.113.7", `10.9.9.${i}`, "wrong")).statusCode, 401);
+  assert.equal((await login("203.0.113.7", "10.9.8.8", "admin-password")).statusCode, 429);
+  // A proxy on the Docker network (private address) is believed, so a different real client is unaffected.
+  assert.equal((await login("172.18.0.2", "198.51.100.20", "admin-password")).statusCode, 200);
   await app.close();
   db.close();
 });

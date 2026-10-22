@@ -100,14 +100,19 @@ should return JSON.
 ### Client addresses and rate limits
 
 Sign-in, sign-up and first-run setup are rate limited per client address, so the
-server has to know the real address behind your proxy. By default it trusts
-exactly **one** proxy hop: the address your proxy appends to `X-Forwarded-For`.
-Caddy (bundled or your own), nginx with `proxy_set_header X-Forwarded-For
-$proxy_add_x_forwarded_for;` and Traefik all do this out of the box. If a
-second proxy or CDN sits in front, set `TRUST_PROXY=2`; if clients reach the
-server directly with no proxy, set `TRUST_PROXY=false` (otherwise anyone can
-forge the header and dodge the limits). To trust specific proxies by address
-instead of by count, list them: `TRUST_PROXY=172.18.0.0/16,10.0.0.5`.
+server has to know the real address behind your proxy. By default it believes
+`X-Forwarded-For` only from a proxy on the same machine or a private network
+(loopback, `10.x`, `172.16-31.x`, `192.168.x`, link-local and unique-local),
+and then uses the address that proxy appended. That covers the bundled Caddy,
+Caddy or nginx on the host, and other containers on your Docker network (nginx
+needs `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`; Caddy and
+Traefik do this out of the box). A client on the open internet is never in those
+ranges, so it can't forge the header to dodge the limits. If your proxy reaches
+the server from a public address, list it: `TRUST_PROXY=203.0.113.10` or a
+CIDR range (`TRUST_PROXY=172.18.0.0/16,10.0.0.5`). If clients reach the server
+directly with no proxy, set `TRUST_PROXY=false`. A plain number (`TRUST_PROXY=2`)
+means "believe that many hops" and is only safe when nobody can reach the
+server except through your proxy.
 
 ## 4. Connect the desktop app
 
@@ -241,7 +246,7 @@ Database migrations run automatically on start.
 | `MUSIC_DIR` | `/music` | Music library root (read-only is fine). |
 | `PUBLIC_URL` | — | Public base URL; required for OIDC. |
 | `SCAN_INTERVAL_MINUTES` | `60` | Periodic rescan; `0` disables. |
-| `TRUST_PROXY` | `1` | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is one hop. |
+| `TRUST_PROXY` | private-network proxies | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is proxies on this machine or a private network. |
 | `SERVER_SECRET` | generated | Signs stream URLs; generated into `DATA_DIR` if unset. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | — | Bootstrap admin account. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | — | Enable OIDC. |
