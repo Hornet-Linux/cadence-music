@@ -1,5 +1,8 @@
 import net from "node:net";
 import { randomUUID } from "node:crypto";
+import { APPLICATION_ID_RE, clampText, isPublicImageUrl, type DiscordStatus, type PresenceActivity } from "./presenceShared";
+export { APPLICATION_ID_RE, isPublicImageUrl, type DiscordState, type DiscordStatus, type PresenceActivity } from "./presenceShared";
+
 
 // Discord Rich Presence over Discord's local IPC. The desktop Discord client
 // listens on a named pipe (Windows) or unix socket (macOS, Linux); messages
@@ -79,63 +82,18 @@ export function backoffMs(attempt: number, random: () => number = Math.random): 
   return Math.round(base * (1 + random() * 0.2));
 }
 
-export const APPLICATION_ID_RE = /^\d{17,20}$/;
-
-/** What the renderer asks us to show. Everything is optional except `details`. */
-export interface PresenceActivity {
-  details: string;
-  state?: string;
-  largeImage?: string;
-  largeText?: string;
-  /** Epoch milliseconds the track "started" (now minus its position). */
-  startMs?: number;
-  /** Epoch milliseconds the track will end. */
-  endMs?: number;
-}
-
-const text = (v: unknown, max: number): string | undefined => {
-  if (typeof v !== "string") return undefined;
-  const t = v.replace(/\s+/g, " ").trim();
-  if (!t) return undefined;
-  // Discord needs between 2 and 128 characters.
-  const clipped = t.length > max ? `${t.slice(0, max - 1)}\u2026` : t;
-  return clipped.length < 2 ? `${clipped}\u00a0` : clipped;
-};
-
-/** Only a public https address can be fetched by Discord's servers. */
-export function isPublicImageUrl(value: unknown): value is string {
-  if (typeof value !== "string" || value.length > 256) return false;
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== "https:" || url.username || url.password) return false;
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false;
-  if (host.startsWith("[")) return false; // IPv6 literals: never needed for album art
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-    const [a, b] = host.split(".").map(Number) as [number, number];
-    if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) {
-      return false;
-    }
-  }
-  return host.includes(".");
-}
-
 /** Check an untrusted activity from the renderer; null if unusable. */
 export function parseActivity(input: unknown): PresenceActivity | null {
   if (!input || typeof input !== "object") return null;
   const raw = input as Record<string, unknown>;
-  const details = text(raw.details, 128);
+  const details = clampText(raw.details, 128);
   if (!details) return null;
   const finite = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : undefined);
   return {
     details,
-    state: text(raw.state, 128),
+    state: clampText(raw.state, 128),
     largeImage: isPublicImageUrl(raw.largeImage) ? raw.largeImage : undefined,
-    largeText: text(raw.largeText, 128),
+    largeText: clampText(raw.largeText, 128),
     startMs: finite(raw.startMs),
     endMs: finite(raw.endMs),
   };
@@ -155,16 +113,6 @@ export function toDiscordActivity(a: PresenceActivity): Record<string, unknown> 
     activity.assets = { large_image: a.largeImage, ...(a.largeText ? { large_text: a.largeText } : {}) };
   }
   return activity;
-}
-
-export type DiscordState = "off" | "connecting" | "connected" | "waiting";
-
-export interface DiscordStatus {
-  state: DiscordState;
-  /** The Discord user once connected. */
-  user?: string;
-  /** A short reason shown in settings, e.g. "Discord is not running". */
-  error?: string;
 }
 
 /** The small part of a socket we use; real sockets and test fakes both fit. */
