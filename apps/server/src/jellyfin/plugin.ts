@@ -248,6 +248,40 @@ export function createJellyfinPlugin(options: JellyfinPluginOptions = {}): Serve
         return { items, total: typeof data?.TotalRecordCount === "number" ? data.TotalRecordCount : items.length };
       }
 
+      /**
+       * Jellyfin's `SearchTerm` only matches a track's own title, but people search
+       * for artists and albums too. So a plain text search also finds the artists
+       * and albums that match and adds their tracks: title matches first, then
+       * artists, then albums, with no repeats.
+       */
+      async function searchTracks(a: Authed, text: string, limit: number, offset: number): Promise<JellyfinTracksResponse> {
+        const want = Math.min(MAX_LIMIT, offset + limit);
+        const matchIds = async (type: "MusicArtist" | "MusicAlbum"): Promise<string[]> => {
+          const data = await jfJson<JfItemsResponse>(a.jf, "GET", "/Items", {
+            query: { userId: a.conn.jellyfinUserId, IncludeItemTypes: type, Recursive: true, SearchTerm: text, Limit: 10, EnableTotalRecordCount: false },
+          });
+          return (data?.Items ?? []).map((i) => i.Id).filter((id): id is string => typeof id === "string" && validId(id));
+        };
+        const [byTitle, artistIds, albumIds] = await Promise.all([
+          listTracks(a, trackQuery(a, { SearchTerm: text }, want, 0)),
+          matchIds("MusicArtist"),
+          matchIds("MusicAlbum"),
+        ]);
+        const [byArtist, byAlbum] = await Promise.all([
+          artistIds.length ? listTracks(a, trackQuery(a, { ArtistIds: artistIds.join(",") }, want, 0)) : { items: [], total: 0 },
+          albumIds.length ? listTracks(a, trackQuery(a, { AlbumIds: albumIds.join(",") }, want, 0)) : { items: [], total: 0 },
+        ]);
+        const seen = new Set<string>();
+        const merged: JellyfinTrack[] = [];
+        for (const t of [...byTitle.items, ...byArtist.items, ...byAlbum.items]) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            merged.push(t);
+          }
+        }
+        return { items: merged.slice(offset, offset + limit), total: merged.length };
+      }
+
       // ---- status and sign-in ---------------------------------------------------
 
       app.get("/api/jellyfin/status", { preHandler: requireUser }, async (req): Promise<JellyfinStatusResponse> => {
@@ -344,6 +378,11 @@ export function createJellyfinPlugin(options: JellyfinPluginOptions = {}): Serve
       }>("/api/jellyfin/tracks", { preHandler: requireUser }, (req, reply) =>
         authed(req, reply, async (a) => {
           const { q, artist, album, albumId, favourites } = req.query;
+          const limit = clampInt(req.query.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
+          const offset = clampInt(req.query.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+          // A plain search (no other filter) looks at artists and albums as well as titles.
+          const plain = !albumId && !artist && !album && favourites !== "1" && favourites !== "true";
+          if (plain && term(q)) return searchTracks(a, term(q)!, limit, offset);
           let parent: string | undefined;
           if (albumId !== undefined && albumId !== "") {
             if (!validId(albumId)) return reply.code(400).send({ error: "invalid_id" });
@@ -358,8 +397,8 @@ export function createJellyfinPlugin(options: JellyfinPluginOptions = {}): Serve
               ParentId: parent,
               Filters: favourites === "1" || favourites === "true" ? "IsFavorite" : undefined,
             },
-            clampInt(req.query.limit, DEFAULT_LIMIT, 1, MAX_LIMIT),
-            clampInt(req.query.offset, 0, 0, Number.MAX_SAFE_INTEGER),
+            limit,
+            offset,
           );
           return listTracks(a, query);
         }),

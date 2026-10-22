@@ -240,6 +240,13 @@ export class FakeJellyfin {
     if (albums) list = list.filter((i) => i.Album === albums);
     const parent = q.get("ParentId");
     if (parent) list = list.filter((i) => i.AlbumId === parent);
+    const artistIds = q.get("ArtistIds");
+    if (artistIds) {
+      const names = this.items.filter((i) => artistIds.split(",").includes(i.Id)).map((i) => i.Name);
+      list = list.filter((i) => i.Artists?.some((n) => names.includes(n)));
+    }
+    const albumIds = q.get("AlbumIds");
+    if (albumIds) list = list.filter((i) => albumIds.split(",").includes(i.AlbumId ?? ""));
     const ids = q.get("Ids");
     if (ids) list = list.filter((i) => ids.split(",").includes(i.Id));
     const filters = (q.get("Filters") ?? "").split(",");

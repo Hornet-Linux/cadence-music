@@ -246,6 +246,40 @@ test("ids that go into Jellyfin URLs must be 32 hex characters", async () => {
 
 // ---- browsing ---------------------------------------------------------------------
 
+test("a text search also finds tracks by artist and by album, titles first, without repeats", async () => {
+  const t = await setup();
+  await t.connect(t.alice);
+  const find = async (q: string, extra = "") =>
+    ((await get(t, `/api/jellyfin/tracks?q=${encodeURIComponent(q)}${extra}`, t.alice)).json() as JellyfinTracksResponse);
+
+  // By artist: Jellyfin's own title search finds nothing for "daft".
+  const artist = await find("daft");
+  assert.deepEqual(artist.items.map((i) => i.artists[0]), ["Daft Punk", "Daft Punk", "Daft Punk"].slice(0, artist.items.length));
+  assert.ok(artist.items.length >= 3 && artist.items.every((i) => i.artists.includes("Daft Punk")), "all of the artist's tracks");
+  assert.equal(artist.total, artist.items.length);
+
+  // By album: "discovery" is an album name, not a track title.
+  const album = await find("discovery");
+  assert.ok(album.items.some((i) => i.albumId === IDS.discovery), "tracks of the album");
+
+  // A title match comes before artist/album matches, and nothing repeats.
+  const lucky = await find("lucky");
+  assert.deepEqual(lucky.items.map((i) => i.title), ["Get Lucky"]);
+  const ids = (await find("punk")).items.map((i) => i.id);
+  assert.equal(new Set(ids).size, ids.length, "no duplicates");
+
+  // Paging applies to the merged list.
+  const first = await find("daft", "&limit=2");
+  const second = await find("daft", "&limit=2&offset=2");
+  assert.equal(first.items.length, 2);
+  assert.ok(second.items.every((i) => !first.items.some((f) => f.id === i.id)), "pages don't overlap");
+
+  // Explicit filters keep their old, exact behaviour.
+  const filtered = await find("lucky", "&artist=Justice");
+  assert.equal(filtered.items.length, 0);
+  await finish(t);
+});
+
 test("tracks, albums and playlists are mapped, with signed relative artwork paths", async () => {
   const t = await setup();
   await t.connect(t.alice);
