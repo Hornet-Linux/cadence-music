@@ -13,6 +13,8 @@ connections) is a plugin, on both the desktop and the server.
   local files on its own, or connects to your server.
 - **iOS app** (`apps/ios`) — sideloaded with a free Apple ID; plays from your
   server in the background. See [docs/IOS.md](docs/IOS.md).
+- **Android app** (`apps/android`) � a native shell around your server's web
+  player; sideload the APK. See [docs/ANDROID.md](docs/ANDROID.md).
 - **Self-hosted server** (`apps/server`) — one Docker container. Scans your music
   folder, streams it with seeking, and handles accounts.
 - **Single sign-on** — OIDC with any provider (Authentik, Keycloak, …) plus an
@@ -50,6 +52,7 @@ your admin login. Manage people at `https://your-domain/admin`.
 - **macOS (Apple Silicon):** [Cadence-mac-arm64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-arm64.dmg)
 - **macOS (Intel):** [Cadence-mac-x64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-x64.dmg)
 - **iPhone / iPad:** [Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.ipa), sideloaded with a free Apple ID ([how](docs/IOS.md))
+- **Android:** [Cadence.apk](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.apk), sideloaded ([how](docs/ANDROID.md))
 
 The Mac app isn't notarized by Apple, so the first time, open it with
 right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
