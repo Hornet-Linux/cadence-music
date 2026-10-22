@@ -1,0 +1,128 @@
+/* Scrobblers settings panel: quiet cards using the app's existing tokens. */
+.scrb .btn,
+.scrb .text-input {
+  min-height: 44px;
+}
+.scrb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.scrb-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.scrb-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.scrb-title h3 {
+  font-size: 0.98rem;
+  font-weight: 650;
+  margin: 0;
+}
+.scrb-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+.scrb-dot.ok {
+  background: var(--ok);
+}
+.scrb-dot.warn {
+  background: var(--text-muted);
+}
+.scrb-dot.error {
+  background: var(--danger);
+}
+.scrb-body,
+.scrb-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scrb-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.scrb-facts div {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 8px;
+}
+.scrb-facts dt {
+  color: var(--text-faint);
+}
+.scrb-facts dd {
+  margin: 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.scrb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.scrb-actions .btn {
+  text-decoration: none;
+}
+.scrb-problems h4 {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+.scrb-problems ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scrb-owner {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.scrb-owner summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.scrb-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 0.88rem;
+}
+.scrb-check input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.scrb-check span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+@media (max-width: 480px) {
+  .scrb-actions .btn {
+    flex: 1 1 auto;
+  }
+}
