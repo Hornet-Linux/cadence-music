@@ -27,7 +27,11 @@ FAKE
 chmod +x "$work/bin/gh"
 
 failures=0
-run() { # run <name> -- <env assignments...> -- <args...>
+status=0
+log=""
+
+# Run the script with the fake gh; sets $status and $log (the recorded gh calls).
+run() {
   local name=$1; shift
   : >"$work/log"
   env PATH="$work/bin:$PATH" GH_TOKEN=x GITHUB_REPOSITORY=o/r GITHUB_SHA=abcdef1234567 FAKE_LOG="$work/log" "$@" >"$work/out" 2>&1
@@ -35,51 +39,61 @@ run() { # run <name> -- <env assignments...> -- <args...>
   log="$(cat "$work/log")"
   echo "--- $name (exit $status)"
 }
-expect() { # expect <description> <condition>
-  if eval "$2"; then echo "  ok   $1"; else echo "  FAIL $1"; failures=$((failures + 1)); fi
+
+# Predicates over the last run.
+exit_is() { [ "$status" = "$1" ]; }
+exit_is_not() { [ "$status" != "$1" ]; }
+logged() { local x; for x in "$@"; do grep -qF -- "$x" <<<"$log" || return 1; done; }
+not_logged() { local x; for x in "$@"; do ! grep -qF -- "$x" <<<"$log" || return 1; done; }
+nothing_logged() { [ -z "$log" ]; }
+said() { grep -qF -- "$1" "$work/out"; }
+
+# expect <description> <predicate> [args...]
+expect() {
+  local description=$1; shift
+  if "$@"; then echo "  ok   $description"; else echo "  FAIL $description"; failures=$((failures + 1)); fi
 }
-has() { grep -qF -- "$1" <<<"$log"; }
-hasnt() { ! grep -qF -- "$1" <<<"$log"; }
 
 run "first publish: creates the tag and the pre-release, then uploads" \
   FAKE_HEAD=abcdef1234567 FAKE_TAG_MISSING=1 FAKE_RELEASE_MISSING=1 \
   bash "$script" "$work/Cadence.apk" "$work/Cadence.apk.sha256"
-expect "exits 0" '[ "$status" = 0 ]'
-expect "creates the tag at this commit" 'has "-X POST repos/o/r/git/refs -f ref=refs/tags/nightly -f sha=abcdef1234567"'
-expect "creates a pre-release that is not 'latest'" 'has "release create nightly" && has "--prerelease --latest=false"'
-expect "requires the tag to exist" 'has "--verify-tag"'
-expect "uploads both files with --clobber" 'has "release upload nightly" && has "Cadence.apk.sha256" && has "--clobber"'
+expect "exits 0" exit_is 0
+expect "creates the tag at this commit" logged "-X POST repos/o/r/git/refs -f ref=refs/tags/nightly -f sha=abcdef1234567"
+expect "creates a pre-release that is not 'latest'" logged "release create nightly" "--prerelease --latest=false"
+expect "requires the tag to exist" logged "--verify-tag"
+expect "uploads both files with --clobber" logged "release upload nightly" "Cadence.apk.sha256" "--clobber"
 
 run "later publish: moves the tag, edits the release, uploads" \
   FAKE_HEAD=abcdef1234567 FAKE_TAG_MISSING=0 FAKE_RELEASE_MISSING=0 \
   bash "$script" "$work/Cadence.apk"
-expect "exits 0" '[ "$status" = 0 ]'
-expect "moves the tag by force" 'has "-X PATCH repos/o/r/git/refs/tags/nightly -f sha=abcdef1234567 -F force=true"'
-expect "edits instead of creating" 'has "release edit nightly" && hasnt "release create"'
-expect "uploads" 'has "release upload nightly"'
+expect "exits 0" exit_is 0
+expect "moves the tag by force" logged "-X PATCH repos/o/r/git/refs/tags/nightly -f sha=abcdef1234567 -F force=true"
+expect "edits the release" logged "release edit nightly"
+expect "does not create it again" not_logged "release create"
+expect "uploads" logged "release upload nightly"
 
 run "race: another workflow created the release first" \
   FAKE_HEAD=abcdef1234567 FAKE_TAG_MISSING=0 FAKE_RELEASE_MISSING=1 FAKE_CREATE_FAILS=1 \
   bash "$script" "$work/Cadence.apk"
-expect "exits 0" '[ "$status" = 0 ]'
-expect "falls back to editing" 'has "release create nightly" && has "release edit nightly"'
-expect "still uploads" 'has "release upload nightly"'
+expect "exits 0" exit_is 0
+expect "falls back to editing" logged "release create nightly" "release edit nightly"
+expect "still uploads" logged "release upload nightly"
 
 run "main has moved on: publishes nothing" \
   FAKE_HEAD=1111111111111 FAKE_TAG_MISSING=0 FAKE_RELEASE_MISSING=0 \
   bash "$script" "$work/Cadence.apk"
-expect "exits 0" '[ "$status" = 0 ]'
-expect "does not touch the tag, the release or any file" 'hasnt "git/refs" && hasnt "release" '
-expect "says why" 'grep -q "main has moved on" "$work/out"'
+expect "exits 0" exit_is 0
+expect "does not touch the tag or the release" not_logged "git/refs" "release"
+expect "says why" said "main has moved on"
 
 run "a missing file is an error before anything is published" \
   FAKE_HEAD=abcdef1234567 \
   bash "$script" "$work/not-there.apk"
-expect "exits non-zero" '[ "$status" != 0 ]'
-expect "makes no gh calls" '[ -z "$log" ]'
+expect "exits non-zero" exit_is_not 0
+expect "makes no gh calls" nothing_logged
 
 run "no files is a usage error" FAKE_HEAD=abcdef1234567 bash "$script"
-expect "exits 2" '[ "$status" = 2 ]'
+expect "exits 2" exit_is 2
 
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed"; exit 1; fi
 echo "all checks passed"
