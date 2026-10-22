@@ -1,0 +1,185 @@
+/* Shared, deliberately quiet controls for the playback and audio plugins. */
+.ax {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+  padding-top: 8px;
+}
+.ax-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ax-title {
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ax-hint {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.ax-note {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.ax-note.warn {
+  border-color: var(--border-strong);
+}
+.ax-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-height: 44px;
+}
+.ax-row-text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.ax-row-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.ax-row-control {
+  flex-shrink: 0;
+}
+
+.ax-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ax-slider.off {
+  opacity: 0.5;
+}
+.ax-slider-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+.ax-slider-head output {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ax-slider input[type="range"] {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  accent-color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ax-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ax-chip {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.ax-chip:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.ax-chip.on {
+  background: var(--surface-hover);
+  border-color: var(--text-faint);
+  color: var(--text);
+}
+
+.ax-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ax-btn:disabled {
+  opacity: 0.45;
+}
+.ax-btn.quiet {
+  background: transparent;
+  color: var(--text-muted);
+}
+.ax-input {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+.ax-input:focus {
+  outline: none;
+  border-color: var(--text-faint);
+}
+.ax-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ax-inline .ax-input {
+  flex: 1 1 140px;
+}
+.ax-status {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ax-chip {
+    transition: none;
+  }
+}
+
+/* Bigger touch targets for the shared controls inside plugin panels. */
+.ax .segmented button,
+.viz-controls .segmented button {
+  min-height: 44px;
+}
+.ax .switch,
+.viz-page .switch {
+  position: relative;
+}
+.ax .switch::after {
+  content: "";
+  position: absolute;
+  inset: -10px -4px;
+}
