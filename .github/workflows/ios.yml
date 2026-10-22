@@ -32,6 +32,17 @@ jobs:
         run: |
           brew install xcodegen
           xcodegen generate
+      - name: Compile the tests
+        # The Apple Intelligence test skips itself without compatible hardware;
+        # building for the simulator proves the tests compile.
+        run: |
+          xcodebuild build-for-testing \
+            -project Cadence.xcodeproj \
+            -scheme Cadence \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-tests \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
       - name: Build
         run: |
           xcodebuild build \

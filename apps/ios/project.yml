@@ -10,6 +10,8 @@ targets:
     type: application
     platform: iOS
     sources: [Cadence]
+    scheme:
+      testTargets: [CadenceTests]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.hornetlinux.cadencemusic
@@ -20,4 +22,16 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.0"
         # Built unsigned; Sideloadly / AltStore re-sign it with your free Apple ID.
+        CODE_SIGNING_ALLOWED: "NO"
+  CadenceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [CadenceTests]
+    dependencies:
+      - target: Cadence
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.hornetlinux.cadencemusic.tests
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGNING_ALLOWED: "NO"

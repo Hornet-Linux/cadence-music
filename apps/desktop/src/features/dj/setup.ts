@@ -17,7 +17,7 @@ function sameModel(a: string, b: string): boolean {
 }
 
 /** What the user still has to do before the DJ can run. */
-export function djSetup(config: { kind: ProviderKind; model: string }, status: LlmStatus): DjSetup {
+export function djSetup(config: { kind: ProviderKind | "native"; model: string }, status: LlmStatus): DjSetup {
   if (!status.available) {
     return config.kind === "ollama" ? { kind: "no-ollama", detail: status.error } : { kind: "unreachable", detail: status.error };
   }
