@@ -12,6 +12,8 @@ export interface UserRow {
   oidc_subject: string | null;
   is_admin: number;
   created_at: number;
+  /** When an admin switched the account off (null while it works normally). */
+  disabled_at: number | null;
 }
 
 export function toPublicUser(row: UserRow): PublicUser {

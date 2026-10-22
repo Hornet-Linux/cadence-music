@@ -72,12 +72,17 @@ export function TrackRow({
   const doubleClick = usePrefs((s) => s.doubleClick);
   const isCurrent = useIsCurrent(track);
   const play = () => (isCurrent ? toggle() : void playQueue(queue, index));
+  // Touch screens have no double-click: a tap on the row plays it.
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
   return (
     <div
       className={`track-row${isCurrent ? " playing" : ""}`}
       role="row"
       tabIndex={0}
+      onClick={(e) => {
+        if (coarse && !(e.target as HTMLElement).closest("button")) play();
+      }}
       onDoubleClick={() => (doubleClick === "queue" ? addToQueue(track) : play())}
       onKeyDown={(e) => {
         if (e.key === "Enter") play();

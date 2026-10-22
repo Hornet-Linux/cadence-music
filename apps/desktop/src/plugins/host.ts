@@ -103,6 +103,30 @@ function serialize(task: () => Promise<void>): Promise<void> {
   return run;
 }
 
+const ENABLED_KEY = "cadence.enabledPlugins";
+
+/** Ids of non-builtin plugins the user turned on, so they stay on after a restart. */
+function readSavedEnabled(): Set<string> {
+  try {
+    const raw = localStorage.getItem(ENABLED_KEY);
+    const list = raw ? (JSON.parse(raw) as unknown) : [];
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveEnabled(id: string, enabled: boolean): void {
+  try {
+    const ids = readSavedEnabled();
+    if (enabled) ids.add(id);
+    else ids.delete(id);
+    localStorage.setItem(ENABLED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Storage can be unavailable (private mode); the choice then lasts for this session only.
+  }
+}
+
 function makeStorage(pluginId: string, granted: boolean): PluginStorage {
   const prefix = `plugin:${pluginId}:`;
   const ensure = () => {
@@ -254,8 +278,8 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
     register(plugin) {
       if (get().plugins.some((p) => p.plugin.manifest.id === plugin.manifest.id)) return;
       set((s) => ({ plugins: [...s.plugins, { plugin, enabled: false }] }));
-      // Built-in plugins are trusted and activate immediately.
-      if (plugin.manifest.builtin) {
+      // Built-in plugins are trusted and activate immediately; others come back on if the user had turned them on.
+      if (plugin.manifest.builtin || readSavedEnabled().has(plugin.manifest.id)) {
         void get()
           .setEnabled(plugin.manifest.id, true)
           .catch((err) => console.error(`Failed to enable ${plugin.manifest.id}`, err));
@@ -277,6 +301,10 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
           await entry.plugin.deactivate?.();
           enabledIds.delete(id);
         }
+
+        // Remember the user's choice for plugins that are not built in. Only this plugin's entry changes,
+        // so plugins that have not registered yet at start-up keep theirs.
+        if (!entry.plugin.manifest.builtin) saveEnabled(id, enabled);
 
         const { contributions, listeners, playback } = await rebuild(enabledIds);
         nowPlayingListeners = listeners;
