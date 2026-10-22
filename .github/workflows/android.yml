@@ -38,7 +38,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4 (pinned by commit: third-party action)
 
       - name: Restore the release keystore (when the secrets are set)
         env:

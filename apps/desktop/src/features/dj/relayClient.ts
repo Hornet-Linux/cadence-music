@@ -1,3 +1,4 @@
+import { create } from "zustand";
 import type { LlmDeviceRegistration, LlmRelayJob, LlmRelayResult } from "@uma/shared";
 import { apiUrl, useServer } from "@/plugins/builtins/server/serverStore";
 import type { HostBridge } from "../../../electron/preload";
@@ -10,6 +11,31 @@ import { deviceId, localConfig, useProviders, type LocalProvider } from "./provi
 
 const FIRST_RETRY_MS = 2_000;
 const MAX_RETRY_MS = 30_000;
+
+export type RelayState = "off" | "connecting" | "connected" | "reconnecting" | "limit" | "unsupported";
+
+/** Whether this device is currently shared with the person's other devices, and why not if it isn't. */
+export const useRelay = create<{ state: RelayState; message: string | null }>(() => ({ state: "off", message: null }));
+
+/** What to do about the status the relay endpoint answered with. */
+export function classifyConnect(status: number): { stop: boolean; state: RelayState; message: string | null } {
+  // Signed out: nothing to show, the settings page tells you that already.
+  if (status === 401 || status === 403) return { stop: true, state: "off", message: null };
+  // A server from before the relay existed.
+  if (status === 404) {
+    return { stop: true, state: "unsupported", message: "This server is too old to share AI providers between devices." };
+  }
+  // Retrying can't help until another device stops sharing.
+  if (status === 429) {
+    return {
+      stop: true,
+      state: "limit",
+      message:
+        "This account already has the maximum number of devices sharing AI providers. Turn sharing off on one of them, then switch it on here again.",
+    };
+  }
+  return { stop: false, state: status >= 200 && status < 300 ? "connected" : "reconnecting", message: null };
+}
 
 export function deviceName(): string {
   switch (window.host?.platform as string | undefined) {
@@ -94,9 +120,13 @@ async function connectLoop(registration: LlmDeviceRegistration, signal: AbortSig
         body: JSON.stringify(registration),
         signal,
       });
-      // Signed out, or a server too old to have the relay: nothing to retry.
-      if (res.status === 401 || res.status === 403 || res.status === 404) return;
+      const verdict = classifyConnect(res.status);
+      if (verdict.stop) {
+        useRelay.setState({ state: verdict.state, message: verdict.message });
+        return;
+      }
       if (!res.ok || !res.body) throw new Error(`Relay returned ${res.status}`);
+      useRelay.setState({ state: "connected", message: null });
       delay = FIRST_RETRY_MS;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -120,6 +150,7 @@ async function connectLoop(registration: LlmDeviceRegistration, signal: AbortSig
     } catch {
       if (signal.aborted) return;
     }
+    useRelay.setState({ state: "reconnecting", message: null });
     await sleep(delay, signal);
     delay = Math.min(delay * 2, MAX_RETRY_MS);
   }
@@ -138,7 +169,8 @@ export function startRelay(): () => void {
     controller?.abort();
     controller = null;
     activeKey = key;
-    if (!registration) return;
+    if (!registration) return useRelay.setState({ state: "off", message: null });
+    useRelay.setState({ state: "connecting", message: null });
     controller = new AbortController();
     void connectLoop(registration, controller.signal);
   }
