@@ -3,7 +3,7 @@ import type { Config } from "./config.js";
 import type { Db } from "./db.js";
 import { OidcClient, type FetchFn } from "./auth/oidc.js";
 import { registerAuthRoutes } from "./auth/routes.js";
-import { userForToken } from "./auth/sessions.js";
+import { startSessionPurge, userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
 import { Settings } from "./settings.js";
 import { adminPlugin } from "./admin/plugin.js";
@@ -45,6 +45,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   app.decorateRequest("user", null);
+
+  // Sessions idle past the limit are useless; sweep them out now and then.
+  const stopSessionPurge = startSessionPurge(db);
+  app.addHook("onClose", async () => stopSessionPurge());
 
   // The desktop app calls the API from its own origin with bearer tokens (no
   // cookies), so allowing any origin does not expose sessions.

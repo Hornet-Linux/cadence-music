@@ -10,8 +10,8 @@ import { createLocalUser } from "../auth/users.js";
 async function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-admin-"));
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
-  createLocalUser(db, { username: "member", password: "member-password" });
+  await createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });
+  await createLocalUser(db, { username: "member", password: "member-password" });
   const app = await buildApp({
     config: { host: "127.0.0.1", port: 0, dataDir: dir, musicDir: dir, scanIntervalMinutes: 0, trustProxy: false, logLevel: "silent" },
     db,
