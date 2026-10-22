@@ -53,7 +53,7 @@ const podcastsPlugin: Plugin = {
     description:
       "Follow podcasts by RSS address or directory search. Your place in each episode, which ones you've played and each show's playback speed are saved on your server and follow you between devices. New episodes are checked for in the background.",
     author: "Cadence",
-    capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "ui.home.widget", "commands", "player.read", "player.queue", "network.outbound"],
+    capabilities: ["source.audio", "source.library", "ui.sidebar", "ui.settings", "ui.home.widget", "commands", "player.read", "player.control", "player.queue", "network.outbound"],
     apiRange: "^1.0.0",
   },
   activate(ctx) {
