@@ -210,7 +210,7 @@ export const InfoIcon = (p: P) => (
 );
 /**
  * The app mark: a play button drawn with equaliser bars. The tile
- * follows the accent colour, so it shifts with the artwork that's playing.
+ * follows the accent colour (flat, no gloss) with dark bars on top.
  * build/icon.png is the same mark with a fixed gradient
  * (see scripts/make-icon.ps1).
  */
@@ -221,15 +221,10 @@ export const LogoMark = (p: P) => (
         <stop offset="0" stopColor="var(--accent-from)" />
         <stop offset="1" stopColor="var(--accent-to)" />
       </linearGradient>
-      <linearGradient id="logo-gloss" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#fff" stopOpacity="0.28" />
-        <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
-      </linearGradient>
     </defs>
     <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#logo-grad)" />
-    <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#logo-gloss)" />
     {/* Equaliser bars that shrink left to right, tracing a play triangle. */}
-    <g fill="#fff">
+    <g fill="var(--accent-fg)">
       <rect x="5.75" y="6" width="1.9" height="12" rx="0.95" />
       <rect x="8.65" y="7.4" width="1.9" height="9.2" rx="0.95" />
       <rect x="11.55" y="8.8" width="1.9" height="6.4" rx="0.95" />
