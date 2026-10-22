@@ -278,3 +278,112 @@ export interface LlmRelayJob {
 }
 
 export type LlmRelayResult = { ok: true; data: unknown } | { ok: false; error: string };
+
+// ---- Jellyfin ------------------------------------------------------------------
+// The Cadence server talks to Jellyfin on the person's behalf, so every device can
+// use it and the Jellyfin token never leaves the server. The server owner sets the
+// Jellyfin address (JELLYFIN_URL or the admin API); people only sign in.
+
+export interface JellyfinStatusResponse {
+  /** The server owner has set a Jellyfin address. */
+  configured: boolean;
+  /** This person is signed in to Jellyfin. */
+  connected: boolean;
+  serverName?: string;
+  /** Their Jellyfin user name. */
+  userName?: string;
+}
+
+/** Sign in to the server's Jellyfin. The password is used once and never stored. */
+export interface JellyfinConnectRequest {
+  username: string;
+  password: string;
+}
+
+export interface JellyfinTrack {
+  /** The Jellyfin item id. Cadence track ids are `jellyfin:<id>`. */
+  id: string;
+  title: string;
+  artists: string[];
+  album?: string;
+  albumId?: string;
+  durationSec?: number;
+  trackNo?: number;
+  year?: number;
+  /** Signed, relative path (against the server base URL) to the cover image. */
+  artwork?: string;
+  /** Marked as a favourite in this person's Jellyfin. */
+  favourite?: boolean;
+}
+
+export interface JellyfinTracksResponse {
+  items: JellyfinTrack[];
+  total: number;
+}
+
+export interface JellyfinAlbum {
+  id: string;
+  name: string;
+  artist?: string;
+  year?: number;
+  trackCount?: number;
+  artwork?: string;
+}
+
+export interface JellyfinAlbumsResponse {
+  items: JellyfinAlbum[];
+  total: number;
+}
+
+export interface JellyfinPlaylist {
+  id: string;
+  name: string;
+  trackCount: number;
+  artwork?: string;
+}
+
+export interface JellyfinPlaylistsResponse {
+  items: JellyfinPlaylist[];
+}
+
+/** Ask for the library tracks that best match songs an AI picked. */
+export interface JellyfinMatchRequest {
+  /** Up to 30 picks. */
+  picks: { artist: string; title: string }[];
+}
+
+export interface JellyfinMatchResponse {
+  /** Same length and order as the request; null when nothing in the library matches. */
+  matches: (JellyfinTrack | null)[];
+}
+
+export interface JellyfinStreamUrlResponse {
+  /** Signed, relative path (against the server base URL) that streams the track with Range support. */
+  path: string;
+  /** Unix time (seconds). */
+  expiresAt: number;
+}
+
+/** Tell Jellyfin what is playing so play counts and "recently played" stay in sync. */
+export interface JellyfinPlaybackReport {
+  event: "start" | "progress" | "stop";
+  itemId: string;
+  positionSec: number;
+}
+
+/** What the AI DJ knows about the listener, built from their Jellyfin plays and favourites. */
+export type JellyfinTasteResponse = DjTasteProfile;
+
+/** Admin: where the server finds Jellyfin. */
+export interface AdminJellyfinResponse {
+  serverUrl: string | null;
+  /** `env` when JELLYFIN_URL is set (it wins); `admin` when saved from the admin API. */
+  source: "env" | "admin" | null;
+}
+
+export interface AdminJellyfinTestResponse {
+  ok: boolean;
+  serverName?: string;
+  version?: string;
+  error?: string;
+}
