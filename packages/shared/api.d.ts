@@ -181,3 +181,100 @@ export interface PlaylistsResponse {
   /** Most recently changed first. */
   items: PlaylistResponse[];
 }
+
+// ---- AI DJ and LLM providers -------------------------------------------------
+
+export type LlmProviderKind = "ollama" | "openai-compatible" | "anthropic";
+
+/**
+ * A provider a signed-in app can pick. `ref` is `server:<id>` for providers the
+ * server owner configured (the server calls them; their keys never leave it)
+ * or `device:<deviceId>:<providerId>` for a provider running on one of the
+ * person's own computers, reached through the server while that app is open.
+ */
+export interface LlmProviderInfo {
+  ref: string;
+  name: string;
+  kind: LlmProviderKind;
+  model: string;
+  scope: "server" | "device";
+  /** Device providers: the name of the computer they run on. */
+  deviceName?: string;
+  /** Server providers: the one used when a person hasn't chosen. */
+  isDefault?: boolean;
+}
+
+export interface LlmProvidersResponse {
+  items: LlmProviderInfo[];
+}
+
+export interface LlmStatusResponse {
+  available: boolean;
+  models: string[];
+  error?: string;
+}
+
+/** A server provider as the admin sees it. The API key is never returned. */
+export interface AdminLlmProvider {
+  id: string;
+  name: string;
+  kind: LlmProviderKind;
+  baseUrl: string;
+  model: string;
+  hasKey: boolean;
+  enabled: boolean;
+  isDefault: boolean;
+}
+
+export interface AdminLlmProviderInput {
+  name: string;
+  kind: LlmProviderKind;
+  baseUrl: string;
+  model: string;
+  /** Omit to keep the saved key; send "" to remove it. */
+  apiKey?: string;
+  enabled?: boolean;
+  isDefault?: boolean;
+}
+
+export interface DjTasteProfile {
+  topArtists: string[];
+  genres: string[];
+  /** "Artist – Title" lines. */
+  topTracks: string[];
+  recentTracks: string[];
+}
+
+export interface DjPicksRequest {
+  /** Provider ref; defaults to the server's default provider. */
+  provider?: string;
+  profile: DjTasteProfile;
+  mood?: string;
+  switchUp?: boolean;
+  /** "Artist – Title" lines already played or queued. */
+  avoid?: string[];
+  count?: number;
+}
+
+export interface DjPicksResponse {
+  picks: { artist: string; title: string; intro: string }[];
+}
+
+/** Sent by an app that offers its own computer's providers to the person's other devices. */
+export interface LlmDeviceRegistration {
+  deviceId: string;
+  /** Shown in the provider list, e.g. "Desktop". */
+  name: string;
+  /** No keys or URLs: only what other devices need to show a choice. */
+  providers: { id: string; name: string; kind: LlmProviderKind; model: string }[];
+}
+
+/** A request the server forwards to the device that owns the provider. */
+export interface LlmRelayJob {
+  jobId: string;
+  providerId: string;
+  op: "status" | "chat-json";
+  request?: { messages: { role: "system" | "user" | "assistant"; content: string }[]; schema: Record<string, unknown>; temperature?: number };
+}
+
+export type LlmRelayResult = { ok: true; data: unknown } | { ok: false; error: string };
