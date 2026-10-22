@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { recentTracks, topTracks, useHistory } from "@/features/history/historyStore";
+import { DjCard } from "@/features/dj/DjCard";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { usePlayer } from "@/player/playerStore";
 import { usePluginHost } from "@/plugins/host";
@@ -90,6 +91,8 @@ export function HomeView() {
       </header>
 
       {recent.length > 0 ? <Hero track={recent[0]} queue={recent} /> : <Welcome />}
+
+      <DjCard />
 
       {recent.length > 0 && (
         <Shelf icon={<FlameIcon size={20} />} title="Listening right now">

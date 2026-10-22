@@ -530,6 +530,54 @@ code {
   display: none;
 }
 
+/* ---------- AI DJ ---------- */
+.hero.dj {
+  min-height: 0;
+  background:
+    radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--accent-to) 40%, transparent), transparent 70%),
+    radial-gradient(520px 280px at 0% 100%, color-mix(in srgb, var(--accent-from) 30%, transparent), transparent 70%),
+    var(--bg-elevated);
+}
+.hero.dj::after {
+  display: none;
+}
+.hero.dj .hero-text {
+  flex: 1;
+}
+.hero.dj .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero.dj.live .eyebrow {
+  color: var(--accent-to);
+}
+.dj-intro {
+  font-style: italic;
+}
+.dj-mood {
+  max-width: 420px;
+  margin-bottom: 16px;
+}
+.dj-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.dj-voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.dj-error {
+  margin: 14px 0 0;
+  color: #ff8a8a;
+}
+
 /* ---------- Track rows ---------- */
 .track-list {
   display: flex;
