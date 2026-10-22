@@ -207,7 +207,18 @@ jobs:
           echo "VMP_SIGN=1" >> "$GITHUB_ENV"
       - run: npm install --no-audit --no-fund
       - name: Build macOS disk images (Apple Silicon and Intel)
-        run: npm run electron:build:mac
+        # electron-builder's disk-image tool sometimes can't find its mounted background image on
+        # the hosted runners ("No such file or directory: /Volumes/Cadence/.background/background.tiff").
+        # Detach any stale volume and try again; a real error still fails after three attempts.
+        run: |
+          for attempt in 1 2 3; do
+            if npm run electron:build:mac; then exit 0; fi
+            echo "::warning::macOS build failed (attempt $attempt of 3); retrying"
+            hdiutil detach /Volumes/Cadence -force 2>/dev/null || true
+            rm -rf release/mac release/mac-arm64 release/*.dmg
+            sleep 15
+          done
+          exit 1
       - name: Check the apps are signed and launch
         run: |
           for app in release/mac*/Cadence.app; do
@@ -345,7 +356,9 @@ jobs:
           test -f dist/Cadence-Setup.exe
           test -f dist/Cadence-mac-arm64.dmg
           test -f dist/Cadence-mac-x64.dmg
-          gh release create "$TAG" dist/Cadence-Setup.exe dist/Cadence-mac-arm64.dmg dist/Cadence-mac-x64.dmg --title "Cadence $TAG" --generate-notes
+          # Hand-written notes in docs/releases/<tag>.md win; otherwise GitHub writes them from the merged PRs.
+          if [ -f "docs/releases/$TAG.md" ]; then notes=(--notes-file "docs/releases/$TAG.md"); else notes=(--generate-notes); fi
+          gh release create "$TAG" dist/Cadence-Setup.exe dist/Cadence-mac-arm64.dmg dist/Cadence-mac-x64.dmg --title "Cadence $TAG" "${notes[@]}"
 
   # ---------------------------------------------------------------- nightly
   # Every push to main refreshes the rolling "Nightly" pre-release, so the

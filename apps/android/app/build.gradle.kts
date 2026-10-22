@@ -8,7 +8,7 @@ plugins {
 
 // CI passes the release tag and run number so each build upgrades the last one
 // (Android only installs over an app whose versionCode is not lower).
-val appVersionName = providers.gradleProperty("versionName").getOrElse("0.2.0")
+val appVersionName = providers.gradleProperty("versionName").getOrElse("0.2.1")
 val appVersionCode = providers.gradleProperty("versionCode").map { it.toInt() }.getOrElse(1)
 
 // Release signing comes from keystore.properties or CADENCE_KEYSTORE_* env vars;

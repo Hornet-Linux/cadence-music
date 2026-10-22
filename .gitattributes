@@ -1,0 +1,16 @@
+# Keep every text file LF in the repository, whatever the contributor's Git or
+# editor does. Without this, Windows checkouts commit CRLF line endings, which
+# makes whole files look changed and can break shell scripts and .env files.
+* text=auto eol=lf
+# Windows batch files need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Never touch binary files.
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+*.jar binary
+*.zip binary
+*.tiff binary
