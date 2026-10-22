@@ -394,6 +394,10 @@ code {
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
+/* Home's "nothing yet" panel disappears as soon as any source has tracks. */
+.home:has(.source-sections > *) .home-empty {
+  display: none;
+}
 @keyframes shimmer {
   to {
     background-position: -200% 0;
@@ -463,8 +467,8 @@ code {
   gap: var(--sp-4);
   overflow-x: auto;
   scroll-snap-type: x proximity;
-  padding: 4px 4px 12px;
-  margin: -4px -4px 0;
+  padding: 4px 6px 12px;
+  margin: -4px -6px 0;
   scrollbar-width: none;
 }
 .shelf-row::-webkit-scrollbar {
@@ -1698,6 +1702,7 @@ code {
   font-size: var(--fs-base);
 }
 .wizard-body {
+  flex: 1 1 auto;
   padding: 16px 28px 22px;
   overflow-y: auto;
 }
@@ -2007,17 +2012,28 @@ code {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 20px 14px;
   }
+  /* Tapping a row plays it, so the number/play column goes; the rest keeps its room. */
   .web .track-row {
-    grid-template-columns: 32px minmax(0, 1fr) max-content 44px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    gap: 6px;
     padding: 6px;
     min-height: 56px;
+  }
+  .web .track-row .idx {
+    display: none;
+  }
+  .web .track-row .icon-btn {
+    width: 40px;
+    height: 44px;
+  }
+  .web .collection-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
   }
   .web .track-row .album {
     display: none;
   }
-  .web .icon-btn,
-  .web .nav-arrows button {
+  .web .icon-btn {
     width: 44px;
     height: 44px;
   }
@@ -2134,8 +2150,13 @@ code {
   .web .segmented button {
     min-height: 40px;
   }
+  .web .wizard-backdrop {
+    display: flex;
+    place-items: initial;
+  }
   .web .wizard {
-    height: 100%;
+    flex: 1;
+    height: auto;
     max-height: none;
     border-radius: 0;
     border: 0;

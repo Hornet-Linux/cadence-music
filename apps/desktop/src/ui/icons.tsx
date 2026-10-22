@@ -216,13 +216,7 @@ export const InfoIcon = (p: P) => (
  */
 export const LogoMark = (p: P) => (
   <Svg {...p} viewBox="0 0 24 24" stroke="none">
-    <defs>
-      <linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="var(--accent-from)" />
-        <stop offset="1" stopColor="var(--accent-to)" />
-      </linearGradient>
-    </defs>
-    <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#logo-grad)" />
+    <rect x="1" y="1" width="22" height="22" rx="7" fill="var(--accent-from)" />
     {/* Equaliser bars that shrink left to right, tracing a play triangle. */}
     <g fill="var(--accent-fg)">
       <rect x="5.75" y="6" width="1.9" height="12" rx="0.95" />
