@@ -777,7 +777,7 @@ test("admin: link-local and cloud metadata addresses are refused unless the admi
   const forced = await put({ serverUrl: "http://169.254.10.10:4533", allowLinkLocal: true });
   assert.equal(forced.statusCode, 200);
   assert.equal(forced.json().serverUrl, "http://169.254.10.10:4533");
-  await t.app.close();
+  await finish(t);
 });
 
 test("admin: SUBSONIC_URL wins over the saved address", async () => {
@@ -822,6 +822,7 @@ test("admin: the test button checks an address without saving it or sending cred
   const bad = (await test(`http://127.0.0.1:${(notSubsonic.address() as AddressInfo).port}`)).json() as AdminTestResult;
   assert.equal(bad.ok, false);
   assert.match(bad.error!, /doesn't look like a Subsonic server/);
+  notSubsonic.closeAllConnections();
   notSubsonic.close();
 
   const dead = await new FakeSubsonic().start();
@@ -840,6 +841,7 @@ test("admin: the test button checks an address without saving it or sending cred
   const moved = (await test(`http://127.0.0.1:${(redirect.address() as AddressInfo).port}`)).json() as AdminTestResult;
   assert.equal(moved.ok, false);
   assert.match(moved.error!, /redirects/);
+  redirect.closeAllConnections();
   redirect.close();
   await finish(t);
 });
