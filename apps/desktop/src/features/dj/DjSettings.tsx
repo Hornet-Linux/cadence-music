@@ -14,7 +14,7 @@ import {
   type LocalProvider,
   type ProviderOption,
 } from "./providers";
-import { deviceName } from "./relayClient";
+import { deviceName, useRelay } from "./relayClient";
 import { ServerProviders } from "./ServerProviders";
 import { djSetup, OLLAMA_DOWNLOAD_URL } from "./setup";
 
@@ -35,6 +35,7 @@ export function DjSettings() {
   const { voice, setVoice } = useDj();
   const { local, remote, native, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
   const server = useServer((s) => s.user);
+  const relay = useRelay();
   const [editing, setEditing] = useState<LocalProvider | "new" | null>(null);
   const [editingHasKey, setEditingHasKey] = useState(false);
 
@@ -143,8 +144,15 @@ export function DjSettings() {
 
       {active && <ProviderHealth option={active} />}
       {server?.isAdmin && <ServerProviders />}
-      {server && local.some((p) => p.share) && (
-        <p className="muted small">Sharing as “{deviceName()}” while this app is open.</p>
+      {server && local.some((p) => p.share) && relay.message && <p className="notice warn">{relay.message}</p>}
+      {server && local.some((p) => p.share) && !relay.message && (
+        <p className="muted small">
+          {relay.state === "connected"
+            ? `Sharing as “${deviceName()}” while this app is open.`
+            : relay.state === "off"
+              ? ""
+              : "Connecting to your server to share…"}
+        </p>
       )}
     </div>
   );

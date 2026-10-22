@@ -6,7 +6,7 @@ vi.mock("@/plugins/builtins/server/serverStore", () => ({
   useServer: { getState: () => ({ url: "", token: null, user: null }), subscribe: () => () => undefined },
 }));
 
-const { buildRegistration, parseEvents, runJob } = await import("./relayClient");
+const { buildRegistration, classifyConnect, parseEvents, runJob } = await import("./relayClient");
 
 const provider = (over: Partial<import("./providers").LocalProvider> = {}) => ({
   id: "ollama",
@@ -66,5 +66,25 @@ describe("runJob", () => {
     expect(await runJob(job(), [provider({ share: false })], llm)).toMatchObject({ ok: false });
     expect(await runJob(job({ providerId: "other" }), [provider()], llm)).toMatchObject({ ok: false });
     expect(await runJob(job(), [provider()], llm)).toEqual({ ok: false, error: "Ollama isn't running" });
+  });
+});
+
+describe("classifyConnect", () => {
+  it("stops retrying, with a reason, when the device limit is reached", () => {
+    const v = classifyConnect(429);
+    expect(v).toMatchObject({ stop: true, state: "limit" });
+    expect(v.message).toMatch(/maximum number of devices/);
+  });
+
+  it("stops quietly when signed out and explains an old server", () => {
+    expect(classifyConnect(401)).toEqual({ stop: true, state: "off", message: null });
+    expect(classifyConnect(403).stop).toBe(true);
+    expect(classifyConnect(404)).toMatchObject({ stop: true, state: "unsupported" });
+  });
+
+  it("keeps retrying server hiccups and treats 200 as connected", () => {
+    expect(classifyConnect(500)).toEqual({ stop: false, state: "reconnecting", message: null });
+    expect(classifyConnect(503).stop).toBe(false);
+    expect(classifyConnect(200)).toEqual({ stop: false, state: "connected", message: null });
   });
 });
