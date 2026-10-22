@@ -3,7 +3,7 @@ import { usePlayer } from "@/player/playerStore";
 import { primaryArtist } from "@/shared/types";
 import { Notice, Page } from "../_social/ui";
 import { usePractice } from "./engine";
-import { formatTime, isActive, isExternalSource, MAX_BPM, MAX_RATE, MIN_BPM, MIN_RATE, RATES, tapTempo } from "./loop";
+import { formatTime, isActive, MAX_BPM, MAX_RATE, MIN_BPM, MIN_RATE, RATES, tapTempo } from "./loop";
 import "./style.css";
 
 export const PRACTICE_ITEM_ID = "practice";
@@ -29,7 +29,7 @@ export function PracticePage() {
   const seek = usePlayer((s) => s.seek);
   const p = usePractice();
   const taps = useRef<number[]>([]);
-  const external = isExternalSource(current?.source);
+  const external = usePlayer((s) => s.engine) === "external";
   const loop = p.loop;
   const pct = (t: number | null) => (t !== null && duration > 0 ? `${Math.min(100, (t / duration) * 100)}%` : "0%");
 

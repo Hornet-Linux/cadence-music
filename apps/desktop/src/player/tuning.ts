@@ -20,6 +20,12 @@ export interface Tuning {
   masterGain: number;
   /** Pause when the current track finishes instead of moving on. */
   stopAfterTrack: boolean;
+  /**
+   * Stay on the current track: no crossfade, gapless hand-over or pre-buffering is planned, and the
+   * position is refreshed ten times a second. A plugin that loops a section sets this while the loop
+   * is active so a loop near the end of a song can never start the next one.
+   */
+  holdTrack: boolean;
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -29,6 +35,7 @@ export const DEFAULT_TUNING: Tuning = {
   preservePitch: true,
   masterGain: 1,
   stopAfterTrack: false,
+  holdTrack: false,
 };
 
 export const MAX_CROSSFADE_SEC = 12;

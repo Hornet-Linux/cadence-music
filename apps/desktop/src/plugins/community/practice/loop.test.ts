@@ -5,7 +5,6 @@ import {
   countInPlan,
   formatTime,
   isActive,
-  isExternalSource,
   loopJump,
   MIN_LOOP,
   noLoop,
@@ -88,12 +87,7 @@ describe("speed", () => {
     expect(clampRate(3)).toBe(1.25);
     expect(clampRate(0.756)).toBe(0.76);
   });
-  it("knows which services cannot change speed", () => {
-    expect(isExternalSource("spotify")).toBe(true);
-    expect(isExternalSource("apple-music")).toBe(true);
-    expect(isExternalSource("server")).toBe(false);
-    expect(isExternalSource(undefined)).toBe(false);
-  });
+
 });
 
 describe("count-in", () => {

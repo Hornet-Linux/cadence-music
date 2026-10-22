@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { usePlayer } from "@/player/playerStore";
+import { useTuning } from "@/player/tuning";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import type { PlaybackEvent, PlayerApi } from "@/plugins/types";
 import type { Track } from "@/shared/types";
-import { getMediaElement, setPlaybackRate, watchMediaElement } from "../_social/mediaElement";
 import { openEventStream, serverApi } from "../_social/serverApi";
 import { clockOffset, correctDrift, expectedPosition, reconcile, type ClockSample, type HostSnapshot } from "./follow";
 
@@ -57,7 +57,6 @@ let stopStream: (() => void) | null = null;
 let tick: ReturnType<typeof setInterval> | null = null;
 let heartbeat: ReturnType<typeof setInterval> | null = null;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
-let stopWatching: (() => void) | null = null;
 let offset = 0;
 let lastOffsetAt = 0;
 let lastSeekAt = 0;
@@ -65,6 +64,8 @@ let loadSeq = 0;
 let retries = 0;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let currentRate = 1;
+/** The player speed before drift correction touched it. */
+let rateBefore: number | null = null;
 let unplayableId: string | null = null;
 
 const serverNow = () => Date.now() + offset;
@@ -115,10 +116,13 @@ function clearTimers() {
 }
 
 function resetRate() {
-  if (currentRate !== 1) {
-    setPlaybackRate(1);
-    currentRate = 1;
+  if (rateBefore !== null) {
+    const tuning = useTuning.getState();
+    // Give the speed back unless someone else (the speed plugin) has changed it since.
+    if (tuning.rate === currentRate) tuning.set({ rate: rateBefore });
   }
+  rateBefore = null;
+  currentRate = 1;
 }
 
 /** The room has ended or been left: stop everything that belongs to it. */
@@ -128,8 +132,6 @@ function teardown() {
   stopStream = null;
   clearTimers();
   resetRate();
-  stopWatching?.();
-  stopWatching = null;
   unplayableId = null;
   retries = 0;
 }
@@ -201,13 +203,19 @@ export const useListenAlong = create<ListenState>((set, get) => {
     } else if (host.trackId && local.current?.id === host.trackId && host.playing && local.isPlaying) {
       const drift = local.position - expected;
       set({ drift });
-      const canAdjustRate = getMediaElement() !== null;
+      const canAdjustRate = usePlayer.getState().engine === "html";
       const fix = correctDrift(drift, { canAdjustRate, sinceLastSeekMs: Date.now() - lastSeekAt });
       if (fix.kind === "seek") {
         player.seek(expected);
         lastSeekAt = Date.now();
       }
-      if (fix.rate !== currentRate && setPlaybackRate(fix.rate)) currentRate = fix.rate;
+      if (canAdjustRate && fix.rate === 1 && currentRate !== 1) resetRate();
+      else if (canAdjustRate && fix.rate !== currentRate) {
+        // A small speed change (through the player's tuning settings) pulls the guest back in sync without a jump.
+        if (rateBefore === null) rateBefore = useTuning.getState().rate;
+        useTuning.getState().set({ rate: fix.rate });
+        currentRate = fix.rate;
+      }
       return;
     }
     if (!(host.trackId && local.current?.id === host.trackId)) set({ drift: null });
@@ -276,7 +284,6 @@ export const useListenAlong = create<ListenState>((set, get) => {
       try {
         const { room } = await serverApi<{ room: WireRoom }>("api/listen-along/rooms", { method: "POST", body: JSON.stringify({ name }) });
         set({ role: "host", room, listeners: [], busy: false });
-        stopWatching = watchMediaElement();
         connect(room.id, "host");
         heartbeat = setInterval(() => void pushState(), 5000);
         void pushState();
@@ -303,7 +310,6 @@ export const useListenAlong = create<ListenState>((set, get) => {
         const { room } = await serverApi<{ room: WireRoom | null }>("api/listen-along/mine");
         if (!room || get().role !== "none") return;
         set({ role: "host", room, listeners: [] });
-        stopWatching = watchMediaElement();
         connect(room.id, "host");
         heartbeat = setInterval(() => void pushState(), 5000);
         void pushState();
@@ -324,7 +330,6 @@ export const useListenAlong = create<ListenState>((set, get) => {
         await measureOffset();
         const found = await serverApi<{ room: WireRoom; state: WireState }>(`api/listen-along/rooms/${clean}`);
         set({ role: "guest", room: found.room, busy: false, listeners: [] });
-        stopWatching = watchMediaElement();
         connect(found.room.id, "guest");
         tick = setInterval(() => {
           if (Date.now() - lastOffsetAt > 90_000) void measureOffset();

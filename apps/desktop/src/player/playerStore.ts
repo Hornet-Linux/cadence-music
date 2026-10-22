@@ -26,6 +26,11 @@ interface PlayerState {
   repeat: RepeatMode;
   /** Set when no audio source could play the current track. */
   unresolved: boolean;
+  /**
+   * What is playing the current track: `html` (plain media, which honours speed, pitch, crossfade and
+   * gapless), `external` (a vendor player such as Spotify, which ignores them) or `none`.
+   */
+  engine: "html" | "external" | "none";
 
   playQueue: (tracks: Track[], startIndex?: number) => Promise<void>;
   playTrack: (track: Track) => Promise<void>;
@@ -158,6 +163,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
   async function releaseBackend() {
     const previous = backend;
     backend = { kind: "none" };
+    set({ engine: "none" });
     stopTicker();
     cancelFade();
     dropPreload();
@@ -235,6 +241,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     if (element && url) {
       backend = { kind: "html" };
+      set({ engine: "html" });
       audio = element;
       currentUrl = url;
       applyOutput(audio);
@@ -250,6 +257,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
         if (e.ended) void onTrackEnded();
       });
       backend = { kind: "external", handle: h, unsubscribe };
+      set({ engine: "external" });
       await h.setVolume(effectiveVolume()).catch(ignore);
     }
     if (autoplay) await startPlaying();
@@ -280,6 +288,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
   function tick() {
     if (backend.kind !== "html" || !get().isPlaying || fade) return;
     const t = tuning();
+    if (t.holdTrack) {
+      // A plugin is looping a section: keep the position fresh (media events only come about 4 times a second) and plan nothing.
+      if (Math.abs(get().position - audio.currentTime) > 0.001) set({ position: audio.currentTime });
+      return;
+    }
     if (t.crossfadeSec <= 0 && !t.gapless) return;
     const nextIndex = peekNext();
     const next = nextIndex === null ? undefined : get().queue[nextIndex];
@@ -554,6 +567,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
     shuffle: false,
     repeat: "off",
     unresolved: false,
+    engine: "none",
 
     async playQueue(tracks, startIndex = 0) {
       if (tracks.length === 0) return;

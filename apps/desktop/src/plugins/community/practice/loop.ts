@@ -60,11 +60,6 @@ export function loopJump(position: number, loop: Loop, lookahead = 0.05): number
   return null;
 }
 
-/** Services with their own player report position about once a second and cannot change speed. */
-export function isExternalSource(source: string | undefined): boolean {
-  return source === "spotify" || source === "apple-music";
-}
-
 export interface CountIn {
   /** Seconds from the start at which each click sounds. */
   clicks: number[];

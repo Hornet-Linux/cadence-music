@@ -369,3 +369,40 @@ describe("gapless and crossfade", () => {
     expect(usePlayer.getState().current?.id).toBe("c");
   });
 });
+
+describe("holding the track for a loop", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
+  });
+
+  const queue = () => [track("a"), track("b")];
+
+  it("plans no crossfade, gapless hand-over or buffering while a plugin holds the track", async () => {
+    await usePlayer.getState().playQueue(queue(), 0);
+    useTuning.getState().set({ crossfadeSec: 4, gapless: true, holdTrack: true });
+    playSpy.mockClear();
+    clock.time = 197;
+    await vi.advanceTimersByTimeAsync(500);
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(usePlayer.getState().current?.id).toBe("a");
+    // Letting go brings the normal behaviour back at once.
+    useTuning.getState().set({ holdTrack: false });
+    await vi.advanceTimersByTimeAsync(500);
+    expect(usePlayer.getState().current?.id).toBe("a");
+    expect(playSpy).toHaveBeenCalled();
+  });
+
+  it("keeps the position fresh between media events while held", async () => {
+    await usePlayer.getState().playQueue(queue(), 0);
+    useTuning.getState().set({ holdTrack: true });
+    clock.time = 42.5;
+    await vi.advanceTimersByTimeAsync(150);
+    expect(usePlayer.getState().position).toBeCloseTo(42.5);
+  });
+
+  it("reports which engine plays the track", async () => {
+    expect(usePlayer.getState().engine).toBeDefined();
+    await usePlayer.getState().playQueue([track("a")], 0);
+    expect(usePlayer.getState().engine).toBe("html");
+  });
+});
