@@ -66,7 +66,7 @@ test("config reads Spotify and Apple Music settings", () => {
 async function appWith(overrides: Partial<Config>) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-int-"));
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "u", password: "user-password" });
+  await createLocalUser(db, { username: "u", password: "user-password" });
   const app = await buildApp({
     config: {
       host: "127.0.0.1",

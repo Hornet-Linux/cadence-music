@@ -33,8 +33,8 @@ test("sanitizePlay keeps good plays and rejects junk", () => {
 test("records history, lists it newest first and ranks top tracks per user", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-hist-"));
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "alice", password: "alice-password" });
-  createLocalUser(db, { username: "bob", password: "bob-password" });
+  await createLocalUser(db, { username: "alice", password: "alice-password" });
+  await createLocalUser(db, { username: "bob", password: "bob-password" });
   const app = await buildApp({
     config: {
       host: "127.0.0.1",

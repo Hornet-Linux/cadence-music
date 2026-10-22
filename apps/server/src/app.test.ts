@@ -64,8 +64,8 @@ async function setup(
 ): Promise<{ app: FastifyInstance; db: Db; musicDir: string }> {
   const musicDir = tempDir();
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
-  createLocalUser(db, { username: "listener", password: "listener-password" });
+  await createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
+  await createLocalUser(db, { username: "listener", password: "listener-password" });
   const app = await buildApp({
     config: testConfig(musicDir, overrides),
     db,
@@ -139,7 +139,7 @@ test("servers that already have accounts issue no setup code", async () => {
   let code: string | null = null;
   const musicDir = tempDir();
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
+  await createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
   const app = await buildApp({
     config: testConfig(musicDir),
     db,
@@ -202,6 +202,89 @@ test("rate-limits repeated failed sign-ins", async () => {
     payload: { username: "admin", password: "admin-password" },
   });
   assert.equal(res.statusCode, 429);
+  await app.close();
+  db.close();
+});
+
+const attempt = (app: FastifyInstance, username: string, password: string, forwardedFor?: string) =>
+  app.inject({
+    method: "POST",
+    url: "/api/auth/login",
+    payload: { username, password },
+    headers: forwardedFor ? { "x-forwarded-for": forwardedFor } : {},
+  });
+
+test("behind one trusted proxy, a forged X-Forwarded-For cannot dodge the rate limit", async () => {
+  const { app, db } = await setup({ trustProxy: 1 });
+  // The proxy appends the real client address (9.9.9.9); the attacker controls only what comes before it.
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await attempt(app, "admin", "wrong", `10.0.0.${i}, 9.9.9.9`)).statusCode, 401);
+  }
+  assert.equal((await attempt(app, "admin", "admin-password", "10.0.1.1, 9.9.9.9")).statusCode, 429);
+  // A genuinely different client is unaffected.
+  assert.equal((await attempt(app, "admin", "admin-password", "8.8.8.8")).statusCode, 200);
+  await app.close();
+  db.close();
+});
+
+test("with trustProxy off, X-Forwarded-For is ignored entirely", async () => {
+  const { app, db } = await setup({ trustProxy: false });
+  for (let i = 0; i < 10; i++) await attempt(app, "admin", "wrong", `10.0.0.${i}`);
+  assert.equal((await attempt(app, "admin", "admin-password", "8.8.8.8")).statusCode, 429);
+  await app.close();
+  db.close();
+});
+
+test("one account is throttled across many addresses, others are not", async () => {
+  const { app, db } = await setup({ trustProxy: 1 });
+  for (let i = 0; i < 30; i++) {
+    assert.equal((await attempt(app, "admin", "wrong", `10.1.0.${i}`)).statusCode, 401);
+  }
+  // A fresh address, and the right password, but the account is locked for now.
+  const locked = await attempt(app, "ADMIN", "admin-password", "10.2.0.1");
+  assert.equal(locked.statusCode, 429);
+  assert.equal(locked.json().error, "too_many_attempts");
+  assert.equal((await attempt(app, "listener", "listener-password", "10.2.0.1")).statusCode, 200);
+  await app.close();
+  db.close();
+});
+
+test("unknown users and wrong passwords are indistinguishable", async () => {
+  const { app, db } = await setup();
+  const unknown = await attempt(app, "nobody", "whatever-password");
+  const wrong = await attempt(app, "admin", "whatever-password");
+  assert.equal(unknown.statusCode, 401);
+  assert.equal(wrong.statusCode, 401);
+  assert.equal(unknown.body, wrong.body);
+  await app.close();
+  db.close();
+});
+
+test("an SSO-only account cannot sign in with a password", async () => {
+  const { app, db } = await setup();
+  db.prepare("INSERT INTO users (username, oidc_issuer, oidc_subject, created_at) VALUES ('sso', 'i', 's', 0)").run();
+  assert.equal((await attempt(app, "sso", "anything-at-all")).statusCode, 401);
+  await app.close();
+  db.close();
+});
+
+test("concurrent setup requests create exactly one admin", async () => {
+  const musicDir = tempDir();
+  const db = openDb(":memory:");
+  let code = "";
+  const app = await buildApp({
+    config: testConfig(musicDir),
+    db,
+    secret: SECRET,
+    logger: false,
+    onSetupCode: (c) => (code = c),
+  });
+  await app.ready();
+  const go = (username: string) =>
+    app.inject({ method: "POST", url: "/api/setup/admin", payload: { setupCode: code, username, password: "a-long-password" } });
+  const results = await Promise.all([go("one"), go("two"), go("three")]);
+  assert.deepEqual(results.map((r) => r.statusCode).sort(), [200, 409, 409]);
+  assert.equal((db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n, 1);
   await app.close();
   db.close();
 });

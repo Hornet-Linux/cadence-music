@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import type { Db } from "../db.js";
-import { hashPassword } from "../auth/passwords.js";
-import { createLocalUser, findUserById, findUserByUsername } from "../auth/users.js";
+import { MAX_PASSWORD, hashPassword } from "../auth/passwords.js";
+import { IDLE_LIMIT_MS } from "../auth/sessions.js";
+import { createLocalUser, findUserById, isUniqueViolation, findUserByUsername } from "../auth/users.js";
 import type { ServerPlugin } from "../plugins/types.js";
 import { SERVER_VERSION } from "../version.js";
 import { registerAdminPage } from "./adminPage.js";
@@ -30,16 +31,18 @@ function adminCount(db: Db): number {
   return count(db, "SELECT COUNT(*) AS n FROM users WHERE is_admin = 1");
 }
 
-function listUsers(db: Db): AdminUser[] {
+export function listUsers(db: Db, now = Date.now()): AdminUser[] {
+  // Only sessions that can still sign in count; idle ones are as good as gone.
+  const live = now - IDLE_LIMIT_MS;
   const rows = db
     .prepare(
       `SELECT u.*,
-              (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id) AS sessions,
-              (SELECT MAX(last_used_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen,
+              (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.last_used_at >= ?) AS sessions,
+              (SELECT MAX(last_used_at) FROM sessions s WHERE s.user_id = u.id AND s.last_used_at >= ?) AS last_seen,
               (SELECT COUNT(*) FROM plays p WHERE p.user_id = u.id) AS plays
          FROM users u ORDER BY u.created_at`,
     )
-    .all() as unknown as {
+    .all(live, live) as unknown as {
     id: number;
     username: string;
     display_name: string | null;
@@ -98,12 +101,20 @@ export const adminPlugin: ServerPlugin = {
       { preHandler: requireAdmin },
       async (req, reply) => {
         const username = (req.body?.username ?? "").trim();
-        const password = req.body?.password ?? "";
+        const password = req.body?.password;
         if (!USERNAME_RE.test(username)) return reply.code(400).send({ error: "invalid_username" });
-        if (password.length < MIN_PASSWORD) return reply.code(400).send({ error: "weak_password" });
+        if (typeof password !== "string" || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
+          return reply.code(400).send({ error: "weak_password" });
+        }
         if (findUserByUsername(db, username)) return reply.code(409).send({ error: "username_taken" });
         const displayName = req.body?.displayName?.trim().slice(0, 80) || undefined;
-        const user = createLocalUser(db, { username, password, displayName, isAdmin: req.body?.isAdmin === true });
+        let user;
+        try {
+          user = await createLocalUser(db, { username, password, displayName, isAdmin: req.body?.isAdmin === true });
+        } catch (err) {
+          if (isUniqueViolation(err)) return reply.code(409).send({ error: "username_taken" });
+          throw err;
+        }
         req.log.info({ admin: req.user!.username, created: user.username }, "admin created a user");
         return reply.code(201).send({ id: user.id });
       },
@@ -113,16 +124,20 @@ export const adminPlugin: ServerPlugin = {
       "/api/admin/users/:id",
       { preHandler: requireAdmin },
       async (req, reply) => {
+        const body = req.body ?? {};
+        if (body.password !== undefined && (typeof body.password !== "string" || body.password.length < MIN_PASSWORD || body.password.length > MAX_PASSWORD)) {
+          return reply.code(400).send({ error: "weak_password" });
+        }
+        // Hash before the guards below so nothing awaits between checking
+        // "is this the last admin" and applying the change.
+        const newHash = typeof body.password === "string" ? await hashPassword(body.password) : null;
+
         const target = findUserById(db, Number(req.params.id));
         if (!target) return reply.code(404).send({ error: "not_found" });
-        const body = req.body ?? {};
 
         if (body.isAdmin === false && target.is_admin === 1) {
           if (adminCount(db) <= 1) return reply.code(409).send({ error: "last_admin" });
           if (target.id === req.user!.id) return reply.code(409).send({ error: "cannot_demote_self" });
-        }
-        if (body.password !== undefined && (typeof body.password !== "string" || body.password.length < MIN_PASSWORD)) {
-          return reply.code(400).send({ error: "weak_password" });
         }
 
         if (typeof body.isAdmin === "boolean") {
@@ -131,8 +146,8 @@ export const adminPlugin: ServerPlugin = {
         if (typeof body.displayName === "string") {
           db.prepare("UPDATE users SET display_name = ? WHERE id = ?").run(body.displayName.trim().slice(0, 80) || null, target.id);
         }
-        if (typeof body.password === "string") {
-          db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(body.password), target.id);
+        if (newHash) {
+          db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(newHash, target.id);
           // A reset password ends every existing session for that person.
           db.prepare("DELETE FROM sessions WHERE user_id = ?").run(target.id);
         }

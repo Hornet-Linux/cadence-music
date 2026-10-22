@@ -23,7 +23,8 @@ import {
   type Claims,
   type OidcClient,
 } from "./oidc.js";
-import { verifyPassword } from "./passwords.js";
+import { MAX_PASSWORD, checkPassword } from "./passwords.js";
+import { RateLimiter } from "./rateLimit.js";
 import { createSession, deleteSession } from "./sessions.js";
 import {
   countPasswordUsers,
@@ -31,6 +32,7 @@ import {
   createLocalUser,
   findUserById,
   findUserByUsername,
+  isUniqueViolation,
   toPublicUser,
   upsertOidcUser,
 } from "./users.js";
@@ -55,10 +57,13 @@ const HANDOFF_TTL_MS = 2 * 60 * 1000;
 const MAX_PENDING = 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 10;
+/** Failures per account across all addresses, against distributed guessing. */
+const USER_MAX_FAILURES = 30;
 
 const USERNAME_RE = /^[\w.@-]{1,48}$/;
 const MIN_PASSWORD = 10;
 const MAX_SIGNUPS_PER_HOUR = 5;
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
 
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const STATE_RE = /^[A-Za-z0-9._~-]{8,256}$/;
@@ -100,28 +105,15 @@ export function registerAuthRoutes(
   const { db, config, oidc, requireUser, settings } = deps;
   const pending = new Map<string, PendingLogin>();
   const handoffs = new Map<string, Handoff>();
-  const failures = new Map<string, { count: number; resetAt: number }>();
+  // Failed sign-in / setup / invite-code attempts per client address.
+  const failures = new RateLimiter({ max: LOGIN_MAX_FAILURES, windowMs: LOGIN_WINDOW_MS });
+  // Failed sign-ins per (lower-cased) username, whatever the address.
+  const userFailures = new RateLimiter({ max: USER_MAX_FAILURES, windowMs: LOGIN_WINDOW_MS });
+  const signups = new RateLimiter({ max: MAX_SIGNUPS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
 
   function respond(userId: number): AuthResponse {
     const token = createSession(db, userId);
     return { token, user: toPublicUser(findUserById(db, userId)!) };
-  }
-
-  function isLimited(ip: string): boolean {
-    const record = failures.get(ip);
-    return !!record && record.resetAt > Date.now() && record.count >= LOGIN_MAX_FAILURES;
-  }
-
-  function recordFailure(ip: string): void {
-    const now = Date.now();
-    const record = failures.get(ip);
-    failures.set(
-      ip,
-      record && record.resetAt > now
-        ? { count: record.count + 1, resetAt: record.resetAt }
-        : { count: 1, resetAt: now + LOGIN_WINDOW_MS },
-    );
-    if (failures.size > 10_000) failures.clear();
   }
 
   // ---- First-run setup --------------------------------------------------
@@ -156,27 +148,32 @@ export function registerAuthRoutes(
   // ---- Self-service sign-up ----------------------------------------------
   // Off unless the owner enables it (SIGNUP_MODE=open|invite), and never
   // before the owner has claimed the server with the setup code.
-  const signups = new Map<string, { count: number; resetAt: number }>();
   app.post<{ Body: RegisterRequest }>("/api/auth/register", async (req, reply) => {
     const signup = settings.signup();
     if (!signup || setupRequired()) return reply.code(403).send({ error: "signup_closed" });
 
-    const now = Date.now();
-    const record = signups.get(req.ip);
-    if (record && record.resetAt > now && record.count >= MAX_SIGNUPS_PER_HOUR) {
+    if (signups.isLimited(req.ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
 
     const body = (req.body ?? {}) as Partial<RegisterRequest>;
     if (signup.mode === "invite") {
+      // Wrong codes share the failure budget with sign-in, so codes can't be guessed freely.
+      if (failures.isLimited(req.ip)) {
+        return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
+      }
       if (typeof body.inviteCode !== "string" || !safeEqual(body.inviteCode.trim(), signup.inviteCode)) {
-        recordFailure(req.ip);
+        failures.hit(req.ip);
         return reply.code(403).send({ error: "invalid_invite_code" });
       }
     }
     const username = typeof body.username === "string" ? body.username.trim() : "";
     if (!USERNAME_RE.test(username)) return reply.code(400).send({ error: "invalid_username" });
-    if (typeof body.password !== "string" || body.password.length < MIN_PASSWORD) {
+    if (
+      typeof body.password !== "string" ||
+      body.password.length < MIN_PASSWORD ||
+      body.password.length > MAX_PASSWORD
+    ) {
       return reply.code(400).send({ error: "weak_password" });
     }
     if (findUserByUsername(db, username)) return reply.code(409).send({ error: "username_taken" });
@@ -185,14 +182,15 @@ export function registerAuthRoutes(
       typeof body.displayName === "string" && body.displayName.trim()
         ? body.displayName.trim().slice(0, 80)
         : undefined;
-    const user = createLocalUser(db, { username, password: body.password, displayName });
-    signups.set(
-      req.ip,
-      record && record.resetAt > now
-        ? { count: record.count + 1, resetAt: record.resetAt }
-        : { count: 1, resetAt: now + 60 * 60 * 1000 },
-    );
-    if (signups.size > 10_000) signups.clear();
+    let user;
+    try {
+      user = await createLocalUser(db, { username, password: body.password, displayName });
+    } catch (err) {
+      // Someone else took the name while the password was being hashed.
+      if (isUniqueViolation(err)) return reply.code(409).send({ error: "username_taken" });
+      throw err;
+    }
+    signups.hit(req.ip);
     return respond(user.id);
   });
 
@@ -204,29 +202,37 @@ export function registerAuthRoutes(
 
   app.post<{ Body: SetupAdminRequest }>("/api/setup/admin", async (req, reply) => {
     if (!setupRequired()) return reply.code(409).send({ error: "already_set_up" });
-    if (isLimited(req.ip)) {
+    if (failures.isLimited(req.ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
     const { setupCode: code, username, password } = (req.body ?? {}) as Partial<SetupAdminRequest>;
     if (typeof code !== "string" || !safeEqual(code.trim(), setupCode!)) {
-      recordFailure(req.ip);
+      failures.hit(req.ip);
       return reply.code(403).send({ error: "invalid_setup_code" });
     }
     if (typeof username !== "string" || !USERNAME_RE.test(username.trim())) {
       return reply.code(400).send({ error: "invalid_username" });
     }
-    if (typeof password !== "string" || password.length < MIN_PASSWORD) {
+    if (typeof password !== "string" || password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
       return reply.code(400).send({ error: "weak_password" });
     }
-    const user = createLocalUser(db, { username: username.trim(), password, isAdmin: true });
+    // Claim the code before hashing (which awaits) so two concurrent requests
+    // with the right code can't both create an admin.
+    const claimed = setupCode!;
     setupCode = null;
-    return respond(user.id);
+    try {
+      const user = await createLocalUser(db, { username: username.trim(), password, isAdmin: true });
+      return respond(user.id);
+    } catch (err) {
+      setupCode = claimed;
+      throw err;
+    }
   });
 
   // ---- Password sign-in -------------------------------------------------
   app.post<{ Body: LoginRequest }>("/api/auth/login", async (req, reply) => {
     const ip = req.ip;
-    if (isLimited(ip)) {
+    if (failures.isLimited(ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
 
@@ -234,14 +240,24 @@ export function registerAuthRoutes(
     if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
       return reply.code(400).send({ error: "invalid_request" });
     }
+    if (password.length > MAX_PASSWORD) return reply.code(400).send({ error: "invalid_request" });
+
+    // Bounded key: real usernames are at most 48 characters.
+    const userKey = username.toLowerCase().slice(0, 128);
+    if (userFailures.isLimited(userKey)) {
+      return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
+    }
 
     const user = findUserByUsername(db, username);
-    const ok = !!user?.password_hash && verifyPassword(password, user.password_hash);
+    // Always does the full hash work, even for unknown names and SSO-only accounts.
+    const ok = await checkPassword(password, user?.password_hash);
     if (!ok || !user) {
-      recordFailure(ip);
+      failures.hit(ip);
+      userFailures.hit(userKey);
       return reply.code(401).send({ error: "invalid_credentials" });
     }
-    failures.delete(ip);
+    failures.reset(ip);
+    userFailures.reset(userKey);
     return respond(user.id);
   });
 

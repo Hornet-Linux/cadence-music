@@ -97,6 +97,18 @@ music.example.com {
 Reload Caddy. Once DNS points at the host, `https://music.example.com/api/health`
 should return JSON.
 
+### Client addresses and rate limits
+
+Sign-in, sign-up and first-run setup are rate limited per client address, so the
+server has to know the real address behind your proxy. By default it trusts
+exactly **one** proxy hop: the address your proxy appends to `X-Forwarded-For`.
+Caddy (bundled or your own), nginx with `proxy_set_header X-Forwarded-For
+$proxy_add_x_forwarded_for;` and Traefik all do this out of the box. If a
+second proxy or CDN sits in front, set `TRUST_PROXY=2`; if clients reach the
+server directly with no proxy, set `TRUST_PROXY=false` (otherwise anyone can
+forge the header and dodge the limits). To trust specific proxies by address
+instead of by count, list them: `TRUST_PROXY=172.18.0.0/16,10.0.0.5`.
+
 ## 4. Connect the desktop app
 
 Install the app. The first-run wizard opens on its own (or use **Settings →
@@ -229,7 +241,7 @@ Database migrations run automatically on start.
 | `MUSIC_DIR` | `/music` | Music library root (read-only is fine). |
 | `PUBLIC_URL` | — | Public base URL; required for OIDC. |
 | `SCAN_INTERVAL_MINUTES` | `60` | Periodic rescan; `0` disables. |
-| `TRUST_PROXY` | `true` | Trust `X-Forwarded-*` from the proxy. |
+| `TRUST_PROXY` | `1` | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is one hop. |
 | `SERVER_SECRET` | generated | Signs stream URLs; generated into `DATA_DIR` if unset. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | — | Bootstrap admin account. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | — | Enable OIDC. |

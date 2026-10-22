@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
+import { isIP } from "node:net";
 import path from "node:path";
 
 export interface OidcConfig {
@@ -48,7 +49,11 @@ export interface Config {
   appDownloadUrl?: string;
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
-  trustProxy: boolean;
+  /**
+   * Which proxies' X-Forwarded-For to believe (Fastify's `trustProxy`):
+   * false (none), a hop count, or addresses/CIDR ranges.
+   */
+  trustProxy: boolean | number | string[];
   logLevel: string;
 }
 
@@ -66,6 +71,43 @@ function int(value: string | undefined, fallback: number, name: string): number 
   const n = Number(value);
   if (!Number.isInteger(n) || n < 0) throw new Error(`${name} must be a non-negative integer`);
   return n;
+}
+
+const PROXY_KEYWORDS = new Set(["loopback", "linklocal", "uniquelocal"]);
+
+function validProxyEntry(entry: string): boolean {
+  if (PROXY_KEYWORDS.has(entry)) return true;
+  const [addr, bits, ...rest] = entry.split("/");
+  const family = isIP(addr);
+  if (rest.length > 0 || family === 0) return false;
+  if (bits === undefined) return true;
+  return /^\d{1,3}$/.test(bits) && Number(bits) <= (family === 4 ? 32 : 128);
+}
+
+/**
+ * TRUST_PROXY: unset = trust one proxy hop (the usual Caddy/nginx/Traefik in
+ * front). `false`/`0` = trust none; a number = that many hops; otherwise a
+ * comma-separated list of proxy addresses or CIDR ranges. Trusting every hop
+ * would let clients spoof their address and dodge the rate limits, so it is
+ * not offered; "true" is treated as one hop.
+ */
+export function parseTrustProxy(value: string | undefined): Config["trustProxy"] {
+  const v = (value ?? "").trim().toLowerCase();
+  if (v === "") return 1;
+  if (v === "false") return false;
+  if (v === "true") return 1;
+  if (/^\d+$/.test(v)) {
+    const hops = Number(v);
+    if (hops > 10) throw new Error("TRUST_PROXY hop count must be between 0 and 10");
+    return hops === 0 ? false : hops;
+  }
+  const entries = list(v);
+  if (entries.length === 0 || !entries.every(validProxyEntry)) {
+    throw new Error(
+      "TRUST_PROXY must be false, a hop count, or a comma-separated list of proxy IPs/CIDR ranges",
+    );
+  }
+  return entries;
 }
 
 function parseSignup(env: Env): Config["signup"] {
@@ -144,7 +186,7 @@ export function loadConfig(env: Env = process.env): Config {
     appDownloadUrl: env.APP_DOWNLOAD_URL?.trim() || undefined,
     webDir: env.WEB_DIR?.trim() || undefined,
     scanIntervalMinutes: int(env.SCAN_INTERVAL_MINUTES, 60, "SCAN_INTERVAL_MINUTES"),
-    trustProxy: (env.TRUST_PROXY ?? "true").toLowerCase() !== "false",
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
     logLevel: env.LOG_LEVEL?.trim() || "info",
   };
 }
