@@ -12,8 +12,8 @@ export const term = (value: unknown, max = 200): string | undefined =>
 
 /** Strips control characters and clips; for text that came from outside. */
 export function clean(value: unknown, max = 500): string {
-  // eslint-disable-next-line no-control-regex
   if (typeof value !== "string") return "";
+  // eslint-disable-next-line no-control-regex
   return value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, max);
 }
 
