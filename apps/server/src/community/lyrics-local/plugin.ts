@@ -76,6 +76,9 @@ const plugin: ServerPlugin = {
   id: "cadence.lyrics-local",
   name: "Lyrics from the music library",
   version: "1.0.0",
+  description:
+    "Serves lyrics that sit beside your music: a .lrc or .txt file with the same name as the track, or lyrics saved in the file's tags. Only files inside your library are read.",
+  configFields: [],
   register(app, ctx) {
     const root = path.resolve(ctx.config.musicDir);
     app.get<{ Params: { id: string } }>("/api/lyrics/local/:id", { preHandler: ctx.requireUser }, async (req, reply) => {

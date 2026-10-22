@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { Db } from "../../db.js";
-import type { ServerPluginContext } from "../../plugins/types.js";
-import type { DescribedPlugin } from "../_ops/meta.js";
+import type { ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { CandidateIndex, THRESHOLDS, type Candidate, type Ranked, type Wanted } from "./matcher.js";
 import { parseImport, type ImportFormat } from "./parsers.js";
 
@@ -79,7 +78,7 @@ function cleanExtra(input: unknown): ExtraCandidate | null {
   return w && id ? { kind: "extra", id, ...w } : null;
 }
 
-export const playlistImporterPlugin: DescribedPlugin = {
+export const playlistImporterPlugin: ServerPlugin = {
   id: PLUGIN_ID,
   name: "Playlist importer",
   version: "1.0.0",

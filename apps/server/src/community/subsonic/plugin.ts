@@ -80,6 +80,11 @@ export function createSubsonicPlugin(options: SubsonicPluginOptions = {}): Serve
     id: PLUGIN_ID,
     name: "Subsonic",
     version: "1.0.0",
+    description:
+      "Use a Subsonic-API server (Navidrome, Airsonic-Advanced, Gonic and others) as a music source. You set the server address; each person signs in with their own account there, and browsing, search and audio are proxied through this server.",
+    configFields: [
+      { key: "serverUrl", label: "Subsonic server address", type: "url", placeholder: "http://navidrome:4533", help: "The SUBSONIC_URL environment variable overrides this when set. The Test button under Settings > Plugins > Subsonic in the player checks an address before you rely on it." },
+    ],
     register(app, ctx) {
       const { secret, settings, requireUser, requireAdmin } = ctx;
       const store = new ConnectionStore(settings, secret);

@@ -15,6 +15,13 @@ export function createDlnaPlugin(options: { ssdp?: DlnaManagerOptions["ssdp"]; s
     id: DLNA_PLUGIN_ID,
     name: "DLNA and Sonos",
     version: "1.0.0",
+    description:
+      "Plays to DLNA/UPnP speakers and renderers, including Sonos. The server finds them with SSDP and sends each a short-lived signed stream link.",
+    configFields: [
+      { key: "streamBaseUrl", label: "Address devices use to reach this server", type: "url", placeholder: "http://192.168.1.10:8787", help: "Leave empty to use the address the player is connected with. Set it when that address is not reachable from the speakers." },
+    ],
+    configNote:
+      "Speakers added by hand are kept in this plugin's saved settings; add or remove them in the player under Settings > Plugins > DLNA and Sonos.",
     register(app, ctx) {
       const manager = new DlnaManager({
         ssdp: options.ssdp,

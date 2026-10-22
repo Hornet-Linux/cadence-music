@@ -266,6 +266,11 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
           restartRequired: !!boot && (boot.enabled !== enabled || (enabled && boot.config !== configNow)),
           config: saved === undefined ? null : maskConfig(saved),
           configFields: (p.configFields ?? []) as PluginConfigField[],
+          // "form": the declared fields; "none": the plugin has nothing to set here; "json": undeclared, so a plain JSON editor.
+          settings: p.configFields === undefined ? "json" : p.configFields.length > 0 ? "form" : "none",
+          configNote: p.configNote ?? null,
+          adminRoutes: p.adminRoutes ?? [],
+          userRoutes: p.userRoutes ?? [],
         };
       };
 

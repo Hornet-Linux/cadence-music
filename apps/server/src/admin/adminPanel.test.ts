@@ -27,7 +27,7 @@ async function setup(opts: { fetchFn?: FetchFn; config?: Partial<Config>; librar
   fs.writeFileSync(
     path.join(pluginsDir, "demo", "plugin.js"),
     `export default { id: "cadence.demo", name: "Demo plugin", version: "1.2.0", description: "Does demo things.",
-      configFields: [{ key: "apiKey", label: "API key", type: "password" }, { key: "city", label: "City" }], register() {} };`,
+      configFields: [{ key: "apiKey", label: "API key", type: "secret" }, { key: "city", label: "City" }], register() {} };`,
   );
   const db = openDb(":memory:");
   await createLocalUser(db, { username: "owner", password: "owner-password", isAdmin: true });

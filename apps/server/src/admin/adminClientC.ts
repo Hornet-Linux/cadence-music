@@ -54,11 +54,13 @@ async function renderPlugins() {
       } finally { sw.disabled = false; }
     }) });
     const panel = h("div", { hidden: true, style: "margin-top:14px" });
-    const settingsBtn = h("button", { class: "btn", type: "button", "aria-expanded": "false", onclick: () => {
+    const settingsBtn = p.settings === "none" ? null : h("button", { class: "btn", type: "button", "aria-expanded": "false", onclick: () => {
       panel.hidden = !panel.hidden;
       settingsBtn.setAttribute("aria-expanded", String(!panel.hidden));
       if (!panel.hidden && !panel.firstChild) panel.append(configEditor(p, update));
     } }, "Settings");
+    if (p.settings === "none") panel.append(p.configNote ? h("p", { class: "hint" }, p.configNote) : h("p", { class: "hint" }, "This plugin has no settings."));
+    if (p.settings === "none") panel.hidden = false;
     return h("section", { class: "card" },
       h("div", { style: "display:flex;gap:14px;align-items:flex-start;justify-content:space-between" },
         h("div", { style: "min-width:0" },
@@ -67,13 +69,39 @@ async function renderPlugins() {
             p.running ? h("span", { class: "badge ok" }, "Running") : h("span", { class: "badge" }, "Not running"),
             p.restartRequired ? h("span", { class: "badge warn" }, "Restart required") : null,
             h("span", { class: "badge" }, p.id)),
-          p.description ? h("p", { class: "muted" }, p.description) : null),
+          p.description ? h("p", { class: "muted" }, p.description) : null,
+          routesList(p)),
         h("span", { class: "switch-wrap" }, sw)),
       h("div", { class: "form-actions", style: "margin-top:12px" }, settingsBtn),
       panel);
   }
 
   drawAll();
+}
+
+function routesList(p) {
+  const admin = p.adminRoutes || [];
+  const user = p.userRoutes || [];
+  if (!admin.length && !user.length) return null;
+  const rows = admin.map((r) => [r, "admin"]).concat(user.map((r) => [r, "signed-in users"]));
+  return h("details", { class: "small", style: "margin-top:8px" }, h("summary", { class: "faint" }, "Routes (" + rows.length + ")"),
+    h("ul", { class: "list" }, rows.map((r) => h("li", null, h("code", null, r[0]), " ", h("span", { class: "faint" }, r[1])))));
+}
+
+// Settings may be nested ("lidarr.url"), so read and write them by path.
+function getPath(o, key) { return key.split(".").reduce((a, k) => (a && typeof a === "object" ? a[k] : undefined), o); }
+function setPath(o, key, v) {
+  const ks = key.split(".");
+  let c = o;
+  for (let i = 0; i < ks.length - 1; i++) { if (!c[ks[i]] || typeof c[ks[i]] !== "object" || Array.isArray(c[ks[i]])) c[ks[i]] = {}; c = c[ks[i]]; }
+  c[ks[ks.length - 1]] = v;
+}
+function delPath(o, key) {
+  const ks = key.split(".");
+  const trail = [o];
+  for (let i = 0; i < ks.length - 1; i++) { const n = trail[i] && trail[i][ks[i]]; if (!n || typeof n !== "object") return; trail.push(n); }
+  delete trail[trail.length - 1][ks[ks.length - 1]];
+  for (let i = trail.length - 1; i > 0; i--) if (Object.keys(trail[i]).length === 0) delete trail[i - 1][ks[i - 1]];
 }
 
 function configEditor(p, onSaved) {
@@ -95,21 +123,32 @@ function configEditor(p, onSaved) {
     const inputs = {};
     const grid = h("div", { class: "form-grid" }, fields.map((f) => {
       const id = "pc-" + p.id + "-" + f.key;
-      const cur = saved[f.key];
-      const input = f.type === "boolean" ? h("input", { id, type: "checkbox" }) : h("input", { id, type: f.type === "password" ? "password" : f.type === "number" ? "number" : f.type === "url" ? "url" : "text",
-        value: cur == null ? "" : String(cur), placeholder: f.placeholder, autocomplete: "off", spellcheck: "false" });
-      if (f.type === "boolean") input.checked = cur === true;
+      const cur = getPath(saved, f.key);
+      if (f.sealed) {
+        return field(f.label, h("span", { id, class: "badge" + (cur ? " ok" : "") }, cur ? "Set (stored encrypted)" : "Not set"), f.help);
+      }
+      const shown = cur === undefined || cur === null ? f.default : cur;
+      let input;
+      if (f.type === "boolean") { input = h("input", { id, type: "checkbox" }); input.checked = shown === true; }
+      else if (f.type === "select") {
+        input = h("select", { id }, [h("option", { value: "" }, "Default")].concat((f.options || []).map((o) => h("option", { value: o.value }, o.label))));
+        input.value = cur === undefined || cur === null ? "" : String(cur);
+      } else {
+        input = h("input", { id, type: f.type === "secret" ? "password" : f.type === "number" ? "number" : f.type === "url" ? "url" : "text",
+          value: cur === undefined || cur === null ? "" : String(cur), placeholder: f.placeholder || (f.default !== undefined ? "Default: " + f.default : undefined), autocomplete: "off", spellcheck: "false" });
+      }
       inputs[f.key] = input;
-      return f.type === "boolean" ? h("label", { class: "check" }, input, f.label) : field(f.label, input, f.help);
+      return f.type === "boolean" ? h("div", { class: "field" }, h("label", { class: "check" }, input, f.label), f.help ? h("span", { class: "help" }, f.help) : null) : field(f.label, input, f.help);
     }));
-    return [grid, h("div", { class: "form-actions" },
+    return [p.configNote ? h("p", { class: "hint" }, p.configNote) : null, grid, h("div", { class: "form-actions" },
       h("button", { class: "btn primary", type: "button", onclick: () => {
-        const out = Object.assign({}, saved);
+        const out = JSON.parse(JSON.stringify(saved));
         for (const f of fields) {
+          if (f.sealed) continue;
           const el = inputs[f.key];
-          if (f.type === "boolean") out[f.key] = el.checked;
-          else if (el.value === "") delete out[f.key];
-          else out[f.key] = f.type === "number" ? Number(el.value) : el.value;
+          if (f.type === "boolean") setPath(out, f.key, el.checked);
+          else if (el.value === "") delPath(out, f.key);
+          else setPath(out, f.key, f.type === "number" ? Number(el.value) : el.value);
         }
         save(out);
       } }, "Save settings"),

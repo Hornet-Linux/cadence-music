@@ -1,8 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import net from "node:net";
 import type { FastifyInstance } from "fastify";
-import type { ServerPluginContext } from "../../plugins/types.js";
-import type { ConfigField, DescribedPlugin } from "../_ops/meta.js";
+import type { ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { instrumentJobs, registerCollector } from "../_ops/registry.js";
 import { hasSecret, openSecret, sealSecret } from "../_ops/secrets.js";
 import { UrlRejected, isPrivateAddress, parseTargetUrl } from "../_ops/ssrf.js";
@@ -29,14 +28,6 @@ interface StoredConfig {
   endpoints: StoredEndpoint[];
 }
 
-const configFields: ConfigField[] = [
-  { key: "endpoints[].name", label: "Name", type: "text" },
-  { key: "endpoints[].url", label: "Destination URL", type: "url", help: "http or https. Private and loopback addresses are blocked unless you allow them for that endpoint." },
-  { key: "endpoints[].secret", label: "Signing secret", type: "secret", help: "Used for the X-Cadence-Signature HMAC-SHA256 header. Shown once when created." },
-  { key: "endpoints[].events", label: "Events", type: "select", options: EVENTS.map((e) => ({ value: e, label: e })) },
-  { key: "endpoints[].template", label: "Payload template", type: "select", options: TEMPLATES.map((t) => ({ value: t, label: TEMPLATE_LABELS[t] })) },
-  { key: "endpoints[].allowPrivate", label: "Allow private network addresses", type: "boolean", help: "Needed for Home Assistant or n8n on your LAN. Only turn on for destinations you control." },
-];
 
 function clean(input: unknown, max: number): string {
   return typeof input === "string" ? input.trim().slice(0, max) : "";
@@ -75,14 +66,15 @@ export interface WebhooksOptions {
   now?: () => number;
 }
 
-export function createWebhooksPlugin(options: WebhooksOptions = {}): DescribedPlugin {
+export function createWebhooksPlugin(options: WebhooksOptions = {}): ServerPlugin {
   return {
     id: PLUGIN_ID,
     name: "Webhooks",
     version: "1.0.0",
     description:
       "Sends signed webhooks (HMAC-SHA256) when plays are recorded or the library changes, with retries, a delivery log, SSRF protection and templates for n8n, Home Assistant and Discord.",
-    configFields,
+    configFields: [],
+    configNote: "Destinations, signing secrets and templates are managed in the player under Settings > Plugins > Webhooks (secrets are stored encrypted and shown once). Nothing here needs filling in.",
     adminRoutes: [
       "GET /api/webhooks",
       "POST /api/webhooks/endpoints",

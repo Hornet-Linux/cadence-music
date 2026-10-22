@@ -138,6 +138,9 @@ export const libraryHealthPlugin: ServerPlugin = {
   id: "cadence.library-health",
   name: "Library health",
   version: "1.0.0",
+  description:
+    "Reports duplicate files, missing tags and artwork, and unreadable or corrupt tracks. Read-only: it never changes or deletes anything in your music folder.",
+  configFields: [],
   register(app, ctx) {
     const { db, requireAdmin } = ctx;
     ensureFactsTable(db);

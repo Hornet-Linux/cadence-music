@@ -18,6 +18,11 @@ export function createSnapcastPlugin(options: { timeoutMs?: number } = {}): Serv
     id: SNAPCAST_PLUGIN_ID,
     name: "Snapcast",
     version: "1.0.0",
+    description:
+      "Controls an existing Snapcast server (multi-room audio): groups, clients, volume, mute and the stream each group plays. Cadence does not send audio into Snapcast itself.",
+    configFields: [
+      { key: "address", label: "Snapcast server address", type: "text", placeholder: "snapserver:1705", help: "Host and JSON-RPC port (default 1705) of your snapserver." },
+    ],
     register(app, ctx) {
       const address = () => ctx.settings.pluginConfig<Config>(SNAPCAST_PLUGIN_ID)?.address;
       const client = (): SnapcastClient | null => {

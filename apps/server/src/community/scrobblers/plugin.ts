@@ -26,6 +26,14 @@ export function createScrobblersPlugin(options: ScrobblersOptions = {}): ServerP
     id: PLUGIN_ID,
     name: "Scrobblers",
     version: "1.0.0",
+    description:
+      "Forwards every finished play from any device to the Last.fm, Libre.fm, ListenBrainz and Maloja accounts people have connected, with a retry queue that survives restarts.",
+    configFields: [
+      { key: "allowCustomHosts", label: "Allow custom Libre.fm-compatible and Maloja addresses", type: "boolean", default: false, help: "Needed for a Maloja server on your own network." },
+      { key: "retryDays", label: "Keep retrying a failed scrobble for (days)", type: "number", default: 7, help: "Between 1 and 30." },
+    ],
+    configNote:
+      "Last.fm and Libre.fm API keys and shared secrets are entered in the player under Settings > Plugins > Scrobblers (the secret is stored encrypted). Each person connects their own account there.",
     register(app, ctx) {
       const engine = new Scrobbler({
         db: ctx.db,

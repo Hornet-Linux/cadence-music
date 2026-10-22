@@ -125,6 +125,12 @@ export const audioAnalysisPlugin: ServerPlugin = {
   id: "cadence.audio-analysis",
   name: "Audio analysis (BPM, energy, key)",
   version: "1.0.0",
+  description:
+    "Estimates tempo (BPM), energy and musical key for every track with ffmpeg and stores them in the server database. The AI DJ and smart playlists use them. Needs ffmpeg and only reads the music folder.",
+  configFields: [
+    { key: "auto", label: "Analyse new tracks automatically", type: "boolean", default: true, help: "Otherwise analysis only runs when you press Start in the player." },
+    { key: "pauseMs", label: "Rest between tracks (milliseconds)", type: "number", default: 2000, help: "A longer rest keeps a big library from hogging the CPU." },
+  ],
   register(app, ctx) {
     const { db, requireAdmin, requireUser, settings } = ctx;
     ensureTable(db);

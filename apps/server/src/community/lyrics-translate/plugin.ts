@@ -22,6 +22,11 @@ export function createLyricsTranslatePlugin(options: LyricsTranslateOptions = {}
     id: "cadence.lyrics-translate",
     name: "Lyrics translation",
     version: "1.0.0",
+    description:
+      "Translates lyric lines with an AI provider you set up on the AI page of this panel. The lyrics view uses it when a listener picks the server as the translator.",
+    configFields: [],
+    configNote:
+      "Nothing to set here. Add a provider on the AI page first; without one, translating is unavailable.",
     register(app, ctx) {
       const store = new ProviderStore(ctx.db, ctx.secret);
       const recent = new Map<number, number[]>();

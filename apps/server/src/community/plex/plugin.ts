@@ -88,6 +88,11 @@ export function createPlexPlugin(options: PlexPluginOptions = {}): ServerPlugin 
     id: PLUGIN_ID,
     name: "Plex",
     version: "1.0.0",
+    description:
+      "Use your Plex Media Server as a music source. You set the server address; each person links their own plex.tv account with a short code and picks a music library. Browsing, search and audio are proxied through this server.",
+    configFields: [
+      { key: "serverUrl", label: "Plex server address", type: "url", placeholder: "http://plex:32400", help: "The PLEX_URL environment variable overrides this when set. The Test button under Settings > Plugins > Plex in the player checks an address before you rely on it." },
+    ],
     register(app, ctx) {
       const { secret, settings, requireUser, requireAdmin } = ctx;
       const store = new ConnectionStore(settings, secret);

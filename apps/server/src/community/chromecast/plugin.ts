@@ -17,6 +17,13 @@ export function createChromecastPlugin(
     id: CHROMECAST_PLUGIN_ID,
     name: "Chromecast",
     version: "1.0.0",
+    description:
+      "Plays to Chromecast devices on your network. The server finds them (or you add one by address) and hands each a short-lived signed stream link, so no account or cloud service is involved.",
+    configFields: [
+      { key: "streamBaseUrl", label: "Address devices use to reach this server", type: "url", placeholder: "http://192.168.1.10:8787", help: "Leave empty to use the address the player is connected with. Set it when that address is not reachable from the devices." },
+    ],
+    configNote:
+      "Devices added by hand are kept in this plugin's saved settings; add or remove them in the player under Settings > Plugins > Chromecast.",
     register(app, ctx) {
       const manager = new ChromecastManager({
         ...options,

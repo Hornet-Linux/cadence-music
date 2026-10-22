@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ServerPluginContext } from "../../plugins/types.js";
 import { UpstreamError, type FetchFn } from "../_ops/http.js";
-import type { ConfigField, DescribedPlugin } from "../_ops/meta.js";
+import type { PluginConfigField, ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { hasSecret, openSecret, sealSecret } from "../_ops/secrets.js";
 import { parseTargetUrl } from "../_ops/ssrf.js";
 import { LidarrClient } from "./lidarr.js";
@@ -28,13 +27,13 @@ interface StoredConfig {
   slskd?: StoredService;
 }
 
-const configFields: ConfigField[] = [
+const configFields: PluginConfigField[] = [
   { key: "acknowledged", label: "I understand the legal notice", type: "boolean", help: LEGAL_NOTICE },
   { key: "lidarr.url", label: "Lidarr address", type: "url", help: "For example http://lidarr:8686" },
-  { key: "lidarr.apiKey", label: "Lidarr API key", type: "secret", help: "Lidarr: Settings > General > Security." },
+  { key: "lidarr.apiKey", label: "Lidarr API key", type: "secret", sealed: true, help: "Lidarr: Settings > General > Security." },
   { key: "lidarr.rootFolderPath", label: "Root folder (optional)", type: "text", help: "Defaults to Lidarr's first root folder." },
   { key: "slskd.url", label: "slskd address", type: "url", help: "For example http://slskd:5030" },
-  { key: "slskd.apiKey", label: "slskd API key", type: "secret", help: "Set under 'web.authentication.api_keys' in slskd's configuration." },
+  { key: "slskd.apiKey", label: "slskd API key", type: "secret", sealed: true, help: "Set under 'web.authentication.api_keys' in slskd's configuration." },
 ];
 
 const str = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -45,7 +44,7 @@ export interface LidarrSlskdOptions {
   fetchFn?: FetchFn;
 }
 
-export function createLidarrSlskdPlugin(options: LidarrSlskdOptions = {}): DescribedPlugin {
+export function createLidarrSlskdPlugin(options: LidarrSlskdOptions = {}): ServerPlugin {
   return {
     id: PLUGIN_ID,
     name: "Lidarr and slskd",
@@ -53,6 +52,7 @@ export function createLidarrSlskdPlugin(options: LidarrSlskdOptions = {}): Descr
     description:
       "Admin-only and opt-in. Request missing albums through your own Lidarr (search, add, monitor, status) and run searches on your own slskd. Needs the administrator to accept a legal notice first.",
     configFields,
+    configNote: "API keys are stored encrypted. Set or replace them in the player under Settings > Plugins > Lidarr and slskd, which also tests the connection.",
     adminRoutes: [
       "GET|PUT /api/lidarr/config",
       "POST /api/lidarr/test",

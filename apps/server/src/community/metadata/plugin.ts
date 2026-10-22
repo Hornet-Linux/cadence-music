@@ -56,6 +56,13 @@ export function createMetadataPlugin(options: MetadataPluginOptions = {}): Serve
     id: METADATA_PLUGIN_ID,
     name: "Metadata and discovery",
     version: "1.0.0",
+    description:
+      "A cached, rate-limited proxy for MusicBrainz, Cover Art Archive, Fanart.tv, Discogs and Bandsintown so the app can show artist info, covers and concerts. Keys for the last three are optional and set here.",
+    configFields: [
+      { key: "fanartApiKey", label: "Fanart.tv API key", type: "secret", help: "Optional. Unlocks artist backgrounds and logos." },
+      { key: "discogsToken", label: "Discogs personal token", type: "secret", help: "Optional. Unlocks Discogs artist and release details." },
+      { key: "bandsintownAppId", label: "Bandsintown app id", type: "text", help: "Optional. The app id Bandsintown issued for this server; needed for concert listings." },
+    ],
     register(app, ctx) {
       const { db, settings, requireUser, requireAdmin } = ctx;
       const config = (): MetadataConfig => settings.pluginConfig<MetadataConfig>(METADATA_PLUGIN_ID) ?? {};

@@ -2,10 +2,9 @@ import { monitorEventLoopDelay } from "node:perf_hooks";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { userForToken } from "../../auth/sessions.js";
 import { IDLE_LIMIT_MS } from "../../auth/sessions.js";
-import type { ServerPluginContext } from "../../plugins/types.js";
 import { SERVER_VERSION } from "../../version.js";
 import { randomToken, safeEqual } from "../../util/crypto.js";
-import type { ConfigField, DescribedPlugin } from "../_ops/meta.js";
+import type { PluginConfigField, ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { instrumentJobs, registry } from "../_ops/registry.js";
 import { hasSecret, openSecret, sealSecret } from "../_ops/secrets.js";
 import { CounterVec, Histogram, render, type Family } from "./exposition.js";
@@ -18,15 +17,15 @@ interface StoredConfig {
   token?: string;
 }
 
-const configFields: ConfigField[] = [
-  { key: "token", label: "Scrape token", type: "secret", help: "Prometheus sends it as 'Authorization: Bearer <token>'. A signed-in admin's session token also works. METRICS_TOKEN in the environment overrides it." },
+const configFields: PluginConfigField[] = [
+  { key: "token", label: "Scrape token", type: "secret", sealed: true, help: "Prometheus sends it as 'Authorization: Bearer <token>'. A signed-in admin's session token also works. METRICS_TOKEN in the environment overrides it." },
 ];
 
 export interface MetricsOptions {
   now?: () => number;
 }
 
-export function createMetricsPlugin(options: MetricsOptions = {}): DescribedPlugin {
+export function createMetricsPlugin(options: MetricsOptions = {}): ServerPlugin {
   return {
     id: PLUGIN_ID,
     name: "Prometheus metrics",
@@ -34,6 +33,7 @@ export function createMetricsPlugin(options: MetricsOptions = {}): DescribedPlug
     description:
       "Serves /metrics in the Prometheus text format: request counts and latencies per route, sessions, library size, background jobs, plugin errors and process statistics. Needs a bearer token or an admin session.",
     configFields,
+    configNote: "The token is stored encrypted. Generate or revoke it in the player under Settings > Plugins > Prometheus metrics.",
     adminRoutes: ["GET /metrics", "GET /api/metrics/config", "POST /api/metrics/token", "DELETE /api/metrics/token"],
     register(app, ctx) {
       registerMetrics(app, ctx, options);

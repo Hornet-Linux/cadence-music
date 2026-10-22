@@ -64,6 +64,12 @@ export const loudnessPlugin: ServerPlugin = {
   id: "cadence.loudness",
   name: "Loudness analysis",
   version: "1.0.0",
+  description:
+    "Measures the loudness (EBU R128 via ffmpeg) of every track and keeps it in the server database, never in the files. The player uses it to even out volume between songs. Needs ffmpeg.",
+  configFields: [
+    { key: "auto", label: "Analyse new tracks automatically", type: "boolean", default: true, help: "Otherwise analysis only runs when you press Start in the player." },
+    { key: "pauseMs", label: "Rest between tracks (milliseconds)", type: "number", default: 1500, help: "A longer rest keeps a big library from hogging the CPU." },
+  ],
   register(app, ctx) {
     const { db, requireAdmin, requireUser, settings } = ctx;
     ensureTable(db);

@@ -80,6 +80,13 @@ export const transcodePlugin: ServerPlugin = {
   id: "cadence.transcode",
   name: "Streaming transcode",
   version: "1.0.0",
+  description:
+    "Converts audio on the fly for streaming (Opus, AAC or MP3 at several bitrates) and caches the result, so phones on mobile data use less bandwidth. Needs ffmpeg; without it the original file is streamed.",
+  configFields: [
+    { key: "maxCacheMb", label: "Cache size limit (MB)", type: "number", default: 1024, help: "The oldest converted files are removed when the cache grows past this." },
+    { key: "defaultProfile", label: "Default quality", type: "select", options: [{value: "opus-64", label: "Opus 64 kbps"},{value: "opus-96", label: "Opus 96 kbps"},{value: "opus-128", label: "Opus 128 kbps"},{value: "aac-128", label: "AAC 128 kbps"},{value: "aac-192", label: "AAC 192 kbps"},{value: "mp3-128", label: "MP3 128 kbps"},{value: "mp3-192", label: "MP3 192 kbps"}], help: "Used by devices that did not pick one. Default streams the original file." },
+    { key: "liveStartAfterSec", label: "Start long tracks while converting after (seconds)", type: "number", default: 1200, help: "Tracks longer than this begin playing before conversion finishes (seeking works once it is done)." },
+  ],
   register(app, ctx) {
     const { db, secret, requireAdmin, requireUser, settings } = ctx;
     ensureTables(db);

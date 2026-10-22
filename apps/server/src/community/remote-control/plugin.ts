@@ -24,6 +24,9 @@ export function createRemoteControlPlugin(options: RemoteControlOptions = {}): S
     id: REMOTE_CONTROL_PLUGIN_ID,
     name: "Remote control",
     version: "1.0.0",
+    description:
+      "Control one Cadence player from another: each open player keeps an event stream to the server and commands you send to a device are relayed to it. Only your own devices are listed.",
+    configFields: [],
     register(app, ctx) {
       hub.active = true;
       app.addHook("onClose", async () => {

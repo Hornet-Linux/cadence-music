@@ -32,6 +32,11 @@ export const nowPlayingPlugin: ServerPlugin = {
   id: "cadence.now-playing",
   name: "Now playing overlay",
   version: "1.0.0",
+  description:
+    "Lets the desktop app share what you are playing as an overlay link for OBS or any browser. Links are random secrets, stored hashed, and can be revoked at any time; the current song is kept in memory only.",
+  configFields: [],
+  configNote:
+    "Nothing to set here. Create and revoke overlay links in the player under Settings > Plugins > Now playing overlay.",
   register(app, ctx) {
     const { db, requireUser } = ctx;
     const hub = new NowPlayingHub();

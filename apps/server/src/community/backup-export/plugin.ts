@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import type { ServerPluginContext } from "../../plugins/types.js";
-import type { ConfigField, DescribedPlugin } from "../_ops/meta.js";
+import type { PluginConfigField, ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { instrumentJobs, registerCollector } from "../_ops/registry.js";
 import {
   fileStem,
@@ -36,7 +35,7 @@ interface BackupConfig {
 
 const DEFAULT_CONFIG: BackupConfig = { enabled: false, everyHours: 24, keep: 7 };
 
-const configFields: ConfigField[] = [
+const configFields: PluginConfigField[] = [
   { key: "enabled", label: "Scheduled database snapshots", type: "boolean", help: "Writes a snapshot into the data folder on a schedule." },
   { key: "everyHours", label: "Every (hours)", type: "number" },
   { key: "keep", label: "Scheduled snapshots to keep", type: "number", help: "Older scheduled snapshots are deleted. Manual snapshots are never deleted automatically." },
@@ -76,7 +75,7 @@ export function clampConfig(input: Partial<BackupConfig> | undefined, base: Back
   };
 }
 
-export const backupExportPlugin: DescribedPlugin = {
+export const backupExportPlugin: ServerPlugin = {
   id: PLUGIN_ID,
   name: "Backup and export",
   version: "1.0.0",

@@ -2,8 +2,7 @@ import { createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { userForToken } from "../../auth/sessions.js";
 import type { UserRow } from "../../auth/users.js";
-import type { ServerPluginContext } from "../../plugins/types.js";
-import type { ConfigField, DescribedPlugin } from "../_ops/meta.js";
+import type { PluginConfigField, ServerPlugin, ServerPluginContext } from "../../plugins/types.js";
 import { registerCollector } from "../_ops/registry.js";
 import { QuotaEngine, type Denial, type Limits } from "./engine.js";
 
@@ -21,7 +20,7 @@ export interface QuotaConfig extends Limits {
 
 const DEFAULTS: QuotaConfig = { maxConcurrentStreams: 0, maxHoursPerDay: 0, exemptAdmins: true, overrides: {} };
 
-const configFields: ConfigField[] = [
+const configFields: PluginConfigField[] = [
   { key: "maxConcurrentStreams", label: "Devices streaming at once (0 = no limit)", type: "number", help: "Counted per person. A device is an address plus browser; skipping tracks does not count as a new stream." },
   { key: "maxHoursPerDay", label: "Hours of music per person per day (0 = no limit)", type: "number", help: "Counted when a track starts streaming, in UTC days." },
   { key: "exemptAdmins", label: "Do not limit admins", type: "boolean" },
@@ -61,7 +60,7 @@ export interface QuotaOptions {
   now?: () => number;
 }
 
-export function createQuotasPlugin(options: QuotaOptions = {}): DescribedPlugin {
+export function createQuotasPlugin(options: QuotaOptions = {}): ServerPlugin {
   return {
     id: PLUGIN_ID,
     name: "Quotas and usage",

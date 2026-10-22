@@ -27,6 +27,9 @@ export const tagSuggestionsPlugin: ServerPlugin = {
   id: "cadence.tag-suggestions",
   name: "Tag suggestions",
   version: "1.0.0",
+  description:
+    "Proposes fixes for messy tags. When an admin accepts one, the new value is stored in the server database and served instead of the file tag. Your audio files are never modified.",
+  configFields: [],
   register(app, ctx) {
     const { db, requireAdmin } = ctx;
     ensureTables(db);

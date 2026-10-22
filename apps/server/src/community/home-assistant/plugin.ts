@@ -39,6 +39,11 @@ export function createHomeAssistantPlugin(options: HomeAssistantOptions = {}): S
     id: HOME_ASSISTANT_PLUGIN_ID,
     name: "Home Assistant",
     version: "1.0.0",
+    description:
+      "Pushes what is playing to a Home Assistant entity through its official REST API and accepts commands (play, pause, skip, volume) from Home Assistant on a token-protected endpoint. Each person sets up their own link.",
+    configFields: [],
+    configNote:
+      "Nothing to set here. Each person adds their Home Assistant address and access token in the player under Settings > Plugins > Home Assistant; tokens are stored encrypted.",
     register(app, ctx) {
       const users = new UserStore(ctx);
       registerConfigRoutes(app, ctx, users, hub);

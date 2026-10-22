@@ -151,6 +151,9 @@ export const smartPlaylistsPlugin: ServerPlugin = {
   id: "cadence.smart-playlists",
   name: "Smart playlists",
   version: "1.0.0",
+  description:
+    "Rule-based playlists that stay up to date with the library: genre, year, play count, last played, date added, loudness, tempo, energy, artist and favourites. Stored per person and evaluated on the server.",
+  configFields: [],
   register(app, ctx) {
     const { db, requireUser } = ctx;
     ensureTables(db);
