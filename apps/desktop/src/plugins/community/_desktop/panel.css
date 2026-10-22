@@ -1,0 +1,158 @@
+/* Shared by the desktop integration settings panels. Uses the app's design tokens. */
+.di-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 0;
+}
+.di-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.di-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: none;
+}
+.di-ok .di-dot {
+  background: #6fa387;
+}
+.di-warn .di-dot {
+  background: #c1a56a;
+}
+.di-code {
+  font-family: "Cascadia Mono", ui-monospace, monospace;
+  font-size: 0.82em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(127, 127, 127, 0.16);
+  word-break: break-all;
+}
+.di-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid var(--border);
+}
+.di-block pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: "Cascadia Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.di-btn {
+  min-height: 44px;
+  padding: 8px 14px;
+}
+.di-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.di-row .text-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 44px;
+}
+.di-note {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+.di-note a {
+  color: inherit;
+  text-decoration: underline;
+}
+.di-help {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+}
+.di-help summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.di-help-body {
+  padding: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.di-help-body ol {
+  margin: 0 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.di-table {
+  display: flex;
+  flex-direction: column;
+}
+.di-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.di-item-main {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.di-item-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.di-item-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.di-item-sub.di-bad {
+  color: #c98f8f;
+}
+.di-key {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: rgba(127, 127, 127, 0.1);
+  font-family: "Cascadia Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.di-key.recording {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+.di-key.clash {
+  border-color: #c1a56a;
+}
+@media (max-width: 520px) {
+  .di-item {
+    align-items: stretch;
+  }
+}
