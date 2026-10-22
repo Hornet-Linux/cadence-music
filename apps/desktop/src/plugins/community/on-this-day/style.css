@@ -1,0 +1,29 @@
+.otd {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.otd-head h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.otd-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  border-radius: 10px;
+  padding: 2px 4px;
+  text-align: left;
+}
+.otd-row:hover {
+  background: var(--surface-hover);
+}
+.otd-year .sx-list > li {
+  padding: 2px 0;
+}
+.otd .sx-title,
+.otd .sx-sub {
+  max-width: 100%;
+}

@@ -1,0 +1,61 @@
+.la-now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0;
+}
+.la-cover {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex: none;
+}
+.la-cover .cover {
+  width: 100%;
+  height: 100%;
+}
+.la-code {
+  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
+  font-size: 2.2rem;
+  letter-spacing: 0.3em;
+  font-weight: 600;
+  margin: 10px 0;
+  user-select: text;
+}
+.la-code-input {
+  font-family: "JetBrains Mono", "Cascadia Mono", ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.la-link {
+  margin-top: 10px;
+  word-break: break-all;
+}
+.la-status {
+  margin: 8px 0 14px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+.la-status.warn {
+  color: var(--text);
+}
+.la-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 6px;
+  background: var(--text-faint);
+  vertical-align: middle;
+}
+.la-dot.live {
+  background: var(--ok);
+}
+.la-dot.reconnecting,
+.la-dot.connecting {
+  background: #d9b36a;
+}
+.la-dot.lost {
+  background: var(--danger);
+}
