@@ -93,6 +93,22 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX playlists_user ON playlists (user_id, updated_at DESC);
   `,
+  // v5: LLM providers the server owner configures for the AI DJ. API keys are
+  // stored encrypted and are never sent to any client.
+  `
+  CREATE TABLE llm_providers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    model TEXT NOT NULL,
+    api_key_enc TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 function migrate(db: Db): void {
