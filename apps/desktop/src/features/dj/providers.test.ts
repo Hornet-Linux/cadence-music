@@ -19,7 +19,7 @@ const llm = { status: vi.fn(), chatJson: vi.fn() };
   },
 });
 
-const { currentOption, effectiveOption, providerOptions, providerStatus, requestPicks, useProviders } = await import("./providers");
+const { compactProfile, currentOption, effectiveOption, providerOptions, providerStatus, requestPicks, useProviders } = await import("./providers");
 
 const profile = { topArtists: ["Daft Punk"], genres: [], topTracks: [], recentTracks: [] };
 const server = (id: string, isDefault = false): LlmProviderInfo => ({
@@ -115,5 +115,50 @@ describe("local provider storage", () => {
     await useProviders.getState().removeLocal(id);
     expect(secrets.has(`dj.key.${id}`)).toBe(false);
     expect(currentOption()).toBeUndefined();
+  });
+});
+
+describe("on-device AI from the app shell", () => {
+  const bridge = { aiName: "Apple Intelligence", aiAvailable: vi.fn(), aiChatJson: vi.fn() };
+  const win = globalThis.window as unknown as { CadenceNative?: typeof bridge };
+
+  beforeEach(() => {
+    win.CadenceNative = bridge;
+    api.mockReset().mockResolvedValue({ items: [] });
+    bridge.aiAvailable.mockReset().mockResolvedValue(true);
+    bridge.aiChatJson.mockReset();
+    useProviders.setState({ local: [{ id: "ollama", name: "Ollama", kind: "ollama", baseUrl: "http://localhost:11434", model: "m", share: false }], selected: "", remote: [], native: null });
+  });
+
+  it("shows up only when the shell says the model can run, and beats an unstarted local server", async () => {
+    await useProviders.getState().refreshRemote();
+    const { local, remote, native } = useProviders.getState();
+    expect(native).toEqual({ name: "Apple Intelligence" });
+    expect(effectiveOption("", providerOptions(local, remote, native))?.ref).toBe("native:ai");
+
+    bridge.aiAvailable.mockResolvedValue(false);
+    await useProviders.getState().refreshRemote();
+    expect(useProviders.getState().native).toBeNull();
+    delete win.CadenceNative;
+  });
+
+  it("sends a trimmed prompt and parses the reply text", async () => {
+    bridge.aiChatJson.mockResolvedValue('Sure! {"picks":[{"artist":"Justice","title":"D.A.N.C.E.","intro":"Hi"}]}');
+    const big = { topArtists: Array.from({ length: 30 }, (_, i) => `Artist ${i}`), genres: [], topTracks: [], recentTracks: [] };
+    expect(await requestPicks("native:ai", big, { count: 12 })).toEqual([{ artist: "Justice", title: "D.A.N.C.E.", intro: "Hi" }]);
+    const sent = JSON.parse(bridge.aiChatJson.mock.calls[0][0]);
+    expect(sent.messages[1].content).toContain("Artist 9");
+    expect(sent.messages[1].content).not.toContain("Artist 10");
+    expect(sent.messages[1].content).toContain("Pick 8 songs");
+    expect(sent.schema.required).toEqual(["picks"]);
+    expect(api).not.toHaveBeenCalled();
+    delete win.CadenceNative;
+  });
+
+  it("reports unavailable without a bridge, and compactProfile trims every list", async () => {
+    delete win.CadenceNative;
+    expect((await providerStatus("native:ai")).available).toBe(false);
+    const c = compactProfile({ topArtists: Array(20).fill("a"), genres: Array(20).fill("g"), topTracks: Array(20).fill("t"), recentTracks: Array(20).fill("r") });
+    expect([c.topArtists.length, c.genres.length, c.topTracks.length, c.recentTracks.length]).toEqual([10, 5, 8, 6]);
   });
 });

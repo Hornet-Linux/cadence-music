@@ -31,7 +31,7 @@ const toForm = (p: LocalProvider): ProviderFormValue => ({
 /** Settings → AI DJ: where the model runs, and spoken intros. */
 export function DjSettings() {
   const { voice, setVoice } = useDj();
-  const { local, remote, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
+  const { local, remote, native, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
   const server = useServer((s) => s.user);
   const [editing, setEditing] = useState<LocalProvider | "new" | null>(null);
   const [editingHasKey, setEditingHasKey] = useState(false);
@@ -40,7 +40,7 @@ export function DjSettings() {
     void refreshRemote();
   }, [refreshRemote, server]);
 
-  const options = providerOptions(local, remote);
+  const options = providerOptions(local, remote, native);
   const active = effectiveOption(selected, options);
 
   async function saveLocal(v: ProviderFormValue) {

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { DjPicksResponse, LlmProviderInfo, LlmProvidersResponse } from "@uma/shared";
 import { useServer } from "@/plugins/builtins/server/serverStore";
-import { DEFAULT_LLM_CONFIG, type LlmConfig, type LlmStatus, type ProviderKind } from "../../../electron/llm";
+import { DEFAULT_LLM_CONFIG, extractJson, type LlmConfig, type LlmStatus, type ProviderKind } from "../../../electron/llm";
 import { buildDjMessages, cleanReply, DJ_SCHEMA, type DjPick, type DjRequest } from "./prompt";
 import type { TasteProfile } from "./tasteProfile";
 
@@ -9,6 +9,7 @@ import type { TasteProfile } from "./tasteProfile";
 //   server:<id>               the server owner's; the server calls it and keeps its key
 //   device:<deviceId>:<id>    on another of this person's computers, reached through the server
 //   local:<id>                on this device; this device calls it and keeps its key
+//   native:ai                 the phone's own model (Apple Intelligence, Gemini Nano), via the app shell
 // Keys typed on a device stay on that device (in secure storage), so a lost
 // phone can't leak keys saved on the server or on other devices.
 
@@ -32,9 +33,9 @@ export interface LocalProvider {
 export interface ProviderOption {
   ref: string;
   name: string;
-  kind: ProviderKind;
+  kind: ProviderKind | "native";
   model: string;
-  scope: "local" | "server" | "device";
+  scope: "local" | "server" | "device" | "native";
   /** Where it runs, for display: "This device", "Server" or the other computer's name. */
   where: string;
   isDefault?: boolean;
@@ -124,11 +125,14 @@ interface ProvidersState {
   selected: string;
   /** Providers the server and the person's other computers offer. */
   remote: LlmProviderInfo[];
+  /** The phone's own model, when the app shell offers one that can run now. */
+  native: { name: string } | null;
 
   addLocal: (p: Omit<LocalProvider, "id">, apiKey?: string) => Promise<string>;
   updateLocal: (id: string, patch: Partial<Omit<LocalProvider, "id">>, apiKey?: string | null) => Promise<void>;
   removeLocal: (id: string) => Promise<void>;
   select: (ref: string) => void;
+  /** Reload what the server, the person's other computers and the app shell offer. */
   refreshRemote: () => Promise<void>;
 }
 
@@ -136,6 +140,7 @@ export const useProviders = create<ProvidersState>((set, get) => ({
   local: loadLocal(),
   selected: read<string>(SELECTED_KEY) ?? "",
   remote: [],
+  native: null,
 
   async addLocal(p, apiKey) {
     const id = Math.random().toString(36).slice(2, 10);
@@ -167,6 +172,7 @@ export const useProviders = create<ProvidersState>((set, get) => ({
   },
 
   async refreshRemote() {
+    set({ native: await nativeOffer() });
     const server = useServer.getState();
     if (!server.user) return set({ remote: [] });
     try {
@@ -177,8 +183,31 @@ export const useProviders = create<ProvidersState>((set, get) => ({
   },
 }));
 
+const NATIVE_REF = "native:ai";
+
+/** The app shell's on-device model, if it has one that is usable right now. */
+async function nativeOffer(): Promise<{ name: string } | null> {
+  const bridge = window.CadenceNative;
+  if (!bridge) return null;
+  try {
+    return (await bridge.aiAvailable()) ? { name: bridge.aiName ?? "On-device AI" } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** On-device models have small context windows, so send them a trimmed profile. */
+export function compactProfile(p: TasteProfile): TasteProfile {
+  return {
+    topArtists: p.topArtists.slice(0, 10),
+    genres: p.genres.slice(0, 5),
+    topTracks: p.topTracks.slice(0, 8),
+    recentTracks: p.recentTracks.slice(0, 6),
+  };
+}
+
 /** Everything the listener can pick from, server first. */
-export function providerOptions(local: LocalProvider[], remote: LlmProviderInfo[]): ProviderOption[] {
+export function providerOptions(local: LocalProvider[], remote: LlmProviderInfo[], native: { name: string } | null = null): ProviderOption[] {
   return [
     ...remote
       .filter((r) => r.scope === "server")
@@ -186,6 +215,7 @@ export function providerOptions(local: LocalProvider[], remote: LlmProviderInfo[
     ...remote
       .filter((r) => r.scope === "device")
       .map((r) => ({ ref: r.ref, name: r.name, kind: r.kind, model: r.model, scope: "device" as const, where: r.deviceName ?? "Another device" })),
+    ...(native ? [{ ref: NATIVE_REF, name: native.name, kind: "native" as const, model: "on-device", scope: "native" as const, where: "This device" }] : []),
     ...local.map((p) => ({ ref: `local:${p.id}`, name: p.name, kind: p.kind, model: p.model, scope: "local" as const, where: "This device" })),
   ];
 }
@@ -199,13 +229,15 @@ export function effectiveOption(selected: string, options: ProviderOption[]): Pr
     options.find((o) => o.ref === selected) ??
     options.find((o) => o.scope === "server" && o.isDefault) ??
     options.find((o) => o.scope === "server") ??
+    // A phone's own model needs no setup, unlike a local server nobody has started.
+    options.find((o) => o.scope === "native") ??
     options.find((o) => o.scope === "local")
   );
 }
 
 export function currentOption(): ProviderOption | undefined {
-  const { local, remote, selected } = useProviders.getState();
-  return effectiveOption(selected, providerOptions(local, remote));
+  const { local, remote, native, selected } = useProviders.getState();
+  return effectiveOption(selected, providerOptions(local, remote, native));
 }
 
 function localById(ref: string): LocalProvider {
@@ -216,6 +248,10 @@ function localById(ref: string): LocalProvider {
 
 /** Is the provider reachable, and which models does it have? */
 export async function providerStatus(ref: string): Promise<LlmStatus> {
+  if (ref === NATIVE_REF) {
+    const offer = await nativeOffer();
+    return offer ? { available: true, models: ["on-device"] } : { available: false, models: [], error: "Not available on this device" };
+  }
   if (ref.startsWith("local:")) {
     const llm = window.host?.llm;
     if (!llm) return { available: false, models: [], error: "Not available in this build" };
@@ -233,6 +269,13 @@ export interface PickOptions extends Omit<DjRequest, "now"> {
  * here; anything else goes through the server, which owns the DJ's prompt.
  */
 export async function requestPicks(ref: string, profile: TasteProfile, opts: PickOptions): Promise<DjPick[]> {
+  if (ref === NATIVE_REF) {
+    const bridge = window.CadenceNative;
+    if (!bridge) throw new Error("This device has no on-device AI");
+    const messages = buildDjMessages(compactProfile(profile), { ...opts, count: Math.min(opts.count, 8) });
+    const request = JSON.stringify({ messages, schema: DJ_SCHEMA, temperature: 0.8 });
+    return cleanReply(extractJson(await bridge.aiChatJson(request)));
+  }
   if (ref.startsWith("local:")) {
     const llm = window.host?.llm;
     if (!llm) throw new Error("AI DJ isn't available here");

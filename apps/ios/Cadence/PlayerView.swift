@@ -50,6 +50,10 @@ struct WebPlayer: UIViewRepresentable {
         config.websiteDataStore = .default() // keeps the sign-in between launches
         // The page's "Change server" button (Settings → Server) posts here.
         config.userContentController.add(WeakMessageHandler(context.coordinator), name: "cadence")
+        // Exposes window.CadenceNative so the AI DJ can use Apple Intelligence on this phone.
+        config.userContentController.addScriptMessageHandler(AIMessageHandler(), contentWorld: .page, name: "cadenceAI")
+        config.userContentController.addUserScript(WKUserScript(
+            source: AIMessageHandler.bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
@@ -76,6 +80,7 @@ struct WebPlayer: UIViewRepresentable {
 
     static func dismantleUIView(_ web: WKWebView, coordinator: Coordinator) {
         web.configuration.userContentController.removeScriptMessageHandler(forName: "cadence")
+        web.configuration.userContentController.removeScriptMessageHandler(forName: "cadenceAI", contentWorld: .page)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
@@ -171,5 +176,44 @@ private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         target?.userContentController(controller, didReceive: message)
+    }
+}
+
+/// Answers the page's AI requests (`window.CadenceNative`). Holds no state, so
+/// the controller retaining it is harmless.
+final class AIMessageHandler: NSObject, WKScriptMessageHandlerWithReply {
+    /// The contract the web player expects; Android's shell implements the same one.
+    static let bridgeScript = """
+    window.CadenceNative = {
+      aiName: "Apple Intelligence",
+      aiAvailable: function () {
+        return window.webkit.messageHandlers.cadenceAI.postMessage({ op: "available" });
+      },
+      aiChatJson: function (requestJson) {
+        return window.webkit.messageHandlers.cadenceAI.postMessage({ op: "chat", request: requestJson });
+      }
+    };
+    """
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        guard let body = message.body as? [String: Any], let op = body["op"] as? String else {
+            return replyHandler(nil, "Unrecognised request")
+        }
+        switch op {
+        case "available":
+            replyHandler(AppleIntelligence.availability().available, nil)
+        case "chat":
+            guard let request = body["request"] as? String else { return replyHandler(nil, "Missing request") }
+            Task {
+                do {
+                    replyHandler(try await AppleIntelligence.chatJson(requestJSON: request), nil)
+                } catch {
+                    replyHandler(nil, error.localizedDescription)
+                }
+            }
+        default:
+            replyHandler(nil, "Unrecognised request")
+        }
     }
 }

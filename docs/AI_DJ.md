@@ -65,6 +65,27 @@ Your other devices then see it in `GET /api/llm/providers` as
 `device:<deviceId>:<providerId>` while that app is open. Jobs only ever go to a
 device owned by the person who asked.
 
+## On-device AI (Apple Intelligence, Gemini Nano)
+
+The iOS and Android apps are shells around the web player. When the phone has
+its own language model they expose it to the page as `window.CadenceNative`,
+and the DJ offers it as a provider ("Apple Intelligence") that needs no server,
+no account and no key.
+
+```ts
+interface CadenceNativeBridge {
+  aiName?: string;                       // shown to the listener
+  aiAvailable(): boolean | Promise<boolean>;
+  aiChatJson(requestJson: string): Promise<string>;  // { messages, schema, temperature? } -> reply text
+}
+```
+
+The page sends a trimmed taste profile because on-device models have small
+context windows, and parses the first JSON object in the reply. If
+`aiAvailable()` is false (older OS, unsupported device, feature turned off) the
+option simply doesn't appear. It is chosen automatically only when the server
+has no provider of its own.
+
 ## Limits
 
 `POST /api/dj/picks` is the only endpoint that runs a model for ordinary
