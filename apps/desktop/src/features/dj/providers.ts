@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { DjPicksResponse, LlmProviderInfo, LlmProvidersResponse } from "@uma/shared";
 import { useServer } from "@/plugins/builtins/server/serverStore";
+import { isWeb } from "@/platform/webHost";
 import { DEFAULT_LLM_CONFIG, extractJson, type LlmConfig, type LlmStatus, type ProviderKind } from "../../../electron/llm";
 import { buildDjMessages, cleanReply, DJ_SCHEMA, type DjPick, type DjRequest } from "./prompt";
 import type { TasteProfile } from "./tasteProfile";
@@ -111,6 +112,18 @@ async function setApiKey(id: string, key: string | null): Promise<void> {
   } catch (err) {
     console.warn("Could not save the API key securely", err);
   }
+}
+
+/** Where typed API keys live: the desktop app uses the OS keychain, the website only this browser's storage. */
+export function keyStorageNote(): string {
+  return isWeb()
+    ? "Stored in this browser and removed when you sign out."
+    : "Kept in this device's secure storage.";
+}
+
+/** Forget every provider configured on this device (the web player does this on sign-out). */
+export function resetLocalProviders(): void {
+  useProviders.setState({ local: [{ ...DEFAULT_LOCAL }], selected: "", remote: [], native: null });
 }
 
 /** The config to call a local provider with, key included. */

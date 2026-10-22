@@ -79,6 +79,25 @@ export function getMusicKit(developerToken: () => Promise<string>): Promise<Musi
   return instance;
 }
 
+/**
+ * Sign out of Apple Music and drop the configured instance, without loading
+ * MusicKit if it never was. MusicKit keeps its user token in localStorage
+ * under "music.*" keys; those are removed too in case unauthorize() can't run.
+ */
+export async function forgetMusicKit(): Promise<void> {
+  instance = null;
+  try {
+    await window.MusicKit?.getInstance().unauthorize();
+  } catch {
+    // Not configured, or offline: the stored tokens are removed below.
+  }
+  try {
+    for (const key of Object.keys(localStorage)) if (key.startsWith("music.")) localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable.
+  }
+}
+
 /** Queue one Apple Music song in MusicKit as an ExternalPlayback. */
 export function createApplePlayback(
   music: MusicKitInstance,
