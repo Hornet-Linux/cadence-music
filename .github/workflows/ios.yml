@@ -28,6 +28,11 @@ jobs:
         working-directory: apps/ios
     steps:
       - uses: actions/checkout@v4
+      # Apple Intelligence (the Foundation Models framework) only exists in the
+      # iOS 26 SDK, so build with the newest Xcode. The app still targets iOS 16+.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - name: Generate the Xcode project
         run: |
           brew install xcodegen
