@@ -78,6 +78,11 @@ export function createAudiobooksPlugin(options: AudiobooksOptions = {}): ServerP
     id: ID,
     name: "Audiobookshelf",
     version: "1.0.0",
+    description:
+      "Use your Audiobookshelf server as an audiobook source: browse libraries, continue listening, bookmarks and synced progress. Each person signs in with their own Audiobookshelf account.",
+    configFields: [
+      { key: "serverUrl", label: "Audiobookshelf server address", type: "url", placeholder: "http://audiobookshelf:13378", help: "The Test button under Settings > Plugins > Audiobooks in the player checks an address before you rely on it." },
+    ],
     register(app, ctx) {
       const { secret, settings, requireUser, requireAdmin } = ctx;
       const store = new ConnectionStore(ctx.db, secret);

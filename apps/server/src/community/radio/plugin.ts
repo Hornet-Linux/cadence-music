@@ -139,6 +139,10 @@ export function createRadioPlugin(options: RadioOptions = {}): ServerPlugin {
     id: ID,
     name: "Internet radio",
     version: "1.0.0",
+    description:
+      "Internet radio from the community Radio Browser directory: search and favourite stations, and stream them through this server (Icecast/Shoutcast and HLS) with now-playing titles. No account needed.",
+    configFields: [],
+    configNote: "Nothing to set here. Each person keeps their own favourite stations.",
     register(app, ctx) {
       const { secret, db, requireUser } = ctx;
       const policy: NetPolicy = options.policy ?? envPolicy();

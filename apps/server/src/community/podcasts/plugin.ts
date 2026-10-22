@@ -43,6 +43,13 @@ export function createPodcastsPlugin(options: PodcastOptions = {}): ServerPlugin
     id: ID,
     name: "Podcasts",
     version: "1.0.0",
+    description:
+      "Subscribe to podcasts by RSS or OPML, with new-episode refresh, chapters and per-person progress. Search uses the Podcast Index when you add its API key; feeds by address work without one.",
+    configFields: [
+      { key: "podcastIndexKey", label: "Podcast Index API key", type: "secret", help: "Optional. Free from api.podcastindex.org; enables podcast search." },
+      { key: "podcastIndexSecretEnc", label: "Podcast Index API secret", type: "secret", sealed: true },
+    ],
+    configNote: "The API secret is stored encrypted: enter or replace it in the player under Settings > Plugins > Podcasts.",
     register(app, ctx) {
       const { db, secret, requireUser, requireAdmin, settings, jobs } = ctx;
       const policy: NetPolicy = options.policy ?? envPolicy();

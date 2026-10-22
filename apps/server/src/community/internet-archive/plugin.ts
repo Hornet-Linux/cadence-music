@@ -54,6 +54,10 @@ export function createArchivePlugin(options: ArchiveOptions = {}): ServerPlugin 
     id: ID,
     name: "Internet Archive",
     version: "1.0.0",
+    description:
+      "Search and stream freely licensed audio from the Internet Archive, including the Live Music Archive (etree) concert recordings, through this server. No account needed.",
+    configFields: [],
+    configNote: "Nothing to set here.",
     register(app, ctx) {
       const { secret, requireUser } = ctx;
       const base = (options.baseUrl ?? envUrl("CADENCE_ARCHIVE_URL") ?? "https://archive.org").replace(/\/+$/, "");
