@@ -103,8 +103,8 @@ export class StreamingKit {
     const target = testUpstream();
     if (target) {
       ctx.log.warn(
-        { plugin: def.id, target },
-        "CADENCE_STREAMING_TEST_UPSTREAM is active: this plugin sends its API calls, including OAuth token exchange, to a test host instead of the real service. Never use this in production.",
+        { target },
+        `${def.id}: CADENCE_STREAMING_TEST_UPSTREAM is active: this plugin sends its API calls, including OAuth token exchange, to a test host instead of the real service. Never use this in production.`,
       );
     }
   }

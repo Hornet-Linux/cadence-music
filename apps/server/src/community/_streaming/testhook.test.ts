@@ -64,6 +64,8 @@ test("start-up logs a loud warning naming the plugin and target only when the ho
   process.env.CADENCE_TESTING = "1";
   const calls = warnings();
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0]!.obj, { plugin: "cadence.demo", target: "http://127.0.0.1:9261" });
+  // The plugin's own logger already carries its id; the message names it too.
+  assert.deepEqual(calls[0]!.obj, { target: "http://127.0.0.1:9261" });
+  assert.match(calls[0]!.msg, /^cadence\.demo: CADENCE_STREAMING_TEST_UPSTREAM is active/);
   assert.match(calls[0]!.msg, /Never use this in production/);
 });
