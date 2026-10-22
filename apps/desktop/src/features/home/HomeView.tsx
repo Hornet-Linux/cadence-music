@@ -57,7 +57,7 @@ function Welcome() {
       <div className="hero-text">
         <span className="eyebrow">Welcome</span>
         <h2>Your music, all in one place</h2>
-        <p>Connect Spotify, Apple Music or your own server and your library and listening show up here.</p>
+        <p>Connect Spotify, Apple Music, Jellyfin or your own server and your library and listening show up here.</p>
         <button className="btn primary big" onClick={startSetup}>
           <SparkleIcon size={16} /> Set up sources
         </button>

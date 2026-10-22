@@ -1,12 +1,20 @@
 import { create } from "zustand";
 import { usePlayer } from "@/player/playerStore";
-import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { planDjSet } from "./dj";
 import type { DjTrack } from "./resolve";
 import { currentOption, providerStatus, useProviders } from "./providers";
 import { djSetup, setupMessage } from "./setup";
 import { speakIntro, stopSpeaking } from "./voice";
-import { buildTasteProfile, isEmptyProfile, type TasteProfile } from "./tasteProfile";
+import {
+  chooseDjSource,
+  connectSourceMessage,
+  loadSourcePref,
+  saveSourcePref,
+  type DjMusicSource,
+  type DjSourceId,
+  type DjSourcePref,
+} from "./sources";
+import type { TasteProfile } from "./tasteProfile";
 
 const VOICE_KEY = "dj:voice";
 /** Fetch the next set when this many DJ tracks are left in the queue. */
@@ -26,8 +34,13 @@ interface DjState {
   intros: Record<string, string>;
   /** Speak intros between tracks. */
   voice: boolean;
+  /** Which music source the person chose in Settings. */
+  sourcePref: DjSourcePref;
+  /** The source the running DJ plays from. */
+  source: DjSourceId | null;
 
   setMood: (mood: string) => void;
+  setSourcePref: (pref: DjSourcePref) => void;
   setVoice: (on: boolean) => void;
   start: () => Promise<void>;
   switchUp: () => Promise<void>;
@@ -48,15 +61,16 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export const useDj = create<DjState>((set, get) => {
   let profile: TasteProfile | null = null;
+  /** The music source this session plays from; fixed when the DJ starts. */
+  let source: DjMusicSource | null = null;
   /** Bumped by stop/start so a slow reply from an old session is ignored. */
   let session = 0;
 
   async function getProfile(): Promise<TasteProfile> {
     if (profile) return profile;
-    const p = await buildTasteProfile(useSpotify.getState().tracks);
-    if (isEmptyProfile(p)) throw new Error("Play or like a few songs on Spotify first so the DJ knows your taste.");
-    profile = p;
-    return p;
+    if (!source) throw new Error(connectSourceMessage(get().sourcePref));
+    profile = await source.taste();
+    return profile;
   }
 
   async function fetchSet(switchUp = false): Promise<DjTrack[] | null> {
@@ -64,7 +78,12 @@ export const useDj = create<DjState>((set, get) => {
     const { mood, history } = get();
     const option = currentOption();
     if (!option) throw new Error("Add an AI provider in Settings → AI DJ first.");
-    const next = await planDjSet(option.ref, await getProfile(), { mood: mood.trim() || undefined, switchUp, history });
+    const next = await planDjSet(
+      option.ref,
+      await getProfile(),
+      { mood: mood.trim() || undefined, switchUp, history },
+      source ?? undefined,
+    );
     if (id !== session) return null; // stopped or restarted meanwhile
     set((s) => ({
       history: [...s.history, ...next],
@@ -95,8 +114,14 @@ export const useDj = create<DjState>((set, get) => {
     history: [],
     intros: {},
     voice: loadVoice(),
+    sourcePref: loadSourcePref(),
+    source: null,
 
     setMood: (mood) => set({ mood }),
+    setSourcePref(sourcePref) {
+      set({ sourcePref });
+      saveSourcePref(sourcePref);
+    },
     setVoice(voice) {
       set({ voice });
       if (!voice) stopSpeaking();
@@ -108,8 +133,9 @@ export const useDj = create<DjState>((set, get) => {
     },
 
     async start() {
-      if (useSpotify.getState().status !== "signed-in") {
-        set({ error: "Connect Spotify to use the DJ." });
+      const chosen = chooseDjSource(get().sourcePref);
+      if (!chosen) {
+        set({ error: connectSourceMessage(get().sourcePref) });
         return;
       }
       await useProviders.getState().refreshRemote();
@@ -129,7 +155,8 @@ export const useDj = create<DjState>((set, get) => {
       }
       session++;
       profile = null;
-      set({ history: [], intros: {}, needsSetup: false });
+      source = chosen;
+      set({ history: [], intros: {}, needsSetup: false, source: chosen.id });
       await think(async () => {
         const first = await fetchSet();
         if (first) await usePlayer.getState().playQueue(first.map((d) => d.track), 0);
@@ -159,7 +186,7 @@ export const useDj = create<DjState>((set, get) => {
     stop() {
       session++;
       stopSpeaking();
-      set({ status: "idle", error: null, needsSetup: false });
+      set({ status: "idle", error: null, needsSetup: false, source: null });
     },
   };
 });

@@ -47,6 +47,23 @@ export class Settings {
     this.write("signup", value);
   }
 
+  /** The Jellyfin address saved from the admin API (JELLYFIN_URL, when set, wins over it). */
+  savedJellyfinUrl(): string | undefined {
+    return this.read<string>("jellyfin:serverUrl");
+  }
+
+  setSavedJellyfinUrl(url: string | null): void {
+    if (url) this.write("jellyfin:serverUrl", url);
+    else this.db.prepare("DELETE FROM settings WHERE key = ?").run("jellyfin:serverUrl");
+  }
+
+  /** The Jellyfin address in effect, and where it came from. */
+  jellyfin(): { serverUrl: string | null; source: "env" | "admin" | null } {
+    if (this.config.jellyfinUrl) return { serverUrl: this.config.jellyfinUrl, source: "env" };
+    const saved = this.savedJellyfinUrl();
+    return saved ? { serverUrl: saved, source: "admin" } : { serverUrl: null, source: null };
+  }
+
   /** A person's own Spotify app ID, saved so all their devices can use it. */
   userSpotifyClientId(userId: number): string | undefined {
     return this.read<string>(`user:${userId}:spotifyClientId`);

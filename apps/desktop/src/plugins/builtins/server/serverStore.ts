@@ -51,6 +51,33 @@ interface ServerState {
   api: <T>(route: string, init?: RequestInit) => Promise<T>;
 }
 
+/** A failed API call, with the HTTP status and the server's `error` code (e.g. "jellyfin_session_expired"). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/**
+ * A 401 from a Jellyfin route (expired Jellyfin session, wrong Jellyfin
+ * password) is about Jellyfin, not "your Cadence session ended". Only the
+ * server's own "unauthorized" answer signs the person out.
+ */
+const isJellyfinRoute = (route: string) => route.replace(/^\/+/, "").startsWith("api/jellyfin/");
+
+async function errorCode(res: Response): Promise<string | undefined> {
+  try {
+    return ((await res.clone().json()) as { error?: string }).error;
+  } catch {
+    return undefined;
+  }
+}
+
 export function normalizeServerUrl(input: string): string {
   const trimmed = input.trim();
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -112,20 +139,22 @@ export const useServer = create<ServerState>((set, get) => {
     if (token) headers.set("authorization", `Bearer ${token}`);
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     const res = await fetch(apiUrl(url, route), { ...init, headers });
-    if (res.status === 401 && token) {
+    if (res.status === 401 && token && !(isJellyfinRoute(route) && (await errorCode(res)) !== "unauthorized")) {
       set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       void saveToken(null);
       throw new Error("Your session expired. Sign in again.");
     }
     if (!res.ok) {
       let detail = "";
+      let code: string | undefined;
       try {
         const body = (await res.json()) as { error?: string; message?: string };
+        code = body.error;
         detail = body.message ? `: ${body.message}` : body.error ? `: ${body.error.replace(/_/g, " ")}` : "";
       } catch {
         // Not JSON.
       }
-      throw new Error(`Request failed (${res.status})${detail}`);
+      throw new ApiError(`Request failed (${res.status})${detail}`, res.status, code);
     }
     if (res.status === 204 || res.status === 202) return undefined as T;
     return (await res.json()) as T;

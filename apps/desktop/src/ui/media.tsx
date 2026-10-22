@@ -54,6 +54,7 @@ export function TrackRow({
   queue,
   showAlbum = true,
   onRemove,
+  likeAction,
 }: {
   track: Track;
   index: number;
@@ -61,6 +62,8 @@ export function TrackRow({
   showAlbum?: boolean;
   /** Shows a remove button (e.g. in a playlist). */
   onRemove?: () => void;
+  /** Replaces the Liked Songs heart (e.g. with a Jellyfin favourite toggle). */
+  likeAction?: ReactNode;
 }) {
   const playQueue = usePlayer((s) => s.playQueue);
   const addToQueue = usePlayer((s) => s.addToQueue);
@@ -97,7 +100,7 @@ export function TrackRow({
       </span>
       {showAlbum && <span className="album">{track.album ?? ""}</span>}
       <span className="row-actions">
-        <LikeButton track={track} />
+        {likeAction ?? <LikeButton track={track} />}
         <AddToPlaylistButton tracks={[track]} label={`Add ${track.title} to a playlist`} />
         {onRemove && (
           <button className="icon-btn" onClick={onRemove} aria-label={`Remove ${track.title} from this playlist`} data-tip="Remove">

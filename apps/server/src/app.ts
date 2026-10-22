@@ -11,6 +11,7 @@ import { historyPlugin } from "./history/plugin.js";
 import { collectionPlugin } from "./collection/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
 import { libraryPlugin } from "./library/plugin.js";
+import { jellyfinPlugin } from "./jellyfin/plugin.js";
 import { llmPlugin } from "./llm/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
 
@@ -20,6 +21,7 @@ export const builtinPlugins: ServerPlugin[] = [
   historyPlugin,
   collectionPlugin,
   llmPlugin,
+  jellyfinPlugin,
   adminPlugin,
 ];
 

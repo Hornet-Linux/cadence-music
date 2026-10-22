@@ -252,7 +252,8 @@ test("device relay limits: devices per person and jobs per device", async () => 
   // Reconnecting a known device replaces it, fails its jobs and closes the old stream.
   const provider = hub.provider(1, "device-0000", "p");
   const waiting = provider.chatJson({ messages: [], schema: {} });
-  assert.notEqual(hub.attach(1, reg("device-0000"), (j) => sent.push(j.jobId), () => {}), null);
+  const replacement = hub.attach(1, reg("device-0000"), (j) => sent.push(j.jobId), () => {});
+  assert.notEqual(replacement, null);
   await assert.rejects(waiting, /reconnected/);
   assert.deepEqual(closed, ["device-0000"]);
   detachers[0](); // the stale detach must not drop the new connection
@@ -262,7 +263,7 @@ test("device relay limits: devices per person and jobs per device", async () => 
   const jobs = Array.from({ length: MAX_PENDING_PER_DEVICE }, () => provider.chatJson({ messages: [], schema: {} }));
   jobs.forEach((j) => j.catch(() => {}));
   await assert.rejects(provider.chatJson({ messages: [], schema: {} }), /busy/);
-  detachers[1]();
+  replacement!(); // the device goes offline: its waiting jobs fail now instead of after the 190 s job timeout
   for (const j of jobs) await j.then(() => {}, () => {});
 });
 

@@ -35,7 +35,10 @@ needed, whether it only runs locally).
 
 ## Setting up a server provider
 
-As an admin (the same account you use for `/admin`):
+The easiest way is the **AI providers** page in the admin panel (`/admin`): pick a
+starting point (Ollama, LM Studio, OpenAI, Anthropic…), press **Test** to see which
+models it has, then **Save**. From there you can also make one the default, turn
+one off, edit it or remove it. The same thing through the API, as an admin:
 
 ```
 POST /api/admin/llm/providers

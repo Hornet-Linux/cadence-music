@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import { isIP } from "node:net";
 import path from "node:path";
+import { parseJellyfinUrl } from "./jellyfin/url.js";
 
 export interface OidcConfig {
   /** Issuer URL, e.g. https://auth.example.com/application/o/music/ */
@@ -45,6 +46,8 @@ export interface Config {
   signup?: { mode: "open" } | { mode: "invite"; inviteCode: string };
   /** Folder with the built web player (served at /app). */
   webDir?: string;
+  /** Address of the owner's Jellyfin server. Wins over the admin setting. */
+  jellyfinUrl?: string;
   /** Where the sign-up page sends people to download the desktop app. */
   appDownloadUrl?: string;
   /** 0 disables periodic rescans. */
@@ -181,6 +184,15 @@ export function loadConfig(env: Env = process.env): Config {
     appleMusic = { teamId, keyId, privateKey };
   }
 
+  let jellyfinUrl: string | undefined;
+  if (env.JELLYFIN_URL?.trim()) {
+    try {
+      jellyfinUrl = parseJellyfinUrl(env.JELLYFIN_URL);
+    } catch (e) {
+      throw new Error(`JELLYFIN_URL: ${e instanceof Error ? e.message : "invalid address"}`);
+    }
+  }
+
   return {
     host: env.HOST?.trim() || "0.0.0.0",
     port,
@@ -193,6 +205,7 @@ export function loadConfig(env: Env = process.env): Config {
     spotifyClientId,
     appleMusic,
     signup: parseSignup(env),
+    jellyfinUrl,
     appDownloadUrl: env.APP_DOWNLOAD_URL?.trim() || undefined,
     webDir: env.WEB_DIR?.trim() || undefined,
     scanIntervalMinutes: int(env.SCAN_INTERVAL_MINUTES, 60, "SCAN_INTERVAL_MINUTES"),

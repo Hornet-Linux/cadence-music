@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Track } from "@/shared/types";
 import type { DjTrack } from "./resolve";
 
@@ -31,11 +31,13 @@ vi.mock("@/player/playerStore", () => {
   };
   return { usePlayer: api };
 });
+const spotify = { status: "signed-in" };
 vi.mock("@/plugins/builtins/spotify/spotifyStore", () => ({
-  useSpotify: { getState: () => ({ status: "signed-in", tracks: [] }) },
+  useSpotify: { getState: () => ({ status: spotify.status, tracks: [] }) },
 }));
 
 const { useDj } = await import("./djStore");
+const { useJellyfin } = await import("@/plugins/builtins/jellyfin/jellyfinStore");
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe("useDj", () => {
@@ -106,5 +108,69 @@ describe("setup check", () => {
     expect(useDj.getState().error).toContain("Ollama");
     expect(planDjSet).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("music source", () => {
+  const realTaste = useJellyfin.getState().taste;
+  const taste = vi.fn(async () => ({ topArtists: ["J"], genres: [], topTracks: [], recentTracks: [] }));
+
+  beforeEach(() => {
+    useDj.getState().stop();
+    useDj.setState({ history: [], intros: {}, error: null, sourcePref: "auto" });
+    Object.assign(player, { queue: [], index: 0, current: null });
+    planDjSet.mockReset();
+    planDjSet.mockResolvedValue(set("1", "2", "3", "4", "5"));
+    spotify.status = "signed-in";
+    useJellyfin.setState({ status: null, taste });
+    localStorage.clear();
+  });
+  afterEach(() => {
+    useJellyfin.setState({ status: null, taste: realTaste });
+    useDj.getState().stop();
+  });
+
+  const connectJellyfin = () => useJellyfin.setState({ status: { configured: true, connected: true } });
+  const sourceUsed = () => (planDjSet.mock.calls[0][3] as { id: string }).id;
+
+  it("plays from Spotify when only Spotify is connected", async () => {
+    await useDj.getState().start();
+    expect(sourceUsed()).toBe("spotify");
+    expect(useDj.getState().source).toBe("spotify");
+    expect(taste).not.toHaveBeenCalled();
+  });
+
+  it("plays from Jellyfin when only Jellyfin is connected", async () => {
+    spotify.status = "signed-out";
+    connectJellyfin();
+    await useDj.getState().start();
+    expect(sourceUsed()).toBe("jellyfin");
+    expect(useDj.getState().source).toBe("jellyfin");
+    expect(planDjSet.mock.calls[0][1]).toMatchObject({ topArtists: ["J"] });
+    expect(useDj.getState().status).toBe("on");
+  });
+
+  it("auto prefers Jellyfin when both are connected; an explicit choice wins", async () => {
+    connectJellyfin();
+    await useDj.getState().start();
+    expect(sourceUsed()).toBe("jellyfin");
+
+    useDj.getState().stop();
+    planDjSet.mockClear();
+    useDj.getState().setSourcePref("spotify");
+    await useDj.getState().start();
+    expect(sourceUsed()).toBe("spotify");
+    expect(localStorage.getItem("dj:source")).toBe("spotify");
+  });
+
+  it("asks to connect the right service", async () => {
+    spotify.status = "signed-out";
+    await useDj.getState().start();
+    expect(useDj.getState().error).toBe("Connect Spotify or Jellyfin to use the DJ.");
+
+    useDj.setState({ sourcePref: "jellyfin", error: null });
+    await useDj.getState().start();
+    expect(useDj.getState().error).toContain("Connect Jellyfin");
+    expect(planDjSet).not.toHaveBeenCalled();
   });
 });

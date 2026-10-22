@@ -1,17 +1,17 @@
 import { usePlayer } from "@/player/playerStore";
-import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { primaryArtist } from "@/shared/types";
 import { PlayIcon, ShuffleIcon, SparkleIcon } from "@/ui/icons";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { useDj } from "./djStore";
+import { useAnyDjSource } from "./sources";
 
-/** Home banner that starts, steers and stops the AI DJ. */
+/** Home banner that starts, steers and stops the AI DJ. Shown once Spotify or Jellyfin is connected. */
 export function DjCard() {
-  const spotify = useSpotify((s) => s.status);
+  const hasSource = useAnyDjSource();
   const showSettings = useSettingsModal((s) => s.show);
   const { status, error, needsSetup, mood, intros, voice, setMood, setVoice, start, switchUp, stop } = useDj();
   const current = usePlayer((s) => s.current);
-  if (spotify !== "signed-in") return null;
+  if (!hasSource) return null;
 
   const thinking = status === "thinking";
   const live = status !== "idle";
