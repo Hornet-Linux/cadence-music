@@ -32,7 +32,7 @@ export function TranslateControls() {
         {status === "loading" ? "Translating…" : "Translate"}
       </button>
       {on && (
-        <select className="lv-select" value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Translate into">
+        <select className="lv-select lang" value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Translate into">
           {TRANSLATE_LANGUAGES.map((l) => (
             <option key={l} value={l}>
               {l}

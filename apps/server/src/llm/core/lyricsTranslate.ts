@@ -1,4 +1,4 @@
-// The translation prompt, shared by the server route and the apps (which call a model on the
+// The lyrics translation prompt, shared by the server route and the apps (which call a model on the
 // device directly). No imports on purpose: the desktop build reads this file too.
 
 export interface TranslateMessage {

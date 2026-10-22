@@ -11,7 +11,7 @@ import { createLocalUser } from "../../auth/users.js";
 import { openDb } from "../../db.js";
 import { ProviderStore } from "../../llm/store.js";
 import { createLyricsTranslatePlugin } from "./plugin.js";
-import { buildTranslateMessages, cleanTranslations, validLanguage } from "./prompt.js";
+import { buildTranslateMessages, cleanTranslations, validLanguage } from "../../llm/core/lyricsTranslate.js";
 
 const SECRET = "s".repeat(64);
 

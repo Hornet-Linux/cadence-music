@@ -40,7 +40,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 function setup(handler: (url: URL) => Response | Promise<Response>) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => handler(new URL(String(input))));
   const cache = new PersistentCache<Lyrics>(memoryStorage(), "cache", { maxEntries: 10, maxBytes: 100_000, ttlMs: 60_000 });
-  const provider = createLrclibProvider({ fetch: fetchMock as unknown as typeof fetch, cache });
+  const provider = createLrclibProvider({ fetch: fetchMock as unknown as typeof fetch, cache, retryDelayMs: 0 });
   return { provider, fetchMock, cache };
 }
 
@@ -153,7 +153,23 @@ describe("createLrclibProvider", () => {
     await expect(provider.getLyrics(track())).rejects.toThrow(/500/);
     fail = false;
     expect((await provider.getLyrics(track()))?.synced).toBe(true);
+    // First lookup: /get, then /search and its retry. Second lookup: /get succeeds.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("falls through to search when /get answers 503 (song known, length different)", async () => {
+    const { provider, fetchMock } = setup((url) => (url.pathname.endsWith("/get") ? json({}, 503) : json([record()])));
+    expect((await provider.getLyrics(track({ durationSec: 357 })))?.synced).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a failed search once, then reports the error", async () => {
+    let searches = 0;
+    const flaky = setup((url) => (url.pathname.endsWith("/get") ? json({}, 404) : ++searches === 1 ? json({}, 503) : json([record()])));
+    expect((await flaky.provider.getLyrics(track()))?.synced).toBe(true);
+    const down = setup((url) => (url.pathname.endsWith("/get") ? json({}, 404) : json({}, 503)));
+    await expect(down.provider.getLyrics(track())).rejects.toThrow(/503/);
+    expect(down.fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("explains rate limiting", async () => {

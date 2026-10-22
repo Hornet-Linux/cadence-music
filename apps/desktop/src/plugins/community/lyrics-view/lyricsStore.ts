@@ -164,7 +164,7 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
       loadAbort = controller;
       set({ phase: "loading", lyrics: null, providerId: null, errors: [], translatedLines: null, translateStatus: "idle", translateError: null });
       const lookup: Track = query
-        ? { ...track, title: query.title, artists: query.artist ? [{ id: "search", name: query.artist }] : [] }
+        ? { id: track.id, title: query.title, artists: query.artist ? [{ id: "search", name: query.artist }] : [] } // album and length belong to the playing file, not to the search
         : track;
       try {
         const found = await findLyrics(providers, lookup, {

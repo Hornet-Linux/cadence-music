@@ -5,7 +5,7 @@ import {
   buildTranslateMessages,
   cleanTranslations,
   TRANSLATE_SCHEMA,
-} from "../../../../../server/src/community/lyrics-translate/prompt";
+} from "../../../../../server/src/llm/core/lyricsTranslate";
 import { BadAnswer, type SendBatch } from "./translate";
 
 const SETUP_HINT = "Set one up in Settings, AI DJ (a server provider, or one on this device such as Ollama).";

@@ -101,6 +101,8 @@ export interface LrclibDeps {
   fetch: typeof fetch;
   cache: PersistentCache<Lyrics>;
   base?: string;
+  /** Wait before the one retry of a failed search. */
+  retryDelayMs?: number;
 }
 
 /** Look lyrics up on LRCLIB: an exact get, then a search. Results (and misses) are cached. */
@@ -108,10 +110,20 @@ export function createLrclibProvider(deps: LrclibDeps): LrclibProvider {
   const base = deps.base ?? LRCLIB_BASE;
   const inflight = new Map<string, Promise<Lyrics | null>>();
 
-  async function getJson<T>(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<T | null> {
+  /**
+   * GET and parse. With `lenient`, a server error counts as "no answer" so the caller can try
+   * something else: LRCLIB answers 503 on /get when a song exists but the length does not match.
+   */
+  async function getJson<T>(path: string, params: Record<string, string>, signal?: AbortSignal, lenient = false): Promise<T | null> {
     const url = `${base}${path}?${new URLSearchParams(params).toString()}`;
-    const res = await deps.fetch(url, { signal, headers: { "Lrclib-Client": LRCLIB_CLIENT } });
-    if (res.status === 404) return null;
+    const request = () => deps.fetch(url, { signal, headers: { "Lrclib-Client": LRCLIB_CLIENT } });
+    let res = await request();
+    if (res.status >= 500 && !lenient) {
+      // The service has short hiccups: one patient retry.
+      await new Promise((r) => setTimeout(r, deps.retryDelayMs ?? 700));
+      res = await request();
+    }
+    if (res.status === 404 || (lenient && res.status >= 500)) return null;
     if (!res.ok) {
       throw new Error(res.status === 429 ? "LRCLIB is busy, try again in a minute" : `LRCLIB answered ${res.status}`);
     }
@@ -128,7 +140,7 @@ export function createLrclibProvider(deps: LrclibDeps): LrclibProvider {
       const params: Record<string, string> = { track_name: title, artist_name: artist };
       if (track.album) params.album_name = track.album;
       if (track.durationSec) params.duration = String(Math.round(track.durationSec));
-      const exact = await getJson<LrclibRecord>("/get", params, signal);
+      const exact = await getJson<LrclibRecord>("/get", params, signal, true);
       const lyrics = exact ? recordToLyrics(exact) : null;
       if (lyrics) return lyrics;
     }

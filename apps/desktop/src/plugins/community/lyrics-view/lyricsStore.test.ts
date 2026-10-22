@@ -103,6 +103,7 @@ describe("lyrics view store", () => {
     useLyricsView.getState().search({ title: "Other Name", artist: "Someone Else" });
     await settle();
     expect(seen.at(-1)).toMatchObject({ title: "Other Name", artists: [{ name: "Someone Else" }] });
+    expect(seen.at(-1)).not.toHaveProperty("durationSec");
 
     provide({ id: "p", label: "Broken", getLyrics: async () => Promise.reject(new Error("offline")) });
     await useLyricsView.getState().load();

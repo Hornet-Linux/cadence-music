@@ -24,7 +24,7 @@ export function LyricsBody({ variant, container }: { variant: "page" | "karaoke"
 
   const tappable = lyrics.synced && canControlPlayer();
   return (
-    <ol ref={listRef} className={`lv-lines lv-${variant}`} aria-label="Lyrics" style={{ ["--lv-scale" as string]: scale }}>
+    <ol ref={listRef} className={`lv-lines lv-v-${variant}`} aria-label="Lyrics" style={{ ["--lv-scale" as string]: scale }}>
       {lyrics.lines.map((line, i) => {
         const state = !lyrics.synced ? "plain" : i === active ? "active" : i < active ? "past" : "next";
         const gap = line.text === "";

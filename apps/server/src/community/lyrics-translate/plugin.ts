@@ -2,7 +2,7 @@ import type { ServerPlugin } from "../../plugins/types.js";
 import { createProvider, type FetchFn, type LlmProvider } from "../../llm/core/index.js";
 import { deviceMessage, publicMessage } from "../../llm/plugin.js";
 import { ProviderStore } from "../../llm/store.js";
-import { buildTranslateMessages, cleanTranslations, MAX_LINE_CHARS, MAX_LINES, TRANSLATE_SCHEMA, validLanguage } from "./prompt.js";
+import { buildTranslateMessages, cleanTranslations, MAX_LINE_CHARS, MAX_LINES, TRANSLATE_SCHEMA, validLanguage } from "../../llm/core/lyricsTranslate.js";
 
 /** Translations per person: a song is a handful of requests, so this is generous but bounded. */
 const RATE_WINDOW_MS = 10 * 60_000;

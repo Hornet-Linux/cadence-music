@@ -142,7 +142,7 @@
 }
 .lv-credit {
   margin: 4px 0 10px;
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   color: var(--text-faint);
 }
 
@@ -177,7 +177,8 @@
   margin-top: 2px;
   font-size: 0.78em;
   font-weight: 500;
-  color: var(--text-muted);
+  color: inherit;
+  opacity: 0.75;
   overflow-wrap: anywhere;
 }
 .lv-line.gap .lv-line-static {
@@ -257,6 +258,7 @@
 }
 .lv-karaoke > .lv-note {
   align-self: center;
+  max-width: min(36rem, calc(100% - 28px));
   margin: 0 14px 6px;
 }
 .lv-k-scroll {
@@ -315,7 +317,25 @@
     padding-bottom: 72px;
   }
   .lv-toolbar {
-    gap: 8px;
+    gap: 6px 8px;
+  }
+  .lv-group {
+    gap: 6px;
+  }
+  .lv-btn {
+    padding: 0 12px;
+    font-size: 0.84rem;
+  }
+  .lv-btn.icon {
+    padding: 0;
+  }
+  .lv-select {
+    max-width: 9.5rem;
+    padding: 0 8px;
+    font-size: 0.84rem;
+  }
+  .lv-select.lang {
+    max-width: 6.6rem;
   }
   .lv-page .lv-lines {
     font-size: calc(1.15rem * var(--lv-scale));
