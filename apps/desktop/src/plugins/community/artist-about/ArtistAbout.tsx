@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CoverArt } from "@/ui/CoverArt";
 import type { MetadataClient } from "../_metadata/client";
 import { useLoad } from "../_metadata/useLoad";
@@ -18,11 +18,19 @@ function uniqueArtists(names: string[]): string[] {
 
 function Bio({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const long = text.length > 320;
+  const [overflows, setOverflows] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+  // Offer Read more only when the text really is cut off at this width.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && !open) setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
   return (
     <div className="about-bio selectable">
-      <p className={long && !open ? "clamped" : undefined}>{text}</p>
-      {long && (
+      <p ref={ref} className={open ? undefined : "clamped"}>
+        {text}
+      </p>
+      {(overflows || open) && (
         <button className="btn ghost about-more" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? "Show less" : "Read more"}
         </button>

@@ -55,14 +55,19 @@
   flex: 1;
   min-width: 0;
 }
-.concert-artist,
-.concert-where {
+.concert-artist {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.concert-where {
+  overflow-wrap: anywhere;
 }
 .concert-link {
   flex: 0 0 auto;
   min-height: 44px;
   min-width: 44px;
+}
+.concert-link {
+  text-decoration: none;
 }

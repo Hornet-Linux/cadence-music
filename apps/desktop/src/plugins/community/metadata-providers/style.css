@@ -30,9 +30,16 @@
 .metadata-key-row .text-input {
   min-height: 44px;
 }
-.metadata-key a,
-.metadata-settings a {
+.metadata-key a:not(.btn),
+.metadata-settings a:not(.btn) {
   color: var(--text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.metadata-settings .status-dot.unset {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+.metadata-settings .status-dot.online {
+  box-shadow: none;
 }

@@ -74,3 +74,7 @@
     height: 88px;
   }
 }
+.about-links .btn,
+.about-more {
+  text-decoration: none;
+}

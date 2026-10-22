@@ -16,7 +16,7 @@ interface ProviderSpec {
 
 /** MusicBrainz asks for no more than one request a second; the others get polite gaps. */
 export const PROVIDERS: Record<ProviderId, ProviderSpec> = {
-  musicbrainz: { base: "https://musicbrainz.org", gapMs: 1000, ttlMs: 7 * DAY },
+  musicbrainz: { base: "https://musicbrainz.org", gapMs: 1100, ttlMs: 7 * DAY },
   coverart: { base: "https://coverartarchive.org", gapMs: 250, ttlMs: 30 * DAY },
   wikipedia: { base: "https://en.wikipedia.org", gapMs: 150, ttlMs: 7 * DAY },
   wikidata: { base: "https://www.wikidata.org", gapMs: 150, ttlMs: 30 * DAY },

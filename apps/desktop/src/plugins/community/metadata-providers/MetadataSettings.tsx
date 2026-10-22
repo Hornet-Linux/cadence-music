@@ -108,7 +108,7 @@ export function MetadataSettings({ client, ctx }: { client: MetadataClient; ctx:
         return (
           <div className="metadata-key" key={k.field}>
             <div className="metadata-key-head">
-              <span className={"status-dot " + (on ? "online" : "offline")} aria-hidden />
+              <span className={"status-dot" + (on ? " online" : " unset")} aria-hidden />
               <span className="strong">{k.label}</span>
               <span className="muted small">{on ? "Set" : "Not set"}</span>
             </div>
