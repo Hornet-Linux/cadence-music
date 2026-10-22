@@ -127,7 +127,6 @@ export function PlexSettings() {
             )}
           </div>
         )}
-        {!needsLibrary && libraries.length > 1 && null}
         {error && <p className="notice error">{error}</p>}
         <p className="muted small">To fully remove Cadence, also remove it from your authorized devices on plex.tv.</p>
         {owner}
