@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/app/App";
+import { startRelay } from "@/features/dj/relayClient";
 import { completeWebRedirects, webHost } from "@/platform/webHost";
 import "@/app/globals.css";
 
@@ -17,12 +18,15 @@ if (isBrowser) {
   document.documentElement.classList.add("mac");
 }
 
-const render = () =>
+const render = () => {
+  // Offer this device's shared AI providers to the person's other devices.
+  startRelay();
   createRoot(root).render(
     <StrictMode>
       <App />
     </StrictMode>,
   );
+};
 
 if (isBrowser) void completeWebRedirects().finally(render);
 else render();

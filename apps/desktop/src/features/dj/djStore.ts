@@ -1,14 +1,13 @@
 import { create } from "zustand";
-import { DEFAULT_LLM_CONFIG, type LlmConfig } from "../../../electron/llm";
 import { usePlayer } from "@/player/playerStore";
 import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { planDjSet } from "./dj";
 import type { DjTrack } from "./resolve";
+import { currentOption, providerStatus, useProviders } from "./providers";
 import { djSetup, setupMessage } from "./setup";
 import { speakIntro, stopSpeaking } from "./voice";
 import { buildTasteProfile, isEmptyProfile, type TasteProfile } from "./tasteProfile";
 
-const CONFIG_KEY = "dj:llm";
 const VOICE_KEY = "dj:voice";
 /** Fetch the next set when this many DJ tracks are left in the queue. */
 const REFILL_AT = 2;
@@ -21,7 +20,6 @@ interface DjState {
   /** Set when the error is fixed in Settings (Ollama or the model is missing). */
   needsSetup: boolean;
   mood: string;
-  config: LlmConfig;
   /** Every track the DJ queued this session, in order. */
   history: DjTrack[];
   /** Spoken intro per track id. */
@@ -30,23 +28,12 @@ interface DjState {
   voice: boolean;
 
   setMood: (mood: string) => void;
-  setConfig: (config: LlmConfig) => void;
   setVoice: (on: boolean) => void;
   start: () => Promise<void>;
   switchUp: () => Promise<void>;
   /** Append the next set when the DJ queue runs low. */
   refill: () => Promise<void>;
   stop: () => void;
-}
-
-function loadConfig(): LlmConfig {
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    if (raw) return { ...DEFAULT_LLM_CONFIG, ...(JSON.parse(raw) as Partial<LlmConfig>) };
-  } catch {
-    // Fall through to the default.
-  }
-  return DEFAULT_LLM_CONFIG;
 }
 
 function loadVoice(): boolean {
@@ -74,8 +61,10 @@ export const useDj = create<DjState>((set, get) => {
 
   async function fetchSet(switchUp = false): Promise<DjTrack[] | null> {
     const id = session;
-    const { config, mood, history } = get();
-    const next = await planDjSet(config, await getProfile(), { mood: mood.trim() || undefined, switchUp, history });
+    const { mood, history } = get();
+    const option = currentOption();
+    if (!option) throw new Error("Add an AI provider in Settings → AI DJ first.");
+    const next = await planDjSet(option.ref, await getProfile(), { mood: mood.trim() || undefined, switchUp, history });
     if (id !== session) return null; // stopped or restarted meanwhile
     set((s) => ({
       history: [...s.history, ...next],
@@ -103,21 +92,11 @@ export const useDj = create<DjState>((set, get) => {
     error: null,
     needsSetup: false,
     mood: "",
-    config: loadConfig(),
     history: [],
     intros: {},
     voice: loadVoice(),
 
     setMood: (mood) => set({ mood }),
-    setConfig(config) {
-      set({ config });
-      try {
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-      } catch {
-        // Storage is optional.
-      }
-    },
-
     setVoice(voice) {
       set({ voice });
       if (!voice) stopSpeaking();
@@ -133,10 +112,16 @@ export const useDj = create<DjState>((set, get) => {
         set({ error: "Connect Spotify to use the DJ." });
         return;
       }
-      const llm = window.host?.llm;
-      if (llm) {
-        const setup = djSetup(get().config, await llm.status(get().config).catch(() => ({ available: false, models: [] })));
-        const msg = setupMessage(setup);
+      await useProviders.getState().refreshRemote();
+      const option = currentOption();
+      if (!option) {
+        set({ status: "idle", error: "Add an AI provider in Settings → AI DJ first.", needsSetup: true });
+        return;
+      }
+      // A provider on this device is checked through the app's bridge, which a test build may lack.
+      if (option.scope !== "local" || window.host?.llm) {
+        const status = await providerStatus(option.ref).catch((e) => ({ available: false, models: [], error: message(e) }));
+        const msg = setupMessage(djSetup(option, status));
         if (msg) {
           set({ status: "idle", error: msg, needsSetup: true });
           return;
