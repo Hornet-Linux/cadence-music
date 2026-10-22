@@ -115,6 +115,8 @@ html[data-theme="bar"] #card { max-width: none; width: 100%; border-radius: 0; b
   var fill = document.getElementById("fill");
   var paused = document.getElementById("paused");
   bar.hidden = !wantBar;
+  // A cover that fails to load (offline, blocked) simply disappears instead of showing a broken icon.
+  art.onerror = function () { art.hidden = true; };
 
   var base = location.pathname.replace(/\/+$/, "");
   var snap = null;

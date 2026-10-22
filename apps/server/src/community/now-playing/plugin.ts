@@ -15,6 +15,8 @@ const MAX_STREAMS_PER_LINK = 4;
 const MAX_STREAMS_TOTAL = 200;
 const TOKEN_RE = /^np_[A-Za-z0-9_-]{32}$/;
 const SSE_PING_MS = 20_000;
+/** The link is the secret, so these routes must not write it to the access log (info-level request lines include the URL). */
+const QUIET = { logLevel: "warn" } as const;
 
 interface TokenRow {
   id: number;
@@ -117,7 +119,7 @@ export const nowPlayingPlugin: ServerPlugin = {
         .header("X-Robots-Tag", "noindex")
         .header("X-Content-Type-Options", "nosniff");
 
-    app.get<{ Params: { token: string } }>("/overlay/:token", async (req, reply) => {
+    app.get<{ Params: { token: string } }>("/overlay/:token", QUIET, async (req, reply) => {
       const link = linkFor(req.params.token);
       if (!link) return overlayHeaders(reply).code(404).type("text/plain").send("This overlay link is not valid.");
       touch.run(Date.now(), link.id);
@@ -128,13 +130,13 @@ export const nowPlayingPlugin: ServerPlugin = {
         .send(OVERLAY_HTML);
     });
 
-    app.get<{ Params: { token: string } }>("/overlay/:token/now", async (req, reply) => {
+    app.get<{ Params: { token: string } }>("/overlay/:token/now", QUIET, async (req, reply) => {
       const link = linkFor(req.params.token);
       if (!link) return overlayHeaders(reply).code(404).send({ error: "not_found" });
       return overlayHeaders(reply).send(hub.snapshot(link.userId, Date.now()));
     });
 
-    app.get<{ Params: { token: string } }>("/overlay/:token/events", async (req, reply) => {
+    app.get<{ Params: { token: string } }>("/overlay/:token/events", QUIET, async (req, reply) => {
       const link = linkFor(req.params.token);
       if (!link) return overlayHeaders(reply).code(404).send({ error: "not_found" });
       if (hub.total() >= MAX_STREAMS_TOTAL || hub.countFor(link.userId, link.id) >= MAX_STREAMS_PER_LINK) {
