@@ -16,6 +16,8 @@ export class AnthropicProvider implements LlmProvider {
     return {
       "Content-Type": "application/json",
       "anthropic-version": "2023-06-01",
+      // Needed when an app calls the API straight from a page; ignored elsewhere.
+      "anthropic-dangerous-direct-browser-access": "true",
       ...(this.config.apiKey ? { "x-api-key": this.config.apiKey } : {}),
     };
   }

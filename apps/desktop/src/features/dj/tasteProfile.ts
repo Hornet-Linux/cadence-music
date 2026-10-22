@@ -1,15 +1,9 @@
 import { primaryArtist, type Track } from "@/shared/types";
 import { spotifyFetch } from "@/plugins/builtins/spotify/api";
 import { toTrack, type SavedTrackItem } from "@/plugins/builtins/spotify/spotifyStore";
+import type { TasteProfile } from "../../../../server/src/llm/core/dj";
 
-/** What the DJ knows about the listener. Kept small so it fits a local model's context. */
-export interface TasteProfile {
-  topArtists: string[];
-  genres: string[];
-  /** "Artist – Title" lines. */
-  topTracks: string[];
-  recentTracks: string[];
-}
+export type { TasteProfile };
 
 interface TopArtist {
   name: string;

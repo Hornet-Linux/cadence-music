@@ -120,8 +120,8 @@ export const useServer = create<ServerState>((set, get) => {
     if (!res.ok) {
       let detail = "";
       try {
-        const body = (await res.json()) as { error?: string };
-        detail = body.error ? `: ${body.error.replace(/_/g, " ")}` : "";
+        const body = (await res.json()) as { error?: string; message?: string };
+        detail = body.message ? `: ${body.message}` : body.error ? `: ${body.error.replace(/_/g, " ")}` : "";
       } catch {
         // Not JSON.
       }

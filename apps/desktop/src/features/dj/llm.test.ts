@@ -7,7 +7,7 @@ function fakeFetch(status: number, body: unknown) {
   ) as unknown as typeof fetch & ReturnType<typeof vi.fn>;
 }
 
-describe("OllamaProvider", () => {
+describe("Ollama provider (via the shared core)", () => {
   it("lists installed models", async () => {
     const f = fakeFetch(200, { models: [{ name: "llama3.2:3b" }, { name: "qwen3:8b" }] });
     const status = await createLlmProvider(DEFAULT_LLM_CONFIG, f).status();

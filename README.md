@@ -21,9 +21,11 @@ connections) is a plugin, on both the desktop and the server.
   full in-app playback (Premium / subscription), mixed in one queue with your
   own music. See [setup](docs/SELF_HOSTING.md#spotify-and-apple-music).
 - **AI DJ** — a nonstop, personalised mix with short spoken intros, like
-  Spotify's DJ. Songs are picked by a small LLM running **locally through
-  [Ollama](https://ollama.com)**, so your listening history never leaves your
-  computer. Needs Spotify. See [AI DJ](#ai-dj).
+  Spotify's DJ. Songs are picked by an LLM you choose: a model on your own
+  computer (**[Ollama](https://ollama.com)**, LM Studio, llama.cpp…), a provider
+  the server owner sets up for everyone (OpenAI-compatible APIs, Anthropic), or
+  one of your own computers shared with your phone. Needs Spotify. See
+  [AI DJ](#ai-dj).
 - **Plugins** — capability-based plugins on the desktop, and the same plugin
   seam on the server.
 
@@ -56,11 +58,23 @@ To update the server later, run the same command again.
 
 ## AI DJ
 
-The DJ on the Home page uses a local LLM through [Ollama](https://ollama.com).
-No cloud service or API key is involved: the app sends your top artists and
-recent plays to Ollama on your own machine, and checks every song it suggests
+The DJ on the Home page asks an LLM for songs, then checks every suggestion
 against Spotify so made-up tracks are skipped. Intros are spoken with your
-operating system's built-in voices.
+operating system's built-in voices. You choose where the model runs in
+Settings → **AI DJ**:
+
+| Where it runs | Good for | API key lives |
+| --- | --- | --- |
+| **On the server** (the server owner adds it in Settings → AI DJ) | Phones, browsers and anything without a local model | On the server, encrypted. Never sent to any app |
+| **On this device** (Ollama, LM Studio, llama.cpp, or an OpenAI/Anthropic/… key you type in) | Keeping everything on your own machine | On this device, in secure storage |
+| **On another of your computers**, shared through the server | Using your desktop's Ollama from your phone | On that computer |
+
+Any OpenAI-compatible server works (OpenAI, LM Studio, llama.cpp, vLLM, Jan,
+OpenRouter, Groq, Together, Mistral, DeepSeek, xAI, Gemini's compatibility
+endpoint…), as do Ollama and Anthropic. Details and the server API:
+[docs/AI_DJ.md](docs/AI_DJ.md).
+
+**Quick start with Ollama on this computer:**
 
 1. Install Ollama from [ollama.com/download](https://ollama.com/download).
 2. Download the default model (about 2 GB):
@@ -68,7 +82,7 @@ operating system's built-in voices.
    ollama pull llama3.2:3b
    ```
 3. Connect Spotify, then press **Start DJ** on Home. Settings → **AI DJ** has
-   the Ollama address, the model and the voice toggle.
+   the provider, model and voice toggle.
 
 **System requirements** (for Ollama and the default model, on top of the app):
 

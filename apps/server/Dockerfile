@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY packages/shared ./packages/shared
+# The UI shares the LLM provider code with the server (dependency-free).
+COPY apps/server/src/llm/core ./apps/server/src/llm/core
 COPY apps/desktop/package.json ./apps/desktop/
 WORKDIR /src/apps/desktop
 RUN npm install --no-audit --no-fund --ignore-scripts
