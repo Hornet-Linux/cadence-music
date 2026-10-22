@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildDjMessages, cleanReply, createProvider, extractJson, parseJsonRequest, parseProviderConfig, type FetchFn } from "./core/index.js";
 import { endpoint } from "./core/http.js";
+import { thinkOption } from "./core/ollama.js";
 import { open, seal } from "./secretBox.js";
 
 const json = (body: unknown, status = 200) =>
@@ -135,6 +136,13 @@ test("Ollama: structured output, no-think for reasoning models, helpful missing-
   const plain = fakeFetch(json({ message: { content: "{}" } }));
   await createProvider({ kind: "ollama", baseUrl: "http://localhost:11434", model: "llama3.2:3b" }, plain.fetchImpl).chatJson(REQ);
   assert.equal("think" in plain.calls[0].body, false);
+});
+
+test("Ollama: reasoning models get the setting they actually honour", () => {
+  assert.deepEqual(thinkOption("gpt-oss:20b"), { think: "low" }, "gpt-oss ignores think:false");
+  assert.deepEqual(thinkOption("qwen3:8b"), { think: false });
+  assert.deepEqual(thinkOption("deepseek-r1:7b"), { think: false });
+  assert.deepEqual(thinkOption("llama3.2:3b"), {}, "other models reject the field");
 });
 
 test("Anthropic: system prompt is separate and the reply comes from a forced tool call", async () => {
