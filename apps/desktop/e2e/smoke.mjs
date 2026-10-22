@@ -55,7 +55,7 @@ try {
     await page.screenshot({ path: path.join(shots, "0-setup-wizard.png") });
   }
   await wizard.getByRole("button", { name: "Get started", exact: true }).click();
-  for (const title of ["Connect your server", "Connect Spotify", "Connect Apple Music"]) {
+  for (const title of ["Connect your server", "Connect Spotify", "Connect Apple Music", "Connect Jellyfin"]) {
     await wizard.getByRole("heading", { name: title, exact: true }).waitFor({ timeout: 10_000 });
     await wizard.getByRole("button", { name: "Next", exact: true }).click();
   }
