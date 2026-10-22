@@ -1,0 +1,77 @@
+.ai-radio {
+  max-width: 760px;
+}
+.radio-moods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.radio-mood {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 64px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.radio-mood:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.radio-mood.on {
+  border-color: var(--accent-from);
+  background: var(--surface-hover);
+}
+.radio-mood:disabled {
+  opacity: 0.55;
+}
+.radio-mood-name {
+  font-weight: 650;
+}
+.radio-mood-blurb {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.radio-custom {
+  margin-bottom: 8px;
+}
+.radio-custom .text-input,
+.radio-custom .btn {
+  min-height: 44px;
+}
+.ai-radio .ai-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.ai-radio .ai-check input {
+  width: 20px;
+  height: 20px;
+}
+.radio-now {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+@media (max-width: 760px) {
+  .radio-moods {
+    grid-template-columns: 1fr 1fr;
+  }
+  .radio-now .ai-actions .btn {
+    flex: 1 1 auto;
+  }
+}

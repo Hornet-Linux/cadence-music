@@ -1,0 +1,101 @@
+/* Shared by the AI plugins (song chat, playlist builder, mood radio, taste summary). Calm, token-based. */
+.ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-width: 560px;
+}
+.ai-empty p {
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+.ai-checking {
+  padding: 8px 0;
+}
+.ai-problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ai-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-actions .btn,
+.ai-tap {
+  min-height: 44px;
+}
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ai-chip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.86rem;
+  text-align: left;
+}
+.ai-chip:hover:not(:disabled),
+.ai-chip.on {
+  background: var(--surface-hover);
+  border-color: var(--accent-from);
+}
+.ai-chip:disabled {
+  opacity: 0.5;
+}
+.ai-note {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-field input[type="range"] {
+  min-height: 44px;
+}
+textarea.text-input {
+  resize: vertical;
+  min-height: 84px;
+  line-height: 1.45;
+}
+@media (max-width: 760px) {
+  .ai-empty {
+    max-width: none;
+  }
+  .ai-problem .ai-actions {
+    width: 100%;
+  }
+  .ai-problem .ai-actions .btn {
+    flex: 1;
+  }
+}
+.ai-playlist .text-input,
+.ai-chat .text-input,
+.ai-radio .text-input,
+.taste .text-input,
+.dj-persona .text-input,
+.tts-panel .text-input {
+  min-height: 44px;
+}
+.ai-check input,
+.dj-persona input[type="range"],
+.tts-panel input[type="range"] {
+  accent-color: var(--accent-from);
+}
