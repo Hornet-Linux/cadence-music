@@ -180,7 +180,7 @@ test("the index returns ranked candidates and ignores the rest", () => {
   assert.equal(index.search(w("Nothing like this exists", "Nobody")).length, 0);
 });
 
-test("matching 300 tracks against a 20,000 track library is fast", () => {
+test("matching 300 tracks against a 20,000 track library only scores a small part of it", () => {
   const words = ["blue", "night", "river", "fire", "moon", "city", "heart", "road", "dream", "light", "storm", "gold", "ocean", "wind", "stone", "ghost"];
   const library: Candidate[] = [];
   for (let i = 0; i < 20_000; i++) {
@@ -189,13 +189,21 @@ test("matching 300 tracks against a 20,000 track library is fast", () => {
   const started = Date.now();
   const index = new CandidateIndex(library);
   let found = 0;
+  let scored = 0;
+  let worst = 0;
   for (let i = 0; i < 300; i++) {
     const n = i * 61;
     const hit = index.search(w(`${words[n % 16]} ${words[(n * 7) % 16]} ${n}`, `Artist ${n % 500}`, { durationSec: 150 + (n % 100) }), 1)[0];
+    scored += index.lastScored;
+    worst = Math.max(worst, index.lastScored);
     if (hit && hit.candidate.id === `${words[n % 16]} ${words[(n * 7) % 16]} ${n}|Artist ${n % 500}`) found++;
   }
   assert.equal(found, 300);
-  assert.ok(Date.now() - started < 8000, `took ${Date.now() - started} ms`);
+  // Deterministic: the index must prune. On average well under 2% of the library is scored per query, and never more than 10%.
+  assert.ok(scored / 300 < 400, `scored ${scored / 300} candidates per query on average`);
+  assert.ok(worst < 2000, `worst query scored ${worst} candidates`);
+  // Only a very loose smoke limit on time, so a slow shared machine cannot fail the test.
+  assert.ok(Date.now() - started < 120_000);
 });
 
 test("track numbers in the title of untagged files are ignored, but not when there is an artist", () => {
