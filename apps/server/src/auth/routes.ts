@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type {
   AuthResponse,
   ExchangeRequest,
@@ -25,6 +25,7 @@ import {
 } from "./oidc.js";
 import { MAX_PASSWORD, checkPassword } from "./passwords.js";
 import { RateLimiter } from "./rateLimit.js";
+import { registerAccountRoutes } from "./account.js";
 import { createSession, deleteSession } from "./sessions.js";
 import {
   countPasswordUsers,
@@ -111,8 +112,8 @@ export function registerAuthRoutes(
   const userFailures = new RateLimiter({ max: USER_MAX_FAILURES, windowMs: LOGIN_WINDOW_MS });
   const signups = new RateLimiter({ max: MAX_SIGNUPS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
 
-  function respond(userId: number): AuthResponse {
-    const token = createSession(db, userId);
+  function respond(userId: number, req: FastifyRequest): AuthResponse {
+    const token = createSession(db, userId, { userAgent: req.headers["user-agent"], ip: req.ip });
     return { token, user: toPublicUser(findUserById(db, userId)!) };
   }
 
@@ -191,7 +192,7 @@ export function registerAuthRoutes(
       throw err;
     }
     signups.hit(req.ip);
-    return respond(user.id);
+    return respond(user.id, req);
   });
 
   registerSignupPage(app, {
@@ -222,7 +223,7 @@ export function registerAuthRoutes(
     setupCode = null;
     try {
       const user = await createLocalUser(db, { username: username.trim(), password, isAdmin: true });
-      return respond(user.id);
+      return respond(user.id, req);
     } catch (err) {
       setupCode = claimed;
       throw err;
@@ -258,7 +259,9 @@ export function registerAuthRoutes(
     }
     failures.reset(ip);
     userFailures.reset(userKey);
-    return respond(user.id);
+    // Said only after the password was right, so it doesn't reveal which names exist.
+    if (user.disabled_at) return reply.code(403).send({ error: "account_disabled" });
+    return respond(user.id, req);
   });
 
   // ---- OIDC sign-in (desktop loopback / web player + PKCE) ---------------
@@ -372,6 +375,8 @@ export function registerAuthRoutes(
             adminGroups.length > 0 ? (groups ?? []).some((g) => adminGroups.includes(g)) : undefined,
         });
 
+        if (user.disabled_at) return fail("account_disabled");
+
         purge(handoffs);
         const handoffCode = randomToken(32);
         handoffs.set(handoffCode, {
@@ -402,7 +407,9 @@ export function registerAuthRoutes(
     if (!safeEqual(pkceChallenge(verifier), handoff.appChallenge)) {
       return reply.code(400).send({ error: "invalid_code_verifier" });
     }
-    return respond(handoff.userId);
+    const holder = findUserById(db, handoff.userId);
+    if (!holder || holder.disabled_at) return reply.code(403).send({ error: "account_disabled" });
+    return respond(handoff.userId, req);
   });
 
   // ---- Session ----------------------------------------------------------
@@ -415,4 +422,6 @@ export function registerAuthRoutes(
   app.get("/api/me", { preHandler: requireUser }, async (req): Promise<PublicUser> =>
     toPublicUser(req.user!),
   );
+
+  registerAccountRoutes(app, { db, config, requireUser });
 }
