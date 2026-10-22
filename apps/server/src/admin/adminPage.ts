@@ -113,12 +113,20 @@ const SCRIPT = String.raw`
     cannot_demote_self: "You can't remove your own admin rights.",
     cannot_delete_self: "You can't delete your own account here.",
     invalid_invite_code: "Invite codes use 6-64 letters, numbers, dashes or underscores.",
+    set_by_environment: "That address is set by the server's environment (JELLYFIN_URL) and can't be changed here.",
+    invalid_url: "That isn't a valid web address. Use http:// or https:// and nothing after the host.",
+    invalid_name: "Give it a name.",
+    invalid_model: "Enter a model name.",
+    invalid_key: "That API key isn't valid.",
+    invalid_provider: "That address isn't valid. Use http:// or https:// with no password, query or fragment.",
+    not_found: "That no longer exists. Refresh the page.",
   };
 
   async function api(path, opts = {}) {
     const res = await fetch(path, {
       ...opts,
-      headers: { "content-type": "application/json", authorization: "Bearer " + token, ...(opts.headers || {}) },
+      // A JSON content type on a request with no body is rejected by the server, so only send it with one.
+      headers: { ...(opts.body != null ? { "content-type": "application/json" } : {}), authorization: "Bearer " + token, ...(opts.headers || {}) },
     });
     if (res.status === 401) { signOut(); throw new Error("Your session expired. Sign in again."); }
     if (res.status === 204) return null;
@@ -166,7 +174,7 @@ const SCRIPT = String.raw`
   }
 
   // ---- Shell ----------------------------------------------------------------
-  const views = { overview: renderOverview, users: renderUsers, signup: renderSignup };
+  const views = { overview: renderOverview, users: renderUsers, signup: renderSignup, jellyfin: renderJellyfin, ai: renderAi };
   let current = "overview";
 
   async function start() {
@@ -177,7 +185,7 @@ const SCRIPT = String.raw`
         h("aside", null,
           h("div", { class: "brand" }, document.querySelector("#logo").content.cloneNode(true), h("div", null, "Cadence", h("small", null, "Admin"))),
           ...Object.keys(views).map((v) => h("button", { class: "tab", "data-view": v, onclick: () => show(v) },
-            { overview: "Overview", users: "People", signup: "Sign-up" }[v])),
+            { overview: "Overview", users: "People", signup: "Sign-up", jellyfin: "Jellyfin", ai: "AI providers" }[v])),
           h("a", { class: "tab", href: "/app/" }, "Open web player ↗"),
           h("div", { class: "spacer" }),
           h("div", { class: "me" }, "Signed in as ", h("b", null, me.username)),
@@ -314,6 +322,171 @@ const SCRIPT = String.raw`
         } }, "Save"))),
       h("div", { class: "card" }, h("h2", null, "Share"), h("p", { class: "hint" }, "Send people this link" + (mode === "invite" ? " and the invite code." : "."),
         h("br"), h("code", null, link))));
+  }
+
+  // ---- Jellyfin -------------------------------------------------------------
+  async function renderJellyfin() {
+    const cfg = await api("/api/admin/jellyfin");
+    const fromEnv = cfg.source === "env";
+    const input = h("input", { id: "jf", type: "url", value: cfg.serverUrl || "", placeholder: "https://jellyfin.example.com",
+      style: "min-width:min(420px,100%)", disabled: fromEnv, autocomplete: "off", spellcheck: "false" });
+    const result = h("p", { class: "hint", style: "margin:12px 0 0", role: "status" });
+    const say = (text, bad) => { result.textContent = text; result.style.color = bad ? "#ffb3c2" : "#9ff0e8"; };
+
+    async function test() {
+      try {
+        const r = await api("/api/admin/jellyfin/test", { method: "POST", body: JSON.stringify({ serverUrl: input.value.trim() }) });
+        say(r.ok ? "Reached " + (r.serverName || "Jellyfin") + (r.version ? " (version " + r.version + ")." : ".")
+          : "Couldn't use that address: " + (r.error || "no answer."), !r.ok);
+        return r.ok;
+      } catch (err) { say(err.message, true); return false; }
+    }
+
+    $("#view").replaceChildren(
+      h("h1", null, "Jellyfin"),
+      h("p", { class: "sub" }, cfg.serverUrl ? "Using " + cfg.serverUrl : "Not set up yet. People can't connect Jellyfin until you add its address."),
+      h("div", { class: "card" },
+        h("h2", null, "Server address"),
+        h("p", { class: "hint" }, "Where this Cadence server finds Jellyfin. Only you can change it; everyone else just signs in with their own Jellyfin account under Settings → Jellyfin. The address must be reachable from this server (not from their phones)."),
+        fromEnv ? h("p", { class: "hint" }, "This address comes from JELLYFIN_URL in the server's environment, so it can't be changed here. Change it there and restart the server.") : null,
+        h("label", { for: "jf" }, "Jellyfin address"),
+        h("div", { class: "row" },
+          input,
+          h("button", { class: "btn", type: "button", onclick: test }, "Test"),
+          fromEnv ? null : h("button", { class: "btn primary", type: "button", onclick: async () => {
+            if (!input.value.trim()) return say("Enter the address first.", true);
+            if (!(await test())) return;
+            try {
+              await api("/api/admin/jellyfin", { method: "PUT", body: JSON.stringify({ serverUrl: input.value.trim() }) });
+              toast("Saved. People can now sign in to Jellyfin.");
+              renderJellyfin();
+            } catch (err) { say(err.message, true); }
+          } }, "Save"),
+          !fromEnv && cfg.serverUrl ? h("button", { class: "btn danger", type: "button", onclick: async () => {
+            if (!confirm("Remove the Jellyfin address? Everyone will be signed out of Jellyfin here.")) return;
+            try {
+              await api("/api/admin/jellyfin", { method: "PUT", body: JSON.stringify({ serverUrl: null }) });
+              toast("Jellyfin removed"); renderJellyfin();
+            } catch (err) { say(err.message, true); }
+          } }, "Remove") : null),
+        result),
+      h("div", { class: "card" },
+        h("h2", null, "Good to know"),
+        h("p", { class: "hint", style: "margin:0" }, "Audio and cover art are streamed through this server, so Jellyfin doesn't need to be reachable from outside. If the address changes, people are signed out of Jellyfin and sign in again. Jellyfin passwords are never stored.")));
+  }
+
+  // ---- AI providers ---------------------------------------------------------
+  const KINDS = { ollama: "Ollama", "openai-compatible": "OpenAI-compatible", anthropic: "Anthropic" };
+
+  async function renderAi() {
+    const [list, presets] = await Promise.all([api("/api/admin/llm/providers"), api("/api/llm/presets")]);
+    let editing = null; // a provider being edited, "new", or null
+
+    const act = (label, fn, cls) => h("button", { class: "btn" + (cls ? " " + cls : ""), type: "button", onclick: async () => {
+      try { await fn(); } catch (err) { toast(err.message, true); }
+    } }, label);
+
+    async function put(p, changes) {
+      await api("/api/admin/llm/providers/" + p.id, { method: "PUT", body: JSON.stringify({
+        name: p.name, kind: p.kind, baseUrl: p.baseUrl, model: p.model, enabled: p.enabled, isDefault: p.isDefault, ...changes }) });
+      await load();
+    }
+
+    async function load() {
+      const fresh = await api("/api/admin/llm/providers");
+      list.items = fresh.items;
+      draw();
+    }
+
+    function form() {
+      const p = editing === "new" ? null : editing;
+      const status = h("p", { class: "hint", style: "margin:12px 0 0", role: "status" });
+      const say = (text, bad) => { status.textContent = text; status.style.color = bad ? "#ffb3c2" : "#9ff0e8"; };
+      const models = h("datalist", { id: "ai-models" });
+      const preset = h("select", { id: "ai-preset", onchange: () => {
+        const x = presets.items.find((i) => i.id === preset.value);
+        if (!x) return;
+        kind.value = x.kind; url.value = x.baseUrl; if (x.id !== "custom") name.value = x.name; model.value = x.defaultModel || "";
+      } }, ...presets.items.map((i) => h("option", { value: i.id }, i.name)));
+      const name = h("input", { id: "ai-name", value: p ? p.name : "Ollama", required: true, maxlength: "60" });
+      const kind = h("select", { id: "ai-kind" }, ...Object.keys(KINDS).map((k) => h("option", { value: k }, KINDS[k])));
+      kind.value = p ? p.kind : "ollama";
+      const url = h("input", { id: "ai-url", type: "url", value: p ? p.baseUrl : "http://localhost:11434", required: true, style: "min-width:min(360px,100%)", spellcheck: "false" });
+      const model = h("input", { id: "ai-model", value: p ? p.model : "llama3.2:3b", required: true, list: "ai-models", spellcheck: "false" });
+      const key = h("input", { id: "ai-key", type: "password", autocomplete: "off", placeholder: p && p.hasKey ? "Saved. Leave blank to keep it" : "Only if the service needs one" });
+      const clear = h("input", { type: "checkbox", style: "min-width:0" });
+      if (p) preset.value = "custom";
+
+      const body = (withKey) => ({ name: name.value.trim(), kind: kind.value, baseUrl: url.value.trim(), model: model.value.trim(),
+        ...(withKey ? (clear.checked ? { apiKey: "" } : key.value ? { apiKey: key.value } : {}) : {}) });
+
+      return h("div", { class: "card" },
+        h("h2", null, p ? "Edit " + p.name : "Add a provider"),
+        h("p", { class: "hint" }, "The server calls this model for the AI DJ on every device. The key is stored encrypted and never sent to any app."),
+        h("div", { class: "row" },
+          p ? null : h("div", null, h("label", { for: "ai-preset" }, "Start from"), preset),
+          h("div", null, h("label", { for: "ai-name" }, "Name"), name),
+          h("div", null, h("label", { for: "ai-kind" }, "Type"), kind)),
+        h("div", { class: "row", style: "margin-top:12px" },
+          h("div", null, h("label", { for: "ai-url" }, "Address"), url),
+          h("div", null, h("label", { for: "ai-model" }, "Model"), model, models),
+          h("div", null, h("label", { for: "ai-key" }, "API key"), key)),
+        p && p.hasKey ? h("label", { style: "display:flex;gap:6px;align-items:center;margin:10px 0 0" }, clear, "Remove the saved key") : null,
+        h("div", { class: "row", style: "margin-top:16px" },
+          h("button", { class: "btn", type: "button", onclick: async () => {
+            try {
+              const r = await api("/api/admin/llm/test", { method: "POST", body: JSON.stringify({ ...(p ? { id: p.id } : {}), ...body(false), ...(key.value ? { apiKey: key.value } : {}) }) });
+              models.replaceChildren(...(r.models || []).map((m) => h("option", { value: m })));
+              say(r.available ? "Connected. " + r.models.length + " model" + (r.models.length === 1 ? "" : "s") + " available." + (r.models.length && r.models.indexOf(model.value.trim()) === -1 ? " (“" + model.value.trim() + "” isn't one of them.)" : "")
+                : "Couldn't connect" + (r.error ? ": " + r.error : "."), !r.available);
+            } catch (err) { say(err.message, true); }
+          } }, "Test"),
+          h("button", { class: "btn primary", type: "button", onclick: async () => {
+            try {
+              if (p) await api("/api/admin/llm/providers/" + p.id, { method: "PUT", body: JSON.stringify({ ...body(true), enabled: p.enabled, isDefault: p.isDefault }) });
+              else await api("/api/admin/llm/providers", { method: "POST", body: JSON.stringify(body(true)) });
+              toast("Saved " + name.value.trim()); editing = null; await load();
+            } catch (err) { say(err.message, true); }
+          } }, "Save"),
+          h("button", { class: "btn", type: "button", onclick: () => { editing = null; draw(); } }, "Cancel")),
+        status);
+    }
+
+    function draw() {
+      const items = list.items;
+      const rows = items.map((p) => h("tr", null,
+        h("td", null, h("b", null, p.name), h("small", null, KINDS[p.kind] || p.kind)),
+        h("td", null, p.model, h("small", null, p.baseUrl + (p.hasKey ? " · key saved" : ""))),
+        h("td", null, p.isDefault ? h("span", { class: "pill admin" }, "Default") : null, " ", p.enabled ? null : h("span", { class: "pill" }, "Off")),
+        h("td", null, h("div", { class: "actions" },
+          act("Test", async () => {
+            const r = await api("/api/admin/llm/test", { method: "POST", body: JSON.stringify({ id: p.id, kind: p.kind, baseUrl: p.baseUrl, model: p.model }) });
+            if (!r.available) return toast(p.name + ": " + (r.error || "can't be reached"), true);
+            const has = r.models.indexOf(p.model) !== -1 || !r.models.length;
+            toast(p.name + (has ? " is working." : " is reachable, but it has no model called “" + p.model + "”."), !has);
+          }),
+          p.isDefault || !p.enabled ? null : act("Make default", () => put(p, { isDefault: true })),
+          act(p.enabled ? "Turn off" : "Turn on", () => put(p, { enabled: !p.enabled })),
+          act("Edit", async () => { editing = p; draw(); }),
+          act("Remove", async () => {
+            if (!confirm("Remove " + p.name + "?")) return;
+            await api("/api/admin/llm/providers/" + p.id, { method: "DELETE" });
+            toast("Removed " + p.name); await load();
+          }, "danger")))));
+
+      $("#view").replaceChildren(
+        h("h1", null, "AI providers"),
+        h("p", { class: "sub" }, items.length ? "These run the AI DJ for everyone who signs in, on any device." : "No providers yet. Add one so the AI DJ works on phones and browsers with no setup."),
+        items.length ? h("div", { class: "card" }, h("table", null,
+          h("thead", null, h("tr", null, h("th", null, "Provider"), h("th", null, "Model"), h("th", null, ""), h("th", null, ""))),
+          h("tbody", null, rows))) : null,
+        editing ? form() : h("div", { style: "margin-bottom:18px" }, h("button", { class: "btn primary", type: "button", onclick: () => { editing = "new"; draw(); } }, "Add a provider")),
+        h("div", { class: "card" },
+          h("h2", null, "Good to know"),
+          h("p", { class: "hint", style: "margin:0" }, "Any OpenAI-compatible service works (OpenAI, LM Studio, llama.cpp, vLLM, OpenRouter, Groq…), as do Ollama and Anthropic. The default is used when someone hasn't picked one. People can also use a model on their own device or computer from Settings → AI DJ.")));
+    }
+
+    draw();
   }
 
   if (token) start(); else renderLogin();

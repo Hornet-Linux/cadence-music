@@ -19,7 +19,10 @@ set it in `deploy/.env`:
 JELLYFIN_URL=http://jellyfin:8096
 ```
 
-or save it from the admin API (the `JELLYFIN_URL` variable wins if both are set):
+or save it from the **Jellyfin** page in the admin panel (`/admin`): type the
+address, press **Test** (it reports the Jellyfin server's name and version) and
+**Save**. A `JELLYFIN_URL` variable wins if both are set, and then the page shows
+the address read-only. The same thing through the admin API:
 
 ```sh
 # check an address first (nothing is saved)
