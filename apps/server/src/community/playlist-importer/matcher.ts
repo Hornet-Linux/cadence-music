@@ -152,12 +152,21 @@ export interface Ranked<C extends Candidate = Candidate> extends Scored {
 }
 
 const MAX_POSTINGS = 3000;
+/** Stop adding words once this many candidates are in the pool. */
+const POOL_ENOUGH = 200;
+/** A word shared by more tracks than this is 'common'. */
+const COMMON_WORD = 500;
+/** Try first-letters matches only when no word was found at all (a misspelling). */
+const PREFIX_BELOW = 1;
+const MAX_PREFIX = 500;
 
 /** A searchable set of candidates, so matching 500 wanted tracks against a 100k-track library stays fast. */
 export class CandidateIndex<C extends Candidate = Candidate> {
   private readonly items: { candidate: C; prepared: Prepared }[] = [];
   private readonly byToken = new Map<string, number[]>();
   private readonly byPrefix = new Map<string, number[]>();
+  /** How many candidates the last search scored (for tests and tuning: it shows how well the index prunes). */
+  lastScored = 0;
 
   constructor(candidates: Iterable<C>) {
     for (const candidate of candidates) {
@@ -179,14 +188,20 @@ export class CandidateIndex<C extends Candidate = Candidate> {
     const w = prepare(wanted);
     const tokens = [...new Set(w.title.base.split(" ").filter(Boolean))];
     const pool = new Set<number>();
-    // Rare words first: they point at few tracks. Very common words are skipped unless nothing else is left.
-    const postings = tokens.map((t) => this.byToken.get(t) ?? []).sort((a, b) => a.length - b.length);
-    const usable = postings.filter((p) => p.length <= MAX_POSTINGS);
-    for (const p of (usable.length ? usable : postings).slice(0, 4)) for (const i of p.slice(0, MAX_POSTINGS)) pool.add(i);
+    // Rarest word first: it points at the fewest tracks. More words are added only while the pool is still small,
+    // so a very common word never drags in thousands of candidates, yet a misspelled rare word still has fallbacks.
+    const postings = tokens.map((t) => this.byToken.get(t) ?? []).filter((p) => p.length > 0).sort((a, b) => a.length - b.length);
+    for (const p of postings) {
+      if (pool.size >= POOL_ENOUGH) break;
+      // A common word adds nothing but noise once something more specific has been found.
+      if (pool.size > 0 && p.length > COMMON_WORD) continue;
+      for (const i of p.slice(0, MAX_POSTINGS)) pool.add(i);
+    }
+    // No (or few) shared words: a misspelling. Fall back to tracks starting with the same letters.
     const prefix = w.title.base.replace(/ /g, "").slice(0, 4);
-    if (prefix) for (const i of (this.byPrefix.get(prefix) ?? []).slice(0, MAX_POSTINGS)) pool.add(i);
-    // A misspelled word still shares the other words, or at least the first letters; try near prefixes too.
-    if (pool.size === 0 && prefix.length >= 3) for (const i of (this.byPrefix.get(prefix.slice(0, 3)) ?? []).slice(0, MAX_POSTINGS)) pool.add(i);
+    if (pool.size < PREFIX_BELOW && prefix) for (const i of (this.byPrefix.get(prefix) ?? []).slice(0, MAX_PREFIX)) pool.add(i);
+    if (pool.size === 0 && prefix.length >= 3) for (const i of (this.byPrefix.get(prefix.slice(0, 3)) ?? []).slice(0, MAX_PREFIX)) pool.add(i);
+    this.lastScored = pool.size;
 
     const ranked: Ranked<C>[] = [];
     for (const i of pool) {

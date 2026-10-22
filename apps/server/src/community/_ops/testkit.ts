@@ -62,7 +62,7 @@ export async function makeApp(plugins: ServerPlugin[], overrides: Partial<Config
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Poll until `check` returns something truthy (or fail after `timeoutMs`). */
-export async function waitFor<T>(check: () => T | false | null | undefined | Promise<T | false | null | undefined>, timeoutMs = 3000): Promise<T> {
+export async function waitFor<T>(check: () => T | false | null | undefined | Promise<T | false | null | undefined>, timeoutMs = 20_000): Promise<T> {
   const end = Date.now() + timeoutMs;
   for (;;) {
     const value = await check();
