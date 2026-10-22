@@ -10,13 +10,15 @@ export interface Accent {
   to: string;
 }
 
+// Muted, light-toned accents (all pass AA as text on the dark surfaces, and
+// dark text passes AA on top of them). "to" is only a very gentle shift.
 export const ACCENTS: Accent[] = [
-  { id: "artwork", label: "From artwork", from: "#9b7bff", to: "#55e0d8" },
-  { id: "violet", label: "Violet", from: "#8b6bff", to: "#55e0d8" },
-  { id: "rose", label: "Rose", from: "#ff4f8b", to: "#ffb36b" },
-  { id: "ember", label: "Ember", from: "#ff6a3d", to: "#ffd25e" },
-  { id: "lime", label: "Lime", from: "#3ddc97", to: "#c6f35b" },
-  { id: "ocean", label: "Ocean", from: "#3b82f6", to: "#22d3ee" },
+  { id: "artwork", label: "From artwork", from: "#9aa4e0", to: "#a6aee4" },
+  { id: "violet", label: "Periwinkle", from: "#9aa4e0", to: "#a6aee4" },
+  { id: "rose", label: "Rose", from: "#d99aae", to: "#dfa8b9" },
+  { id: "ember", label: "Amber", from: "#d9ae78", to: "#dfb98a" },
+  { id: "lime", label: "Sage", from: "#9cc4a2", to: "#a9cbae" },
+  { id: "ocean", label: "Teal", from: "#86bfc4", to: "#97c8cc" },
 ];
 
 export interface Preferences {
@@ -38,7 +40,7 @@ const DEFAULTS: Preferences = {
   doubleClick: "play",
   startup: "resume",
   pauseOnDeviceChange: true,
-  accent: "artwork",
+  accent: "violet",
   ambientBackground: true,
   reduceMotion: false,
 };
