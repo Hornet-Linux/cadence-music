@@ -5,6 +5,9 @@
 # music server directly. If Caddy runs on a Docker network instead, put both
 # containers on the same network and use `reverse_proxy server:8787`.
 
+# reverse_proxy sends the real client address in X-Forwarded-For (replacing any
+# value the client sent), which is what the server's default TRUST_PROXY (a proxy on this machine or a private network) reads.
+
 music.example.com {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8787

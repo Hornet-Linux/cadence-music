@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Self-hosters often run Cadence over plain http on their LAN (http://192.168.1.20:8787),
+  where there is no certificate to check, so cleartext is allowed. https servers are
+  validated normally. See docs/ANDROID.md.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

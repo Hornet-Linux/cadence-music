@@ -8,7 +8,7 @@ import type {
   LlmRelayResult,
   LlmStatusResponse,
 } from "@uma/shared";
-import type { FastifyReply } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ServerPlugin } from "../plugins/types.js";
 import {
   buildDjMessages,
@@ -21,9 +21,10 @@ import {
   parseProviderConfig,
   type FetchFn,
   type LlmProvider,
+  type LlmStatus,
   type ProviderKind,
 } from "./core/index.js";
-import { RelayHub } from "./relay.js";
+import { MAX_DEVICES_PER_USER, RelayHub } from "./relay.js";
 import { ProviderStore } from "./store.js";
 
 const DEVICE_ID_RE = /^[\w-]{8,64}$/;
@@ -39,12 +40,75 @@ const strings = (value: unknown, max = MAX_LIST): string[] =>
     ? value.filter((v): v is string => typeof v === "string").map((v) => v.trim().slice(0, MAX_LINE)).filter(Boolean).slice(0, max)
     : [];
 
+const MAX_NAME = 60;
+const MAX_MODEL = 200;
+const MAX_API_KEY = 512;
+const MAX_ERROR = 300;
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
+
+/** An error message from a person's own device (or an admin's view): length-limited, one line. */
+export function deviceMessage(text: string): string {
+  return text.replace(CONTROL_CHARS, " ").trim().slice(0, MAX_ERROR) || "The AI provider failed.";
+}
+
+const GENERIC_FAILURE = "The AI provider failed. Ask the server owner to check it.";
+
+/** What a non-admin may learn about a failed server provider: a fixed phrase, never upstream text. */
+export function publicMessage(e: unknown): string {
+  const status = e instanceof LlmError ? e.status : undefined;
+  const text = e instanceof Error ? e.message : "";
+  if (status === 401 || status === 403 || /rejected the API key/i.test(text)) {
+    return "The AI provider rejected its API key. Ask the server owner to check it.";
+  }
+  if (/wasn't found on that server|isn't installed/i.test(text)) {
+    return "The AI provider doesn't have the configured model. Ask the server owner to check it.";
+  }
+  if (/timed out|took too long/i.test(text)) {
+    return "The AI provider took too long to answer. Ask the server owner to check it.";
+  }
+  if (/^Couldn't reach/i.test(text)) return "The AI provider couldn't be reached. Ask the server owner to check it.";
+  return GENERIC_FAILURE;
+}
+
+/** Same idea for the `error` field of a status check. */
+export function publicStatusError(text: string): string {
+  if (/rejected the API key/i.test(text)) return "The AI provider rejected its API key.";
+  return "The AI provider isn't available.";
+}
+
+/** A status reply from a device is untrusted data: keep only what the type promises, bounded. */
+export function cleanStatus(value: unknown): LlmStatus {
+  const v = (value ?? {}) as Partial<LlmStatus>;
+  const models = Array.isArray(v.models)
+    ? v.models.filter((m): m is string => typeof m === "string").slice(0, 200).map((m) => m.slice(0, MAX_MODEL))
+    : [];
+  return {
+    available: v.available === true,
+    models,
+    ...(typeof v.error === "string" ? { error: deviceMessage(v.error) } : {}),
+  };
+}
+
+/** A base URL with credentials, a query string or a fragment is never what an admin means. */
+function plainBaseUrl(raw: unknown): boolean {
+  if (typeof raw !== "string") return true; // parseProviderConfig reports the type error
+  try {
+    const u = new URL(raw.trim());
+    return !u.username && !u.password && !u.search && !u.hash && !raw.includes("?") && !raw.includes("#");
+  } catch {
+    return true; // parseProviderConfig reports the bad URL
+  }
+}
+
 function parseAdminInput(body: unknown): AdminLlmProviderInput | string {
   const b = (body ?? {}) as Partial<AdminLlmProviderInput>;
-  const name = typeof b.name === "string" ? b.name.trim().slice(0, 60) : "";
-  if (!name) return "invalid_name";
-  if (!b.model || typeof b.model !== "string" || !b.model.trim()) return "invalid_model";
-  if (b.apiKey !== undefined && typeof b.apiKey !== "string") return "invalid_key";
+  const name = typeof b.name === "string" ? b.name.trim() : "";
+  if (!name || name.length > MAX_NAME) return "invalid_name";
+  if (!b.model || typeof b.model !== "string" || !b.model.trim() || b.model.trim().length > MAX_MODEL) return "invalid_model";
+  if (b.apiKey !== undefined && (typeof b.apiKey !== "string" || b.apiKey.length > MAX_API_KEY)) return "invalid_key";
+  if (!plainBaseUrl(b.baseUrl)) return "invalid_provider";
   try {
     const cfg = parseProviderConfig({ kind: b.kind, baseUrl: b.baseUrl, model: b.model });
     return {
@@ -130,9 +194,26 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
         return pick ? `server:${pick.id}` : undefined;
       }
 
-      function fail(reply: FastifyReply, e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
+      /**
+       * Errors from a server provider can carry text from the upstream response
+       * or network details of the server's own network, so only admins see them.
+       * Everyone else gets a fixed phrase. Errors from a person's own device
+       * are theirs to read (length-limited, no control characters).
+       */
+      function fail(req: FastifyRequest, reply: FastifyReply, e: unknown, ref: string | undefined) {
+        const detail = e instanceof Error ? e.message : String(e);
+        const device = ref?.startsWith("device:") === true;
+        if (!device) req.log.warn({ detail: detail.slice(0, 500), provider: ref }, "AI provider call failed");
+        const message = device ? deviceMessage(detail) : req.user?.is_admin === 1 ? deviceMessage(detail) : publicMessage(e);
         return reply.code(502).send({ error: "llm_failed", message });
+      }
+
+      /** Strip the detail from a status result about a server provider for non-admins. */
+      function publicStatus(req: FastifyRequest, raw: unknown, ref: string): LlmStatus {
+        const status = cleanStatus(raw);
+        if (ref.startsWith("device:") || req.user?.is_admin === 1) return status;
+        if (status.error) req.log.warn({ detail: status.error, provider: ref }, "AI provider status failed");
+        return status.error ? { ...status, error: publicStatusError(status.error) } : status;
       }
 
       // ---- what people can choose from ----------------------------------------
@@ -170,11 +251,11 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
       app.post<{ Body: { provider?: string } }>("/api/llm/status", { preHandler: requireUser }, async (req, reply) => {
         const ref = req.body?.provider ?? defaultRef();
         const provider = ref ? resolve(ref, req.user!.id) : null;
-        if (!provider) return reply.code(404).send({ error: "provider_not_found" });
+        if (!provider || !ref) return reply.code(404).send({ error: "provider_not_found" });
         try {
-          return (await provider.status()) satisfies LlmStatusResponse;
+          return publicStatus(req, await provider.status(), ref) satisfies LlmStatusResponse;
         } catch (e) {
-          return fail(reply, e);
+          return fail(req, reply, e, ref);
         }
       });
 
@@ -215,8 +296,7 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
           const picks = cleanReply(await provider.chatJson({ messages, schema: DJ_SCHEMA as unknown as Record<string, unknown> }));
           return { picks } satisfies DjPicksResponse;
         } catch (e) {
-          req.log.warn({ err: e instanceof Error ? e.message : String(e), provider: ref.split(":")[0] }, "AI DJ request failed");
-          return fail(reply, e);
+          return fail(req, reply, e, ref);
         } finally {
           busy.delete(userId);
         }
@@ -256,6 +336,9 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
         async (req, reply) => {
           try {
             const b = req.body ?? {};
+            if (!plainBaseUrl(b.baseUrl) || (b.apiKey !== undefined && (typeof b.apiKey !== "string" || b.apiKey.length > MAX_API_KEY))) {
+              return reply.code(400).send({ error: "invalid_provider", message: "Invalid URL or key" });
+            }
             const apiKey = b.apiKey || (b.id ? store.apiKey(b.id) : undefined);
             const config = parseProviderConfig({ kind: b.kind, baseUrl: b.baseUrl, model: b.model ?? "", apiKey });
             return await createProvider(config, options.fetchFn).status();
@@ -272,6 +355,9 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
       app.post("/api/llm/devices/connect", { preHandler: requireUser }, async (req, reply) => {
         const registration = parseRegistration(req.body);
         if (!registration) return reply.code(400).send({ error: "invalid_registration" });
+        if (!hub.canAttach(req.user!.id, registration.deviceId)) {
+          return reply.code(429).send({ error: "too_many_devices", message: `At most ${MAX_DEVICES_PER_USER} devices can be connected at once` });
+        }
         reply.hijack();
         const raw = reply.raw;
         raw.writeHead(200, {
@@ -281,18 +367,47 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
           "X-Accel-Buffering": "no",
           "Access-Control-Allow-Origin": "*",
         });
-        raw.write("event: ready\ndata: {}\n\n");
+        // Writing to a stream that has closed (or is closing) must never throw.
+        const write = (chunk: string): boolean => {
+          if (raw.destroyed || raw.writableEnded) return false;
+          try {
+            raw.write(chunk);
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        write("event: ready\ndata: {}\n\n");
         const detach = hub.attach(
           req.user!.id,
           registration,
-          (job) => raw.write(`event: job\ndata: ${JSON.stringify(job)}\n\n`),
-          () => raw.end(),
+          (job) => {
+            if (!write(`event: job\ndata: ${JSON.stringify(job)}\n\n`)) throw new Error("stream closed");
+          },
+          () => {
+            cleanup();
+            if (!raw.writableEnded) raw.end();
+          },
         );
-        const beat = setInterval(() => raw.write(": keep-alive\n\n"), HEARTBEAT_MS);
-        raw.on("close", () => {
+        if (!detach) {
+          raw.end();
+          return;
+        }
+        const beat = setInterval(() => {
+          if (!write(": keep-alive\n\n")) cleanup();
+        }, HEARTBEAT_MS);
+        // Runs on every way out (client closed, socket error, replaced, failed heartbeat); safe to call twice.
+        let cleaned = false;
+        function cleanup() {
+          if (cleaned) return;
+          cleaned = true;
           clearInterval(beat);
-          detach();
-        });
+          raw.off("close", cleanup);
+          raw.off("error", cleanup);
+          detach?.();
+        }
+        raw.on("close", cleanup);
+        raw.on("error", cleanup);
       });
 
       app.post<{ Params: { jobId: string }; Body: LlmRelayResult }>(

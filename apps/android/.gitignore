@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.cxx/
+# Never commit a signing key; see docs/ANDROID.md
+*.jks
+*.keystore
+keystore.properties

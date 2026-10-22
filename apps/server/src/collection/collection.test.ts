@@ -21,8 +21,8 @@ const track = (id: string, title = id) => ({
 async function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-coll-"));
   const db = openDb(":memory:");
-  createLocalUser(db, { username: "alice", password: "alice-password" });
-  createLocalUser(db, { username: "bob", password: "bob-password" });
+  await createLocalUser(db, { username: "alice", password: "alice-password" });
+  await createLocalUser(db, { username: "bob", password: "bob-password" });
   const app = await buildApp({
     config: { host: "127.0.0.1", port: 0, dataDir: dir, musicDir: dir, scanIntervalMinutes: 0, trustProxy: false, logLevel: "silent" },
     db,

@@ -1,8 +1,16 @@
 import { CHAT_TIMEOUT_MS, describeFetchError, endpoint, errorText, extractJson, STATUS_TIMEOUT_MS } from "./http.js";
 import { LlmError, type FetchFn, type LlmJsonRequest, type LlmProvider, type LlmStatus, type ProviderConfig } from "./types.js";
 
-/** Models that "think" for minutes unless told not to; the others reject the field. */
-const REASONING_MODEL = /qwen3|deepseek-r1|gpt-oss|magistral/i;
+/**
+ * Models that "think" for minutes unless told not to; the others reject the
+ * field. Most take `think: false`, but gpt-oss ignores it (it still reasons at
+ * length) and only accepts a level, so give it "low".
+ */
+export function thinkOption(model: string): { think: boolean | "low" } | Record<string, never> {
+  if (/gpt-oss/i.test(model)) return { think: "low" };
+  if (/qwen3|deepseek-r1|magistral/i.test(model)) return { think: false };
+  return {};
+}
 
 /** Ollama's native API (/api/chat) with JSON-schema structured output. */
 export class OllamaProvider implements LlmProvider {
@@ -44,7 +52,7 @@ export class OllamaProvider implements LlmProvider {
           messages: req.messages,
           format: req.schema,
           stream: false,
-          ...(REASONING_MODEL.test(this.config.model) ? { think: false } : {}),
+          ...thinkOption(this.config.model),
           options: { temperature: req.temperature ?? 0.8 },
         }),
       });

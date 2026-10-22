@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { LlmStatus } from "../../../electron/llm";
 import { SettingRow, Toggle } from "@/features/settings/controls";
 import { useServer } from "@/plugins/builtins/server/serverStore";
@@ -7,13 +7,15 @@ import { EMPTY_FORM, ProviderForm, type ProviderFormValue } from "./ProviderForm
 import {
   effectiveOption,
   getApiKey,
+  keyStorageNote,
   providerOptions,
   providerStatus,
   useProviders,
   type LocalProvider,
   type ProviderOption,
 } from "./providers";
-import { deviceName } from "./relayClient";
+import { deviceName, useRelay } from "./relayClient";
+import { latestOnly } from "./latest";
 import { ServerProviders } from "./ServerProviders";
 import { djSetup, OLLAMA_DOWNLOAD_URL } from "./setup";
 
@@ -30,9 +32,11 @@ const toForm = (p: LocalProvider): ProviderFormValue => ({
 
 /** Settings → AI DJ: where the model runs, and spoken intros. */
 export function DjSettings() {
+  const KEY_NOTE = keyStorageNote();
   const { voice, setVoice } = useDj();
   const { local, remote, native, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
   const server = useServer((s) => s.user);
+  const relay = useRelay();
   const [editing, setEditing] = useState<LocalProvider | "new" | null>(null);
   const [editingHasKey, setEditingHasKey] = useState(false);
 
@@ -89,7 +93,7 @@ export function DjSettings() {
                 initial={toForm(mine)}
                 hasKey={editingHasKey}
                 canShare={!!server}
-                keyNote="Kept in this device's secure storage."
+                keyNote={KEY_NOTE}
                 onSave={saveLocal}
                 onTest={testLocal}
                 onCancel={() => setEditing(null)}
@@ -126,7 +130,7 @@ export function DjSettings() {
       {editing === "new" ? (
         <ProviderForm
           canShare={!!server}
-          keyNote="Kept in this device's secure storage."
+          keyNote={KEY_NOTE}
           onSave={saveLocal}
           onTest={testLocal}
           onCancel={() => setEditing(null)}
@@ -141,8 +145,15 @@ export function DjSettings() {
 
       {active && <ProviderHealth option={active} />}
       {server?.isAdmin && <ServerProviders />}
-      {server && local.some((p) => p.share) && (
-        <p className="muted small">Sharing as “{deviceName()}” while this app is open.</p>
+      {server && local.some((p) => p.share) && relay.message && <p className="notice warn">{relay.message}</p>}
+      {server && local.some((p) => p.share) && !relay.message && (
+        <p className="muted small">
+          {relay.state === "connected"
+            ? `Sharing as “${deviceName()}” while this app is open.`
+            : relay.state === "off"
+              ? ""
+              : "Connecting to your server to share…"}
+        </p>
       )}
     </div>
   );
@@ -153,21 +164,27 @@ function ProviderHealth({ option }: { option: ProviderOption }) {
   const [status, setStatus] = useState<LlmStatus | null>(null);
   const [checking, setChecking] = useState(false);
   const web = window.host?.platform === ("web" as string);
+  // A slow check for the previous provider must not overwrite the answer for this one.
+  const latest = useRef(latestOnly());
 
   const check = useCallback(async () => {
+    const current = latest.current.begin();
     setChecking(true);
     try {
-      setStatus(await providerStatus(option.ref));
+      const result = await providerStatus(option.ref);
+      if (current()) setStatus(result);
     } catch (e) {
-      setStatus({ available: false, models: [], error: e instanceof Error ? e.message : String(e) });
+      if (current()) setStatus({ available: false, models: [], error: e instanceof Error ? e.message : String(e) });
     } finally {
-      setChecking(false);
+      if (current()) setChecking(false);
     }
   }, [option.ref]);
 
   useEffect(() => {
+    const checks = latest.current;
     setStatus(null);
     void check();
+    return () => checks.cancel();
   }, [check, option.model]);
 
   const setup = status ? djSetup(option, status) : null;

@@ -1,5 +1,6 @@
 import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
+import type { CadenceNativeBridge } from "../host";
 import { createLlmProvider } from "../../electron/llm";
 
 // Browser stand-in for the Electron preload bridge (window.host), so the same
@@ -248,13 +249,24 @@ function iosApp(): NativeBridge | undefined {
     ?.cadence;
 }
 
-export function isIosApp(): boolean {
-  return !!iosApp();
+/** The Android app's bridge, when the web player runs inside it (apps/android). */
+function androidApp(): Required<Pick<CadenceNativeBridge, "changeServer">> | undefined {
+  const bridge = window.CadenceNative;
+  return bridge?.platform === "android" && typeof bridge.changeServer === "function"
+    ? { changeServer: () => bridge.changeServer?.() }
+    : undefined;
 }
 
-/** Ask the iOS app to go back to its server address screen. */
-export function changeIosServer(): void {
-  iosApp()?.postMessage({ action: "changeServer" });
+/** True inside the iOS or Android app, which can go back to their server address screen. */
+export function isNativeApp(): boolean {
+  return !!iosApp() || !!androidApp();
+}
+
+/** Ask the iOS or Android app to go back to its server address screen. */
+export function changeNativeServer(): void {
+  const ios = iosApp();
+  if (ios) ios.postMessage({ action: "changeServer" });
+  else androidApp()?.changeServer();
 }
 
 /** True when running as the website rather than the desktop app. */

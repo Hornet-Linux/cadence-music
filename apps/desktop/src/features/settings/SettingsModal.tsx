@@ -245,7 +245,7 @@ export function SettingsModal() {
         id: "dj",
         group: "Services",
         title: "AI DJ",
-        description: "Your personal DJ, powered by Ollama on this computer.",
+        description: "Your personal DJ. Choose whether its model runs on the server, this device or another computer.",
         icon: <SparkleIcon size={19} />,
         keywords: ["dj", "ai", "ollama", "llm", "model", "voice", "intros", "speech"],
         render: () => <DjSettings />,

@@ -95,14 +95,32 @@ export function buildDjMessages(profile: TasteProfile, req: DjRequest = {}): Llm
   ];
 }
 
-/** Drop malformed entries the model may return despite the schema. */
+export const MAX_PICKS = 25;
+export const MAX_NAME_CHARS = 200;
+export const MAX_INTRO_CHARS = 400;
+
+/** Replace control characters (newlines and tabs included) with spaces, collapse runs, trim, truncate. */
+function tidy(value: string, max: number): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ").trim().slice(0, max).trim();
+}
+
+/**
+ * Drop malformed entries the model may return despite the schema, and bound
+ * what is left (count, lengths, no control characters) so a misbehaving model
+ * or device can't send an app something huge.
+ */
 export function cleanReply(reply: unknown): DjPick[] {
   const picks = (reply as Partial<DjReply> | null)?.picks;
   if (!Array.isArray(picks)) return [];
-  return picks
-    .filter(
-      (p): p is DjPick =>
-        !!p && typeof p.artist === "string" && typeof p.title === "string" && !!p.artist.trim() && !!p.title.trim(),
-    )
-    .map((p) => ({ artist: p.artist.trim(), title: p.title.trim(), intro: typeof p.intro === "string" ? p.intro.trim() : "" }));
+  const out: DjPick[] = [];
+  for (const p of picks as (Partial<DjPick> | null)[]) {
+    if (out.length >= MAX_PICKS) break;
+    if (!p || typeof p.artist !== "string" || typeof p.title !== "string") continue;
+    const artist = tidy(p.artist, MAX_NAME_CHARS);
+    const title = tidy(p.title, MAX_NAME_CHARS);
+    if (!artist || !title) continue;
+    out.push({ artist, title, intro: typeof p.intro === "string" ? tidy(p.intro, MAX_INTRO_CHARS) : "" });
+  }
+  return out;
 }
