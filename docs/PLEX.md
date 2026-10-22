@@ -95,3 +95,8 @@ bound to the person, item and kind.
   server; the direct-play path is the one most likely to work as is.
 - Plex Pass, Plex-hosted music (TIDAL) and Plexamp-only features (sonic analysis,
   radio) are not used.
+## Testing hook
+
+`PLEX_TV_URL` (server environment) replaces `https://plex.tv` for the link flow. It
+exists so the link flow can be tried against a stand-in plex.tv (the fake in
+`apps/server/src/community/plex/fakePlex.ts`); leave it unset in real use.

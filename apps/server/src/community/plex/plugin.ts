@@ -63,7 +63,7 @@ export interface PlexPluginOptions {
   fetchFn?: FetchFn;
   /** The address from the environment (PLEX_URL); wins over the admin setting. */
   envUrl?: string;
-  /** plex.tv's address. A fixed public service; only tests change it. */
+  /** plex.tv address. A fixed public service; only tests (or the PLEX_TV_URL variable, for a test setup) change it. */
   plexTvUrl?: string;
   /** Tests shorten these. */
   streamIdleMs?: number;
@@ -117,7 +117,7 @@ export function createPlexPlugin(options: PlexPluginOptions = {}): ServerPlugin 
       };
       const baseUrl = (): string | null => address().serverUrl;
       const nowSec = () => Math.floor(Date.now() / 1000);
-      const tv = (clientId: string, token?: string): PlexContext => ({ baseUrl: options.plexTvUrl ?? PLEX_TV, clientId, token, fetchFn: options.fetchFn });
+      const tv = (clientId: string, token?: string): PlexContext => ({ baseUrl: options.plexTvUrl ?? process.env.PLEX_TV_URL ?? PLEX_TV, clientId, token, fetchFn: options.fetchFn });
 
       const artworkFor = (userId: number): ArtworkFn => {
         const exp = (Math.floor(nowSec() / 86400) + IMAGE_TTL_DAYS + 1) * 86400;
