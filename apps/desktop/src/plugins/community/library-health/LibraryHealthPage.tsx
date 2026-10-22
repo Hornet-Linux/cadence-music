@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "@/player/playerStore";
 import { formatDuration } from "@/shared/types";
+import { PlayIcon } from "@/ui/icons";
 import { call, formatBytes, pluralize, send, useLoad, explainError } from "../_serverlib/api";
 import { ErrorNotice, Gate, Page, Progress, Stat, Tabs, serverTrackToTrack } from "../_serverlib/ui";
 import { FIELD_LABELS, type DuplicateGroup, type HealthReport, type HealthStatus } from "./types";
@@ -24,7 +25,7 @@ function DuplicateCard({ group }: { group: DuplicateGroup }) {
             aria-label={`Play ${t.title}`}
             onClick={() => void playQueue([serverTrackToTrack({ ...t, albumArtist: null })], 0)}
           >
-            ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¶
+            <PlayIcon size={14} />
           </button>
           <div className="sl-dup-text">
             <h3>
@@ -41,7 +42,7 @@ function DuplicateCard({ group }: { group: DuplicateGroup }) {
                 formatDuration(t.durationSec ?? undefined),
               ]
                 .filter(Boolean)
-                .join(" ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ")}
+                .join(" · ")}
             </div>
           </div>
         </div>
@@ -105,7 +106,7 @@ function Report({ report }: { report: HealthReport }) {
             <article key={a.folder + (a.album ?? "")} className="card sl-item">
               <h3>{a.album ?? "(no album tag)"}</h3>
               <div className="muted small">
-                {a.artist ?? "Unknown artist"} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {pluralize(a.tracks, "track")}
+                {a.artist ?? "Unknown artist"} · {pluralize(a.tracks, "track")}
               </div>
               <div className="sl-path">{a.folder || "(music folder root)"}</div>
             </article>
@@ -115,7 +116,7 @@ function Report({ report }: { report: HealthReport }) {
             <article key={t.id} className="card sl-item">
               <h3>{t.title}</h3>
               <div className="muted small">
-                {[t.artist, t.album].filter(Boolean).join(" ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ") || "No artist or album"}
+                {[t.artist, t.album].filter(Boolean).join(" · ") || "No artist or album"}
               </div>
               <div>
                 {t.missing.map((m) => (
@@ -219,7 +220,7 @@ function Body() {
           <span className="muted small">
             {st?.deepScan.running ? "Decoding" : "Reading"} {(active.done + active.failed).toLocaleString()} of{" "}
             {active.total.toLocaleString()}
-            {active.current ? ` ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${active.current}` : ""}
+            {active.current ? ` · ${active.current}` : ""}
           </span>
         </div>
       )}
@@ -228,7 +229,7 @@ function Body() {
       )}
       {actionError && <p className="notice error">{actionError}</p>}
       <ErrorNotice error={status.error ?? report.error} />
-      {report.loading && !report.data && <p className="empty">Loading the reportÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</p>}
+      {report.loading && !report.data && <p className="empty">Loading the report&hellip;</p>}
       {report.data && <Report report={report.data} />}
     </>
   );

@@ -15,6 +15,8 @@ test("library health reports duplicates, missing artwork, and unreadable files f
     "Artist/Album/one.wav": tone,
     "Artist/Album/copy of one.wav": tone,
     "Artist/Other/different.wav": makeWav(3, sine(660)),
+    // Exactly as long as one.wav (so the same size) but another recording: not a duplicate.
+    "Artist/Other/same length.wav": makeWav(2, sine(550)),
     "Broken/garbage.wav": Buffer.from("this is not audio at all, just text pretending to be a wav file"),
     "Broken/empty.wav": Buffer.alloc(0),
   });
@@ -25,11 +27,13 @@ test("library health reports duplicates, missing artwork, and unreadable files f
     const report = (
       await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })
     ).json() as HealthReport;
-    assert.equal(report.summary.tracks, 5);
-    assert.equal(report.summary.indexed, 5);
+    assert.equal(report.summary.tracks, 6);
+    assert.equal(report.summary.indexed, 6);
     assert.equal(report.summary.exactDuplicateGroups, 1);
     const dup = report.duplicates[0]!;
     assert.deepEqual(dup.tracks.map((t) => path.basename(t.relPath)).sort(), ["copy of one.wav", "one.wav"]);
+    assert.equal(report.summary.duplicateGroups, 1, "same-length recordings are told apart by their contents");
+    assert.ok(dup.reasons.includes("identical audio data"));
     assert.equal(report.summary.unreadable + report.summary.corrupt, 2);
     assert.ok(report.problems.some((p) => p.relPath === "Broken/empty.wav" && p.kind === "unreadable"));
     assert.ok(report.problems.some((p) => p.relPath === "Broken/garbage.wav"));
@@ -43,7 +47,7 @@ test("library health reports duplicates, missing artwork, and unreadable files f
     const again = (
       await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })
     ).json() as HealthReport;
-    assert.equal(again.summary.tracks, 6);
+    assert.equal(again.summary.tracks, 7);
     assert.ok(!again.missingArtwork.some((a) => a.folder === "Artist/Album"));
 
     // Nothing in the (possibly read-only) music folder was modified.

@@ -21,6 +21,8 @@ export interface HealthTrack {
   bitrate: number | null;
   codec: string | null;
   lossless: boolean | null;
+  /** Hash of the start, middle and end of the file, when it was computed (only for files sharing a size with another). */
+  contentHash?: string | null;
 }
 
 /** Lower-case, accent-free text with punctuation, "feat." credits and a leading "the" removed. */
@@ -87,6 +89,13 @@ function chain(items: HealthTrack[], tolerance: number, link: (a: HealthTrack, b
   }
 }
 
+const tagsAgree = (a: HealthTrack, b: HealthTrack) => {
+  const title = normalizeText(a.title);
+  if (title !== "" && title === normalizeText(b.title)) return true;
+  const album = normalizeText(a.album);
+  return album !== "" && album === normalizeText(b.album) && normalizeText(a.artist) === normalizeText(b.artist);
+};
+
 const sameLength = (a: HealthTrack, b: HealthTrack) =>
   a.durationSec === null || b.durationSec === null || Math.abs(a.durationSec - b.durationSec) <= 0.1;
 
@@ -118,7 +127,9 @@ export function findDuplicateGroups(tracks: HealthTrack[]): DuplicateGroup[] {
     if (bucket.length > 1) chain(bucket, 2, (a, b) => note(a, b, "same title and artist"));
   }
 
-  // Rule B (fingerprint-lite): identical file size and length, whatever the tags say.
+  // Rule B (fingerprint-lite): identical file size and length. Where file contents were sampled they must match too;
+  // otherwise the tags must agree a little (same title, or same artist and album), because uncompressed files of
+  // equal length are always equal in size.
   const sizeBuckets = new Map<number, HealthTrack[]>();
   for (const t of tracks) {
     if (t.size < 50_000) continue;
@@ -130,7 +141,12 @@ export function findDuplicateGroups(tracks: HealthTrack[]): DuplicateGroup[] {
     if (bucket.length < 2) continue;
     for (let i = 0; i < bucket.length; i++) {
       for (let j = i + 1; j < bucket.length; j++) {
-        if (sameLength(bucket[i]!, bucket[j]!)) note(bucket[i]!, bucket[j]!, "same size and length");
+        const a = bucket[i]!;
+        const b = bucket[j]!;
+        if (!sameLength(a, b)) continue;
+        if (a.contentHash && b.contentHash) {
+          if (a.contentHash === b.contentHash) note(a, b, "identical audio data");
+        } else if (tagsAgree(a, b)) note(a, b, "same size and length");
       }
     }
   }
@@ -149,7 +165,12 @@ export function findDuplicateGroups(tracks: HealthTrack[]): DuplicateGroup[] {
     const reasons = new Set<string>();
     for (const m of members) for (const r of reasonsBy.get(m.id) ?? []) reasons.add(r);
     const first = members[0]!;
-    const exact = members.every((m) => m.size === first.size && sameLength(m, first));
+    const exact = members.every(
+      (m) =>
+        m.size === first.size &&
+        sameLength(m, first) &&
+        (!m.contentHash || !first.contentHash || m.contentHash === first.contentHash),
+    );
     const albums = new Set(members.map((m) => normalizeText(m.album)));
     const ranked = [...members].sort(
       (a, b) =>

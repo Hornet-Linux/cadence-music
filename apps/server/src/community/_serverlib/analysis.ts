@@ -52,7 +52,11 @@ export interface AnalysisRunnerOptions<R> {
 export function analysisRunner<R>(opts: AnalysisRunnerOptions<R>): BatchRunner<PendingAnalysis> {
   return new BatchRunner<PendingAnalysis>({
     name: opts.name,
-    list: () => pendingAnalysis(opts.db, opts.table),
+    list: () => {
+      // Results for tracks that left the library are of no use.
+      opts.db.exec(`DELETE FROM ${opts.table} WHERE track_id NOT IN (SELECT id FROM tracks)`);
+      return pendingAnalysis(opts.db, opts.table);
+    },
     label: (t) => t.rel_path,
     pauseMs: opts.pauseMs,
     log: opts.log,

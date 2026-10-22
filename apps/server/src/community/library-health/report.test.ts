@@ -37,16 +37,24 @@ test("finds duplicates by title/artist/length and by identical size and length",
     track("a", { title: "Hello", size: 1_000_000, durationSec: 100 }),
     track("b", { title: "hello", relPath: "Other/b.mp3", size: 2_000_000, durationSec: 101, bitrate: 320 }),
     track("c", { title: "Different", size: 3_000_000, durationSec: 100 }),
-    // Same audio under different tags.
-    track("d", { title: "Mystery", artist: "X", size: 5_555_555, durationSec: 240 }),
-    track("e", { title: "Unknown track 7", artist: null, size: 5_555_555, durationSec: 240.04 }),
+    // Same audio under different tags: the sampled file contents match.
+    track("d", { title: "Mystery", artist: "X", size: 5_555_555, durationSec: 240, contentHash: "same" }),
+    track("e", { title: "Unknown track 7", artist: null, size: 5_555_555, durationSec: 240.04, contentHash: "same" }),
+    // Same size and length (as uncompressed files of equal length always are) but different contents.
+    track("g", { title: "Echoes", artist: "O", album: "Mix", size: 3_000_000, durationSec: 16, contentHash: "one" }),
+    track("h", { title: "Tides", artist: "H", album: "Mix", size: 3_000_000, durationSec: 16, contentHash: "two" }),
+    // Same size and length, contents not sampled: only linked when the tags agree.
+    track("i", { title: "Same Name", artist: "A", album: "X", size: 2_000_000, durationSec: 50, relPath: "a/i.mp3" }),
+    track("j", { title: "Same Name", artist: "B", album: "Y", size: 2_000_000, durationSec: 80, relPath: "b/j.mp3" }),
+    track("k", { title: "Other", artist: "C", album: "Z", size: 4_100_000, durationSec: 70 }),
+    track("l", { title: "Different", artist: "D", album: "W", size: 4_100_000, durationSec: 70 }),
     // Same title but a very different length is a different recording.
     track("f", { title: "Hello", durationSec: 300, size: 7_000_000 }),
   ]);
-  assert.equal(groups.length, 2);
+  assert.equal(groups.length, 2, "echoes/tides and k/l are not duplicates; i/j differ in length");
   const exact = groups.find((g) => g.confidence === "exact")!;
   assert.deepEqual(exact.tracks.map((t) => t.id).sort(), ["d", "e"]);
-  assert.deepEqual(exact.reasons, ["same size and length"]);
+  assert.deepEqual(exact.reasons, ["identical audio data"]);
   const likely = groups.find((g) => g.confidence === "likely")!;
   assert.deepEqual(likely.tracks.map((t) => t.id).sort(), ["a", "b"]);
   assert.equal(likely.suggestedKeepId, "b", "the higher bitrate copy is the one to keep");

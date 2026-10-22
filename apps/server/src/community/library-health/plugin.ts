@@ -2,7 +2,15 @@ import path from "node:path";
 import type { Db } from "../../db.js";
 import type { ServerPlugin } from "../../plugins/types.js";
 import { ffmpegInfo } from "../_serverlib/ffmpeg.js";
-import { deepIndexer, ensureFactsTable, factsIndexer, folderHasArt, resolveInside } from "../_serverlib/facts.js";
+import {
+  deepIndexer,
+  ensureFactsTable,
+  ensureHashTable,
+  factsIndexer,
+  folderHasArt,
+  resolveInside,
+  sampleHash,
+} from "../_serverlib/facts.js";
 import { buildReport, type HealthReport, type HealthTrack } from "./report.js";
 
 interface Row {
@@ -14,6 +22,7 @@ interface Row {
   album_artist: string | null;
   track_no: number | null;
   size: number;
+  mtime_ms: number;
   duration_sec: number | null;
   f_id: string | null;
   genre: string | null;
@@ -32,7 +41,7 @@ interface Row {
 export async function loadHealthTracks(db: Db, musicRoot: string): Promise<HealthTrack[]> {
   const rows = db
     .prepare(
-      `SELECT t.id, t.rel_path, t.title, t.artist, t.album, t.album_artist, t.track_no, t.size, t.duration_sec,
+      `SELECT t.id, t.rel_path, t.title, t.artist, t.album, t.album_artist, t.track_no, t.size, t.mtime_ms, t.duration_sec,
               f.track_id AS f_id, f.genre, f.year, f.has_artwork, f.has_title_tag, f.probe_duration,
               f.bitrate, f.codec, f.lossless, f.error, f.decode_error
          FROM tracks t LEFT JOIN track_facts f ON f.track_id = t.id`,
@@ -53,6 +62,7 @@ export async function loadHealthTracks(db: Db, musicRoot: string): Promise<Healt
     const abs = resolveInside(musicRoot, r.rel_path);
     return abs ? (folderArt.get(path.dirname(abs)) ?? false) : false;
   };
+  const hashes = await contentHashes(db, musicRoot, rows);
   return rows.map((r) => ({
     id: r.id,
     relPath: r.rel_path,
@@ -73,7 +83,51 @@ export async function loadHealthTracks(db: Db, musicRoot: string): Promise<Healt
     bitrate: r.bitrate,
     codec: r.codec,
     lossless: r.lossless === null ? null : r.lossless === 1,
+    contentHash: hashes.get(r.id) ?? null,
   }));
+}
+
+/** Sample the contents of files that share a size with another file, so duplicates are confirmed by their data. */
+async function contentHashes(db: Db, musicRoot: string, rows: Row[]): Promise<Map<string, string>> {
+  ensureHashTable(db);
+  const bySize = new Map<number, Row[]>();
+  for (const r of rows) {
+    if (r.size < 50_000 || r.error) continue;
+    const list = bySize.get(r.size) ?? [];
+    list.push(r);
+    bySize.set(r.size, list);
+  }
+  const candidates = [...bySize.values()].filter((l) => l.length > 1).flat();
+  const cached = new Map<string, { size: number; mtime_ms: number; hash: string | null }>();
+  for (const row of db.prepare("SELECT track_id, size, mtime_ms, hash FROM track_hash").all() as unknown as {
+    track_id: string;
+    size: number;
+    mtime_ms: number;
+    hash: string | null;
+  }[]) {
+    cached.set(row.track_id, row);
+  }
+  const put = db.prepare(
+    "INSERT INTO track_hash (track_id, size, mtime_ms, hash) VALUES (?, ?, ?, ?) ON CONFLICT (track_id) DO UPDATE SET size = excluded.size, mtime_ms = excluded.mtime_ms, hash = excluded.hash",
+  );
+  const out = new Map<string, string>();
+  for (const r of candidates) {
+    const known = cached.get(r.id);
+    let hash: string | null;
+    if (known && known.size === r.size && known.mtime_ms === r.mtime_ms) {
+      hash = known.hash;
+    } else {
+      const abs = resolveInside(musicRoot, r.rel_path);
+      try {
+        hash = abs ? await sampleHash(abs, r.size) : null;
+      } catch {
+        hash = null;
+      }
+      put.run(r.id, r.size, r.mtime_ms, hash);
+    }
+    if (hash) out.set(r.id, hash);
+  }
+  return out;
 }
 
 /**

@@ -55,8 +55,10 @@ export interface SavedPlaylist {
 export interface FieldInfo {
   label: string;
   type: FieldType;
-  /** Shown next to the value box. */
+  /** Shown next to the value box and in descriptions. */
   unit?: string;
+  /** Shown next to the value box only. */
+  hint?: string;
   /** Needs another server plugin before it has any data. */
   needs?: "loudness" | "audio-analysis";
 }
@@ -71,8 +73,8 @@ export const FIELDS: Record<Field, FieldInfo> = {
   lastPlayed: { label: "Last played", type: "date" },
   addedAt: { label: "Date added", type: "date" },
   favourite: { label: "Favourite", type: "bool" },
-  bpm: { label: "Tempo (BPM)", type: "number", unit: "BPM", needs: "audio-analysis" },
-  energy: { label: "Energy (0 to 1)", type: "number", needs: "audio-analysis" },
+  bpm: { label: "Tempo", type: "number", unit: "BPM", needs: "audio-analysis" },
+  energy: { label: "Energy", type: "number", hint: "0 to 1", needs: "audio-analysis" },
   loudness: { label: "Loudness", type: "number", unit: "LUFS", needs: "loudness" },
   duration: { label: "Length", type: "number", unit: "seconds" },
 };

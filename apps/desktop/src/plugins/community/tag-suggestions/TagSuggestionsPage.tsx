@@ -26,7 +26,7 @@ function Card({ s, onDone, onError }: { s: Suggestion; onDone: () => void; onErr
     <article className="card sl-item">
       <div className="muted small">
         {s.trackTitle || "Track"}
-        {s.trackArtist ? ` Ãƒâ€šÃ‚Â· ${s.trackArtist}` : ""}
+        {s.trackArtist ? ` · ${s.trackArtist}` : ""}
       </div>
       <div className="sl-diff">
         <span className="muted">{FIELD_NAMES[s.field]}</span>
@@ -188,7 +188,7 @@ function Body() {
         </div>
       )}
 
-      {list.loading && !data && <p className="empty">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</p>}
+      {list.loading && !data && <p className="empty">Loading&hellip;</p>}
       {data && shown.length === 0 && (
         <p className="empty">
           {status === "pending" ? "No suggestions. Press Check library to look again." : "Nothing here yet."}

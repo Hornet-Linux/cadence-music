@@ -13,29 +13,48 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 const HOP = 256;
 
-/** Frame energies -> onset strength (positive changes of log energy, minus a local average). */
+const FLUX_FFT = 1024;
+
+/**
+ * Onset strength: how much new spectral energy appears in each frame (half-wave rectified change
+ * of the log spectrum, summed over bins), minus a local average. A held note or chord produces
+ * almost none whatever its pitch, so only real attacks drive the tempo estimate.
+ */
 export function onsetEnvelope(samples: Float32Array): Float32Array {
-  const frames = Math.floor(samples.length / HOP);
-  const energy = new Float32Array(frames);
+  const frames = Math.max(0, Math.floor((samples.length - FLUX_FFT) / HOP));
+  const window = new Float64Array(FLUX_FFT);
+  for (let i = 0; i < FLUX_FFT; i++) window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (FLUX_FFT - 1));
+  const re = new Float64Array(FLUX_FFT);
+  const im = new Float64Array(FLUX_FFT);
+  const lo = 2; // about 43 Hz
+  const hi = 320; // about 6.9 kHz
+  let previous = new Float32Array(hi - lo);
+  let current = new Float32Array(hi - lo);
+  const flux = new Float32Array(frames);
   for (let f = 0; f < frames; f++) {
-    let sum = 0;
-    // A first difference favours the bright, percussive part of the spectrum.
-    for (let i = f * HOP + 1; i < (f + 1) * HOP; i++) {
-      const d = samples[i]! - samples[i - 1]!;
-      sum += d * d;
+    const start = f * HOP;
+    for (let i = 0; i < FLUX_FFT; i++) {
+      re[i] = samples[start + i]! * window[i]!;
+      im[i] = 0;
     }
-    energy[f] = Math.log(1 + 40 * Math.sqrt(sum / HOP));
+    fft(re, im);
+    let sum = 0;
+    for (let b = lo; b < hi; b++) {
+      // 2 / sum(window) scales a full-scale sine to magnitude 1.
+      current[b - lo] = Math.log(1 + 60 * ((Math.hypot(re[b]!, im[b]!) * 4) / FLUX_FFT));
+      if (f > 0) sum += Math.max(0, current[b - lo]! - previous[b - lo]!);
+    }
+    flux[f] = sum / (hi - lo);
+    [previous, current] = [current, previous];
   }
-  const onset = new Float32Array(frames);
-  for (let f = 1; f < frames; f++) onset[f] = Math.max(0, energy[f]! - energy[f - 1]!);
   // Remove the slowly varying background (about half a second wide).
   const w = 43;
   const out = new Float32Array(frames);
   let running = 0;
   for (let f = 0; f < frames; f++) {
-    running += onset[f]!;
-    if (f >= w) running -= onset[f - w]!;
-    out[f] = Math.max(0, onset[f]! - running / Math.min(f + 1, w) - 0.02);
+    running += flux[f]!;
+    if (f >= w) running -= flux[f - w]!;
+    out[f] = Math.max(0, flux[f]! - running / Math.min(f + 1, w) - 0.003);
   }
   return out;
 }

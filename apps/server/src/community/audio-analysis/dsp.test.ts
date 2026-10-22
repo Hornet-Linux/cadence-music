@@ -50,6 +50,30 @@ test("a slow pattern with busy hi-hats may be read at double speed, never at an 
   assert.ok(Math.abs(t.bpm - 70) <= 1.5 || Math.abs(t.bpm - 140) <= 3, `70 -> ${t.bpm}`);
 });
 
+test("tempo survives a loud sustained chord underneath (held notes are not beats)", () => {
+  const chordUnderneath = (bpm: number, pad: number, click: number) => {
+    const out = new Float32Array(30 * SAMPLE_RATE);
+    const period = 60 / bpm;
+    for (let i = 0; i < out.length; i++) {
+      const t = i / SAMPLE_RATE;
+      const since = t % period;
+      let v = 0;
+      for (const f of [130.8, 164.8, 196]) for (let h = 1; h <= 4; h++) v += Math.sin(2 * Math.PI * f * h * t) / h;
+      out[i] = pad * v * 0.4 + click * Math.exp(-since * 60) * Math.sin(2 * Math.PI * 180 * since);
+    }
+    return out;
+  };
+  for (const [bpm, pad, click] of [
+    [70, 0.5, 0.2],
+    [92, 0.5, 0.3],
+    [118, 0.5, 0.6],
+    [128, 0.4, 0.8],
+  ] as const) {
+    const t = estimateTempo(chordUnderneath(bpm, pad, click));
+    assert.ok(t && Math.abs(t.bpm - bpm) <= 1.5, `${bpm} -> ${t?.bpm}`);
+  }
+});
+
 test("a steady tone has no clear tempo or a low-confidence one", () => {
   const tone = new Float32Array(SAMPLE_RATE * 30).map((_, i) => 0.3 * Math.sin((2 * Math.PI * 440 * i) / SAMPLE_RATE));
   const t = estimateTempo(tone);

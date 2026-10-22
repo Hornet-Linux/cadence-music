@@ -56,8 +56,8 @@ function Body({ base, noun, what }: { base: string; noun: string; what: string }
             <Progress value={s.analysed + s.failed} max={s.total} label={`${noun} progress`} />
             <div className="muted small">
               {pluralize(s.analysed, "track")} analysed of {s.total.toLocaleString()}
-              {s.failed > 0 ? ` Ãƒâ€šÃ‚Â· ${pluralize(s.failed, "file")} could not be read` : ""}
-              {s.run.running && s.run.current ? ` Ãƒâ€šÃ‚Â· now: ${s.run.current}` : ""}
+              {s.failed > 0 ? ` · ${pluralize(s.failed, "file")} could not be read` : ""}
+              {s.run.running && s.run.current ? ` · now: ${s.run.current}` : ""}
             </div>
             {s.run.lastError && s.run.running && <div className="muted small">Last problem: {s.run.lastError}</div>}
           </div>
@@ -105,7 +105,7 @@ function Body({ base, noun, what }: { base: string; noun: string; what: string }
           )}
         </>
       )}
-      {status.loading && !s && <p className="empty">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</p>}
+      {status.loading && !s && <p className="empty">Loading&hellip;</p>}
     </div>
   );
 }

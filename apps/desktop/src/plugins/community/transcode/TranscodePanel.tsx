@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SettingRow } from "@/features/settings/controls";
-import { call, explainError, formatBytes, send, useLoad, useServerSession } from "../_serverlib/api";
+import { call, explainError, formatBytes, pluralize, send, useLoad, useServerSession } from "../_serverlib/api";
 import { ErrorNotice, Gate } from "../_serverlib/ui";
 
 interface Status {
@@ -80,7 +80,7 @@ function Body() {
               </SettingRow>
               <SettingRow
                 title="Converted songs cache"
-                description={`${s.cache.files.toLocaleString()} files, ${formatBytes(s.cache.bytes)} used. The least recently played are removed first.`}
+                description={`${pluralize(s.cache.files, "file")}, ${formatBytes(s.cache.bytes)} used. The least recently played are removed first.`}
               >
                 <div className="row">
                   <select
@@ -112,7 +112,7 @@ function Body() {
           )}
         </>
       )}
-      {status.loading && !s && <p className="empty">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</p>}
+      {status.loading && !s && <p className="empty">Loading&hellip;</p>}
     </div>
   );
 }

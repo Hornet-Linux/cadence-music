@@ -143,7 +143,7 @@ function RuleEditor({
                 />
               </>
             )}
-            <span className="muted small">{info.type === "date" ? "days" : (info.unit ?? "")}</span>
+            <span className="muted small">{info.type === "date" ? "days" : (info.unit ?? info.hint ?? "")}</span>
           </>
         )}
       </div>
@@ -246,7 +246,7 @@ function Editor({
               }}
             >
               <option value="">
-                Choose a starting pointÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦
+                Choose a starting point&hellip;
               </option>
               {TEMPLATES.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -352,17 +352,17 @@ function Editor({
           <strong>
             {preview
               ? `${preview.total.toLocaleString()} ${preview.total === 1 ? "song matches" : "songs match"}`
-              : "CountingÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦"}
+              : "Counting…"}
           </strong>
           {preview && preview.items.length > 0 && (
             <ul className="muted small">
               {preview.items.slice(0, 5).map((i) => (
                 <li key={i.id}>
                   {i.title}
-                  {i.artist ? ` ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${i.artist}` : ""}
+                  {i.artist ? ` · ${i.artist}` : ""}
                 </li>
               ))}
-              {preview.total > 5 && <li>and moreÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</li>}
+              {preview.total > 5 && <li>and more&hellip;</li>}
             </ul>
           )}
           {preview && preview.items.length > 0 && (
@@ -456,7 +456,7 @@ function Detail({
         </p>
       )}
       {list.loading && !list.data && (
-        <p className="empty">Finding songsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</p>
+        <p className="empty">Finding songs&hellip;</p>
       )}
       {list.data && list.data.items.length === 0 && <p className="empty">No songs match these rules right now.</p>}
       <div className="track-list">
@@ -517,7 +517,7 @@ function Body() {
       </div>
       <ErrorNotice error={lists.error} />
       {lists.loading && !lists.data && (
-        <p className="empty">LoadingÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</p>
+        <p className="empty">Loading&hellip;</p>
       )}
       {lists.data && items.length === 0 && (
         <p className="empty">No smart playlists yet. Create one, or start from a ready-made idea like Recently added.</p>

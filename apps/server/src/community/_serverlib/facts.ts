@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { FastifyBaseLogger } from "fastify";
@@ -33,6 +34,41 @@ export function ensureFactsTable(db: Db): void {
       indexed_at INTEGER NOT NULL
     );
   `);
+}
+
+/** Cached content samples for files that share a size with another file (used to confirm duplicates). */
+export function ensureHashTable(db: Db): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS track_hash (
+      track_id TEXT PRIMARY KEY,
+      size INTEGER NOT NULL,
+      mtime_ms INTEGER NOT NULL,
+      hash TEXT
+    );
+  `);
+}
+
+const SAMPLE = 64 * 1024;
+
+/** SHA-1 over the whole file when small, otherwise its start, middle and end plus its size: cheap, and equal only for (near) identical files. */
+export async function sampleHash(abs: string, size: number): Promise<string> {
+  if (size <= SAMPLE * 3)
+    return createHash("sha1")
+      .update(String(size))
+      .update(await fs.promises.readFile(abs))
+      .digest("hex");
+  const handle = await fs.promises.open(abs, "r");
+  try {
+    const hash = createHash("sha1").update(String(size));
+    const buf = Buffer.alloc(SAMPLE);
+    for (const at of [0, Math.floor((size - SAMPLE) / 2), size - SAMPLE]) {
+      const { bytesRead } = await handle.read(buf, 0, SAMPLE, at);
+      hash.update(buf.subarray(0, bytesRead));
+    }
+    return hash.digest("hex");
+  } finally {
+    await handle.close();
+  }
 }
 
 export interface PendingTrack {
@@ -130,7 +166,7 @@ export async function indexTrackFacts(db: Db, musicRoot: string, row: PendingTra
       hasArt ? 1 : 0,
       c.title?.trim() ? 1 : 0,
       duration,
-      meta.format.bitrate ? Math.round(meta.format.bitrate) : null,
+      meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : null,
       meta.format.sampleRate ?? null,
       meta.format.codec ?? null,
       meta.format.lossless === undefined ? null : meta.format.lossless ? 1 : 0,
