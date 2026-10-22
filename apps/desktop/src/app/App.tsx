@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePluginHost } from "@/plugins/host";
 import { allRegisterablePlugins } from "@/plugins/builtins";
+import { connectPlayerToPlugins } from "@/player/pluginBridge";
 import { startHistoryTracking } from "@/features/history/historyStore";
 import { HomeView } from "@/features/home/HomeView";
 import { SetupWizard } from "@/features/onboarding/SetupWizard";
@@ -51,9 +52,11 @@ export function App() {
 
   useEffect(() => {
     for (const plugin of allRegisterablePlugins) register(plugin);
+    const disconnectPlayer = connectPlayerToPlugins();
     startPlayerIntegrations();
     startHistoryTracking();
     startNavShortcuts();
+    return disconnectPlayer;
   }, [register]);
 
   // Each page starts at the top.

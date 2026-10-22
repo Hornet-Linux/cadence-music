@@ -3,6 +3,7 @@ import type { Config } from "../config.js";
 import type { Db } from "../db.js";
 import type { UserRow } from "../auth/users.js";
 import type { Settings } from "../settings.js";
+import type { Jobs, ServerEvents } from "./runtime.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -26,6 +27,10 @@ export interface ServerPluginContext {
   requireAdmin: PreHandler;
   /** Runtime settings an admin can change (they override .env). */
   settings: Settings;
+  /** Typed events other plugins emit, e.g. `play.recorded` for scrobblers. */
+  events: ServerEvents;
+  /** Background jobs that stop with the server. */
+  jobs: Jobs;
 }
 
 /**

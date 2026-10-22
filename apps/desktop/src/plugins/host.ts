@@ -1,18 +1,26 @@
 import { create } from "zustand";
 import type { Track } from "@/shared/types";
 import type {
+  AudioEffect,
   AudioSource,
   Capability,
+  CommandContribution,
   HomeWidgetContribution,
   LibrarySource,
+  LyricsProvider,
+  MetadataProvider,
+  OutputTarget,
+  PlaybackEvent,
   Plugin,
   PluginContext,
   PluginManifest,
   PluginStorage,
+  PlayerApi,
   ResolvedAudio,
   SettingsContribution,
   SetupStepContribution,
   SidebarContribution,
+  TrackActionContribution,
 } from "./types";
 
 export const PLUGIN_API_VERSION = "1.0.0";
@@ -29,9 +37,23 @@ interface Contributions {
   setupSteps: SetupStepContribution[];
   audioSources: AudioSource[];
   librarySources: LibrarySource[];
+  lyricsProviders: LyricsProvider[];
+  metadataProviders: MetadataProvider[];
+  audioEffects: AudioEffect[];
+  outputTargets: OutputTarget[];
+  commands: CommandContribution[];
+  trackActions: TrackActionContribution[];
 }
 
 type NowPlayingListener = (track: Track | null) => void;
+type PlaybackListener = (event: PlaybackEvent) => void;
+
+// The player store registers itself here at start-up. The host never imports the
+// player (the player imports the host), so plugins reach it through this handle.
+let playerApi: PlayerApi | null = null;
+export function setPlayerApi(api: PlayerApi) {
+  playerApi = api;
+}
 
 interface PluginHostState {
   plugins: InstalledPlugin[];
@@ -44,9 +66,11 @@ interface PluginHostState {
   resolveAudio: (track: Track) => Promise<ResolvedAudio | null>;
   /** Notify plugins that the now-playing track changed. */
   emitNowPlaying: (track: Track | null) => void;
+  /** Notify plugins of a play / pause / seek / progress / end event. */
+  emitPlayback: (event: PlaybackEvent) => void;
 }
 
-function emptyContributions(): Contributions {
+export function emptyContributions(): Contributions {
   return {
     sidebar: [],
     homeWidgets: [],
@@ -54,13 +78,20 @@ function emptyContributions(): Contributions {
     setupSteps: [],
     audioSources: [],
     librarySources: [],
+    lyricsProviders: [],
+    metadataProviders: [],
+    audioEffects: [],
+    outputTargets: [],
+    commands: [],
+    trackActions: [],
   };
 }
 
-// Now-playing listeners live outside the store so plugins can subscribe
-// without triggering React re-renders on every position tick. The set is
+// Now-playing and playback listeners live outside the store so plugins can subscribe
+// without triggering React re-renders on every position tick. The sets are
 // rebuilt together with the contributions and swapped in atomically.
 let nowPlayingListeners = new Set<NowPlayingListener>();
+let playbackListeners = new Set<PlaybackListener>();
 
 // Enable/disable operations run one at a time; each rebuilds contributions
 // from the state at the moment it runs, so concurrent toggles cannot
@@ -102,11 +133,28 @@ function makeContext(
   manifest: PluginManifest,
   target: Contributions,
   listeners: Set<NowPlayingListener>,
+  playback: Set<PlaybackListener>,
 ): PluginContext {
   const granted = new Set<Capability>(manifest.capabilities);
   const can = (cap: Capability) => granted.has(cap);
   const requireCap = (cap: Capability, what: string) => {
     if (!can(cap)) throw new Error(`Plugin ${manifest.id} lacks "${cap}" required for ${what}`);
+  };
+  // Looks the player up on each call, so plugins activated before it exists still work.
+  const api = (cap: Capability, what: string): PlayerApi => {
+    requireCap(cap, what);
+    if (!playerApi) throw new Error("The player is not ready yet");
+    return playerApi;
+  };
+  const player: PlayerApi = {
+    getState: () => api("player.read", "player.getState").getState(),
+    toggle: () => api("player.control", "player.toggle").toggle(),
+    next: () => api("player.control", "player.next").next(),
+    previous: () => api("player.control", "player.previous").previous(),
+    seek: (s) => api("player.control", "player.seek").seek(s),
+    setVolume: (v) => api("player.control", "player.setVolume").setVolume(v),
+    playTracks: (tracks, start) => api("player.queue", "player.playTracks").playTracks(tracks, start),
+    enqueue: (track) => api("player.queue", "player.enqueue").enqueue(track),
   };
 
   return {
@@ -136,11 +184,41 @@ function makeContext(
       requireCap("source.library", "registerLibrarySource");
       target.librarySources.push(source);
     },
+    registerLyricsProvider(provider) {
+      requireCap("provider.lyrics", "registerLyricsProvider");
+      target.lyricsProviders.push(provider);
+    },
+    registerMetadataProvider(provider) {
+      requireCap("provider.metadata", "registerMetadataProvider");
+      target.metadataProviders.push(provider);
+    },
+    registerAudioEffect(effect) {
+      requireCap("audio.dsp", "registerAudioEffect");
+      target.audioEffects.push(effect);
+    },
+    registerOutputTarget(output) {
+      requireCap("output.device", "registerOutputTarget");
+      target.outputTargets.push(output);
+    },
+    registerCommand(command) {
+      requireCap("commands", "registerCommand");
+      target.commands.push(command);
+    },
+    registerTrackAction(action) {
+      requireCap("track.actions", "registerTrackAction");
+      target.trackActions.push(action);
+    },
     onNowPlaying(listener) {
       requireCap("player.read", "onNowPlaying");
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    onPlayback(listener) {
+      requireCap("player.read", "onPlayback");
+      playback.add(listener);
+      return () => playback.delete(listener);
+    },
+    player,
     storage: makeStorage(manifest.id, can("storage")),
     fetch: (...args: Parameters<typeof fetch>) => {
       if (!can("network.outbound")) {
@@ -157,14 +235,16 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
   async function rebuild(enabledIds: Set<string>) {
     const contributions = emptyContributions();
     const listeners = new Set<NowPlayingListener>();
+    const playback = new Set<PlaybackListener>();
     for (const { plugin } of get().plugins) {
       if (enabledIds.has(plugin.manifest.id)) {
-        await plugin.activate(makeContext(plugin.manifest, contributions, listeners));
+        await plugin.activate(makeContext(plugin.manifest, contributions, listeners, playback));
       }
     }
     contributions.homeWidgets.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
     contributions.setupSteps.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
-    return { contributions, listeners };
+    contributions.audioEffects.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return { contributions, listeners, playback };
   }
 
   return {
@@ -198,8 +278,9 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
           enabledIds.delete(id);
         }
 
-        const { contributions, listeners } = await rebuild(enabledIds);
+        const { contributions, listeners, playback } = await rebuild(enabledIds);
         nowPlayingListeners = listeners;
+        playbackListeners = playback;
         set((s) => ({
           contributions,
           plugins: s.plugins.map((p) => ({ ...p, enabled: enabledIds.has(p.plugin.manifest.id) })),
@@ -227,6 +308,16 @@ export const usePluginHost = create<PluginHostState>((set, get) => {
       for (const listener of nowPlayingListeners) {
         try {
           listener(track);
+        } catch {
+          // A misbehaving plugin listener must not break playback.
+        }
+      }
+    },
+
+    emitPlayback(event) {
+      for (const listener of playbackListeners) {
+        try {
+          listener(event);
         } catch {
           // A misbehaving plugin listener must not break playback.
         }

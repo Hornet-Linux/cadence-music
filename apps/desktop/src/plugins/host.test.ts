@@ -1,19 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { usePluginHost } from "./host";
+import { emptyContributions, usePluginHost } from "./host";
 import type { Plugin } from "./types";
 import type { Track } from "@/shared/types";
 
 function resetHost() {
   usePluginHost.setState({
     plugins: [],
-    contributions: {
-      sidebar: [],
-      homeWidgets: [],
-      settings: [],
-      setupSteps: [],
-      audioSources: [],
-      librarySources: [],
-    },
+    contributions: emptyContributions(),
   });
 }
 
