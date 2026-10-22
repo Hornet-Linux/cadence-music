@@ -24,7 +24,8 @@ account is needed.
    address means `https://`; for a server on your network without a certificate, type
    the scheme, e.g. `http://192.168.1.20:8787`. The app checks the address (it asks the
    server's `/api/health`) before saving it, and tells you if the server can't be reached or
-   isn't a Cadence server. The last address is remembered.
+   isn't a Cadence server. The last address is remembered. A bare local address (an IP,
+   `localhost`, `.local`) that has no certificate is retried over `http://` automatically.
 4. The first time music plays (Android 13+), Cadence explains why it wants to show playback
    controls and then asks for the notification permission. Without it playback still works,
    but the notification and lock-screen controls don't appear. Nothing is asked when the app
@@ -176,6 +177,8 @@ When you use those controls, the app calls the handlers the page registered with
 `navigator.mediaSession.setActionHandler` (`play`, `pause`, `nexttrack`, `previoustrack`,
 `seekto`). So the web player's existing Media Session integration
 (`src/player/integrations.ts`) is all that's needed; no extra web code.
+
+On a plain-`http://` server (not a secure context) Chrome does not provide `navigator.mediaSession` at all, so the injected script supplies a small stand-in (and `MediaMetadata`) with the same surface; without it the notification would never appear for LAN servers.
 
 ## If something goes wrong
 
