@@ -46,7 +46,7 @@ const CSS = `
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border-radius:8px;cursor:pointer;font:600 .84rem var(--mono);background:var(--surface-3);border:1px solid var(--line-2);color:var(--text)}
 .chip:hover{background:var(--surface-2)}
 .foot{text-align:center;color:var(--faint);font-size:.82rem;padding:0 24px 32px}
-@media (max-width:860px){.land{grid-template-columns:minmax(0,1fr)}.row2{grid-template-columns:1fr}.top nav .btn.quiet{display:none}}
+@media (max-width:860px){.land{grid-template-columns:minmax(0,1fr)}.land>section:last-child{order:-1}.row2{grid-template-columns:1fr}.top nav .btn.quiet{display:none}}
 `;
 
 function body(opts: { signup: Config["signup"]; open: boolean; download: string }): string {

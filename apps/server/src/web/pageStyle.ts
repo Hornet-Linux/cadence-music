@@ -142,7 +142,7 @@ dialog .row-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-en
 .side .me{padding:10px 12px;font-size:.84rem;color:var(--muted);border-top:1px solid var(--line);margin-top:8px;overflow-wrap:anywhere}
 .main{padding:32px clamp(16px,4vw,44px) 72px;max-width:1040px;width:100%}
 @media (max-width:820px){
-  .shell{grid-template-columns:minmax(0,1fr)}
+  .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
   .side{position:static;height:auto;flex-direction:row;align-items:center;gap:4px;padding:8px 12px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
   .side .brand{padding:0 10px 0 2px;flex:none}.side .brand small{display:none}
   .nav-link{width:auto;flex:none;padding:0 14px}

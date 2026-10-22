@@ -48,7 +48,7 @@ async function start() {
         h("a", { class: "nav-link", href: "/account" }, "My account"),
         h("div", { class: "me" }, "Signed in as ", h("b", null, me.username)),
         h("button", { class: "nav-link", type: "button", onclick: async () => { try { await api("/api/auth/logout", { method: "POST" }); } catch (e) {} setToken(null); showSignIn(); } }, "Sign out")),
-      h("main", { id: "view", tabindex: "-1" })));
+      h("main", { class: "main", id: "view", tabindex: "-1" })));
   window.addEventListener("hashchange", route);
   route();
   api("/api/admin/plugins").then((r) => setRestart(r.restartRequired)).catch(() => {});
@@ -75,7 +75,7 @@ async function show(view) {
   if (mine === showSeq) { const t = $("#page-title"); if (t) t.focus({ preventScroll: true }); window.scrollTo(0, 0); }
 }
 let showSeq = 0;
-const render = (...nodes) => $("#view").replaceChildren(...nodes);
+const render = (...nodes) => $("#view").replaceChildren(...nodes.flat(Infinity).filter((n) => n != null && n !== false));
 
 // ---- Overview ------------------------------------------------------------
 async function renderOverview() {
