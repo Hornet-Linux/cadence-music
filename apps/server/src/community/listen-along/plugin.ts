@@ -21,6 +21,10 @@ export function createListenAlongPlugin(hub = new RoomHub()): ServerPlugin {
     id: "cadence.listen-along",
     name: "Listen along",
     version: "1.0.0",
+    description:
+      "Listening rooms: one person hosts and their playback is relayed to everyone who joins with the room code, over server-sent events. Guests need an account here; rooms live in memory only and nothing is written to disk.",
+    configFields: [],
+    configNote: "Nothing to set here. It works as soon as it is turned on and the server restarts.",
     register(app, ctx) {
       const { requireUser } = ctx;
       const misses = new RateLimiter({ max: 30, windowMs: 5 * 60_000 });

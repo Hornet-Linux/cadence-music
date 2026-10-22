@@ -40,7 +40,7 @@ test("every community plugin describes itself for the admin Plugins page", async
 test("plugins whose settings the form cannot edit say where to go instead", async () => {
   const plugins = await discover();
   const byId = new Map(plugins.map((p) => [p.id, p]));
-  for (const id of ["cadence.webhooks", "cadence.home-assistant", "cadence.lyrics-translate", "cadence.now-playing"]) {
+  for (const id of ["cadence.webhooks", "cadence.home-assistant", "cadence.lyrics-translate", "cadence.now-playing", "cadence.listen-along"]) {
     const p = byId.get(id);
     assert.ok(p, `${id} is installed`);
     assert.deepEqual(p.configFields, []);

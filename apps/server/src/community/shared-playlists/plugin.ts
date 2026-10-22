@@ -378,6 +378,10 @@ const plugin: ServerPlugin = {
   id: "cadence.shared-playlists",
   name: "Shared playlists",
   version: "1.0.0",
+  description:
+    "Playlists several people on this server edit together. Members add songs and vote them up or down, and people join with a share code. Stored in the server database.",
+  configFields: [],
+  configNote: "Nothing to set here. It works as soon as it is turned on and the server restarts.",
   register(app, ctx) {
     const { requireUser } = ctx;
     const service = new PlaylistService(ctx.db);
