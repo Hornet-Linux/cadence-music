@@ -109,6 +109,21 @@ const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  // v6: each person's own Jellyfin sign-in. The token is stored encrypted and
+  // never sent to a client; server_url records which Jellyfin it belongs to, so
+  // it is never sent to a different address if the owner changes it.
+  `
+  CREATE TABLE jellyfin_connections (
+    user_id INTEGER PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    jellyfin_user_id TEXT NOT NULL,
+    jellyfin_user_name TEXT NOT NULL,
+    server_name TEXT,
+    server_url TEXT NOT NULL,
+    token_enc TEXT NOT NULL,
+    device_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 function migrate(db: Db): void {

@@ -258,6 +258,7 @@ Database migrations run automatically on start.
 | `SIGNUP_INVITE_CODE` | — | Code people must enter when `SIGNUP_MODE=invite`. |
 | `APP_DOWNLOAD_URL` | GitHub releases | Download link shown on the sign-up page. |
 | `SPOTIFY_CLIENT_ID` | — | Spotify app ID shared with signed-in apps. |
+| `JELLYFIN_URL` | — | Address of your Jellyfin server, as the Cadence server reaches it (e.g. `http://jellyfin:8096`). Only the owner sets it. See [Jellyfin](JELLYFIN.md). |
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |

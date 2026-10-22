@@ -19,6 +19,16 @@ test("TRUST_PROXY can be off, a hop count, or an address list", () => {
   assert.equal(loadConfig({ TRUST_PROXY: "3" }).trustProxy, 3);
 });
 
+test("JELLYFIN_URL is read, normalised and validated", () => {
+  assert.equal(loadConfig({}).jellyfinUrl, undefined);
+  assert.equal(loadConfig({ JELLYFIN_URL: "" }).jellyfinUrl, undefined);
+  assert.equal(loadConfig({ JELLYFIN_URL: "http://jellyfin:8096/" }).jellyfinUrl, "http://jellyfin:8096");
+  assert.equal(loadConfig({ JELLYFIN_URL: "https://example.com/jellyfin/" }).jellyfinUrl, "https://example.com/jellyfin");
+  assert.throws(() => loadConfig({ JELLYFIN_URL: "jellyfin" }), /JELLYFIN_URL/);
+  assert.throws(() => loadConfig({ JELLYFIN_URL: "http://a:b@host" }), /JELLYFIN_URL/);
+  assert.throws(() => loadConfig({ JELLYFIN_URL: "http://host?x=1" }), /JELLYFIN_URL/);
+});
+
 test("TRUST_PROXY rejects nonsense", () => {
   assert.throws(() => parseTrustProxy("yes"), /TRUST_PROXY/);
   assert.throws(() => parseTrustProxy("10.0.0.0/33"), /TRUST_PROXY/);
