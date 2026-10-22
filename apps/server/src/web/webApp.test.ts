@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { buildApp } from "../app.js";
 import { openDb } from "../db.js";
+import { WEB_APP_CSP } from "./webApp.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-web-"));
 const webDir = path.join(dir, "web");
@@ -70,6 +71,25 @@ test("serves the web player with SPA fallback and caching", async () => {
   for (const url of ["/app/../secret.txt", "/app/%2e%2e/secret.txt", "/app/..%2fsecret.txt"]) {
     const res = await app.inject({ method: "GET", url });
     assert.doesNotMatch(res.body, /do not serve/, url);
+  }
+  await close();
+});
+
+test("sends a strict Content-Security-Policy with every /app file", async () => {
+  const { app, close } = await appWith(webDir);
+  for (const url of ["/app/", "/app/assets/index-abc.js", "/app/some/route"]) {
+    const res = await app.inject({ method: "GET", url });
+    assert.equal(res.headers["content-security-policy"], WEB_APP_CSP, url);
+    assert.equal(res.headers["x-content-type-options"], "nosniff", url);
+  }
+  const directive = (name: string) =>
+    WEB_APP_CSP.split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith(`${name} `));
+  const script = directive("script-src") ?? "";
+  assert.doesNotMatch(script, /'unsafe-inline'|'unsafe-eval'|\*|https:(\s|$)|http:/);
+  for (const d of ["object-src 'none'", "base-uri 'none'", "frame-ancestors 'none'", "form-action 'self'"]) {
+    assert.ok(directive(d.split(" ")[0]) === d, d);
   }
   await close();
 });
