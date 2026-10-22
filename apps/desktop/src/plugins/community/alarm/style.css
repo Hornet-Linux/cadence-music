@@ -1,0 +1,47 @@
+.alarm-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.alarm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.alarm-card.off {
+  opacity: 0.7;
+}
+.alarm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.alarm-time {
+  font-size: 1.5rem;
+  font-weight: 650;
+  min-height: 52px;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.alarm-days .ax-chip {
+  padding: 0;
+  min-width: 0;
+}
+.alarm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.alarm-field select {
+  width: 100%;
+}
