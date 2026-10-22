@@ -26,6 +26,9 @@ connections) is a plugin, on both the desktop and the server.
   server, with cover art, favourites, playlists and play counts reported back.
   The server owner sets the Jellyfin address; everyone signs in with their own
   Jellyfin account. See [docs/JELLYFIN.md](docs/JELLYFIN.md).
+- **Music from elsewhere** — WebDAV (Nextcloud, ownCloud, NAS), S3-compatible storage,
+  Google Drive and OneDrive (experimental), plus Bandcamp links; SMB/NFS shares via
+  the normal library. See [docs/CLOUD_SOURCES.md](docs/CLOUD_SOURCES.md).
 - **AI DJ** — a nonstop, personalised mix with short spoken intros, like
   Spotify's DJ. Songs are picked by an LLM you choose: a model on your own
   computer (**[Ollama](https://ollama.com)**, LM Studio, llama.cpp…), a provider
@@ -147,3 +150,5 @@ Every push and PR runs [ci.yml](.github/workflows/ci.yml):
   Authentik/OIDC setup, configuration reference.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it fits together.
 - [docs/PLUGINS.md](docs/PLUGINS.md) — desktop and server plugins.
+- [docs/CLOUD_SOURCES.md](docs/CLOUD_SOURCES.md) — WebDAV, S3, Google Drive/OneDrive;
+  [docs/BANDCAMP.md](docs/BANDCAMP.md) — Bandcamp.

@@ -225,6 +225,106 @@ repository secrets are set:
 Without them the installer still builds, but Spotify and Apple Music may refuse
 to play.
 
+## Music on a network share (SMB/CIFS and NFS)
+
+Cadence does not speak SMB or NFS itself. A pure JavaScript SMB client would be a large piece of security-sensitive
+code (and NFS needs kernel support), and no small, actively maintained library for it exists. The reliable way is the
+one your operating system already has: **mount the share, then give Cadence the mounted folder as its music library.**
+The library scanner, tag reader, search and streaming all work on a mounted share exactly as they do on a local disk.
+
+Two ways to do it. The first is simpler and fits every setup.
+
+### A. Mount on the host, then point `MUSIC_PATH` at it
+
+1. Mount the share on the machine that runs Docker. For SMB/CIFS, keep the password in a file only root can read
+   (never in `fstab` or a compose file):
+
+   ```bash
+   sudo apt install cifs-utils            # Debian/Ubuntu; "nfs-common" for NFS
+   sudo mkdir -p /mnt/nas-music
+   sudo install -m 600 /dev/null /etc/cadence-nas.cred
+   printf 'username=cadence\npassword=YOUR-PASSWORD\n' | sudo tee /etc/cadence-nas.cred >/dev/null
+   ```
+
+   Add one line to `/etc/fstab` (read-only, readable by the container's user, uid 1000):
+
+   ```fstab
+   //nas.local/music  /mnt/nas-music  cifs  credentials=/etc/cadence-nas.cred,ro,uid=1000,gid=1000,file_mode=0444,dir_mode=0555,vers=3.0,_netdev,nofail  0  0
+   ```
+
+   For NFS:
+
+   ```fstab
+   nas.local:/volume1/music  /mnt/nas-music  nfs  ro,nfsvers=4,_netdev,nofail  0  0
+   ```
+
+   Then `sudo mount /mnt/nas-music` and check with `ls /mnt/nas-music`.
+
+2. In `deploy/.env` set:
+
+   ```ini
+   MUSIC_PATH=/mnt/nas-music
+   ```
+
+3. `docker compose up -d` (or `docker compose restart server`). The first scan runs on start.
+
+### B. Let Docker mount the share (named volume)
+
+If you would rather not touch the host's `fstab`, create `deploy/docker-compose.override.yml`. Compose merges it
+with `docker-compose.yml` and, because both mount something at `/music`, the share replaces the bind mount:
+
+```yaml
+# deploy/docker-compose.override.yml  (SMB/CIFS)
+services:
+  server:
+    volumes:
+      - nas-music:/music:ro
+
+volumes:
+  nas-music:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//nas.local/music"
+      o: "addr=nas.local,username=cadence,password=${NAS_PASSWORD},vers=3.0,ro,uid=1000,gid=1000,file_mode=0444,dir_mode=0555"
+```
+
+```yaml
+# deploy/docker-compose.override.yml  (NFS)
+services:
+  server:
+    volumes:
+      - nas-music:/music:ro
+
+volumes:
+  nas-music:
+    driver: local
+    driver_opts:
+      type: nfs
+      device: ":/volume1/music"
+      o: "addr=nas.local,ro,nfsvers=4"
+```
+
+Put `NAS_PASSWORD=...` in `deploy/.env` (it is already ignored by git). Note that the compose file hands the whole `.env`
+to the server container, so that password also ends up in the container's environment; for SMB with a real password,
+method A (credentials file on the host) keeps it out of Docker entirely. Check the result with
+`docker compose config` before starting. A named volume is created once: if you change `driver_opts`, run
+`docker compose down` and `docker volume rm cadence_nas-music` first.
+
+### Good to know
+
+- **Use a read-only account** on the NAS. Cadence only ever reads.
+- **New files are found by the periodic rescan**, not instantly, because network shares don't send change
+  notices. `SCAN_INTERVAL_MINUTES` (default 60) sets how often; `POST /api/library/scan` (admin) starts one now.
+- **The first scan of a big library over the network is slow** (every file's tags are read). Later scans only
+  read files that changed.
+- **A share that is offline at start-up** looks like an empty folder. With `nofail` in `fstab` the server still
+  starts; once the share is back, run a scan. Cadence never deletes anything on the share.
+- **SMB version**: modern NAS boxes want `vers=3.0` (or `3.1.1`). If mounting fails with "operation not
+  supported", try another version.
+- **A NAS that speaks WebDAV** (Synology, QNAP, TrueNAS and most others can) can skip all of this: use the
+  WebDAV source instead, see [CLOUD_SOURCES.md](CLOUD_SOURCES.md).
+
 ## Updating
 
 Run the installer again; it pulls the latest version and rebuilds:
@@ -261,4 +361,5 @@ Database migrations run automatically on start.
 | `JELLYFIN_URL` | — | Address of your Jellyfin server, as the Cadence server reaches it (e.g. `http://jellyfin:8096`). Only the owner sets it. See [Jellyfin](JELLYFIN.md). |
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |
+| `SOURCES_ALLOW_PRIVATE_NETWORK` | `false` | Let WebDAV, S3 and cloud-drive sources connect to servers on a private network (a NAS at home). See [CLOUD_SOURCES.md](CLOUD_SOURCES.md). |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
