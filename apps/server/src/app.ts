@@ -91,7 +91,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   const settings = new Settings(db, config);
   registerAuthRoutes(app, { db, config, oidc, requireUser, settings, onSetupCode: deps.onSetupCode });
-  registerWebApp(app, config.webDir);
+  registerWebApp(app, config.webDir, (id) => settings.pluginEnabled(id));
 
   const events = new ServerEvents(app.log);
   const jobs = new Jobs(app.log);
