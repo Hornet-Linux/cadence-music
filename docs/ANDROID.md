@@ -24,7 +24,7 @@ account is needed.
    works, but the notification and lock-screen controls don't appear.
 
 To switch servers later: **Settings → Server → Change server** in the player (this needs
-the web-side change described under [the native bridge](#the-native-bridge)); the failure
+the web player's Android support, added in the AI DJ stack right before this PR; see [the native bridge](#the-native-bridge)); the failure
 screen also offers **Change server**.
 
 The app shows your server's web player, so update the server to get the latest player and
@@ -148,34 +148,13 @@ window.CadenceNative: {
 - The `window.CadenceNative` object exists on every Android install, whether or not the device
   has Gemini Nano; `aiAvailable()` is the thing to ask.
 
-### What the web side must call for "Change server"
+### How the web player uses "Change server"
 
-On iOS the page posts to `window.webkit.messageHandlers.cadence`. On Android the equivalent is:
-
-```ts
-window.CadenceNative?.changeServer?.();
-```
-
-The Settings → Server button currently shows only when `isIosApp()` is true
-(`apps/desktop/src/platform/webHost.ts`, `ServerSettings.tsx`), so on Android it needs a
-small change that this repository's Android PR deliberately doesn't make:
-
-```ts
-export function isNativeApp(): boolean {
-  return !!iosApp() || window.CadenceNative?.platform === "android";
-}
-
-export function changeNativeServer(): void {
-  if (iosApp()) iosApp()?.postMessage({ action: "changeServer" });
-  else window.CadenceNative?.changeServer?.();
-}
-```
-
-(and `host.d.ts` would gain `platform?: string` and `changeServer?(): void`).
-Equivalent lower-level form: `window.CadenceAndroid.postMessage(JSON.stringify({ op: "changeServer" }))`.
-Until then the failure screen is the only way to change the server, or clear the app's data.
-Don't reuse the iOS-only branches for Android blindly: for example the "Spotify doesn't work
-on iOS" notice is about iOS web views.
+On iOS the page posts to `window.webkit.messageHandlers.cadence`. On Android the equivalent is
+`window.CadenceNative.changeServer()`, and the web player calls it from Settings → Server →
+**Change server** (`isNativeApp()` / `changeNativeServer()` in `apps/desktop/src/platform/webHost.ts`,
+added in the PR just below this one in the stack). The lower-level form is
+`window.CadenceAndroid.postMessage(JSON.stringify({ op: "changeServer" }))`.
 
 ### Media notification
 
