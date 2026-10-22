@@ -93,3 +93,23 @@ jobs:
             sleep 30
           done
           gh release upload "$TAG" dist/Cadence.ipa -R "$REPO" --clobber
+
+  # Every push to main refreshes the rolling "Nightly" pre-release with the
+  # unsigned IPA (see .github/scripts/publish-nightly.sh).
+  nightly:
+    name: Publish Cadence.ipa to the Nightly release
+    runs-on: ubuntu-latest
+    needs: [ipa]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-ipa
+          path: dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-nightly.sh dist/Cadence.ipa
