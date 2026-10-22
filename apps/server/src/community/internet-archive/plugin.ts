@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ServerPlugin } from "../../plugins/types.js";
 import { clampInt, clean, TtlCache } from "../_sourcekit/common.js";
+import { envPolicy, envUrl } from "../_sourcekit/env.js";
 import { fetchJson, NetError, request } from "../_sourcekit/http.js";
 import type { NetPolicy } from "../_sourcekit/netguard.js";
 import { netFailureMessage, proxyResponse, singleRange } from "../_sourcekit/proxy.js";
@@ -55,9 +56,9 @@ export function createArchivePlugin(options: ArchiveOptions = {}): ServerPlugin 
     version: "1.0.0",
     register(app, ctx) {
       const { secret, requireUser } = ctx;
-      const base = (options.baseUrl ?? "https://archive.org").replace(/\/+$/, "");
+      const base = (options.baseUrl ?? envUrl("CADENCE_ARCHIVE_URL") ?? "https://archive.org").replace(/\/+$/, "");
       const baseOrigin = new URL(base).origin;
-      const policy: NetPolicy = options.policy ?? {};
+      const policy: NetPolicy = options.policy ?? envPolicy();
       const headerMs = options.headerTimeoutMs ?? 15_000;
       const idleMs = options.streamIdleMs ?? 30_000;
       const metaCache = new TtlCache<Metadata>(60 * 60_000, 200);

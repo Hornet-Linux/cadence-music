@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ serverApi: vi.fn(), created: [] as { opts: Record<string, any>; handle: Record<string, any> }[] }));

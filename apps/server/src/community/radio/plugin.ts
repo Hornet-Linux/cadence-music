@@ -3,6 +3,7 @@ import type { ServerPlugin } from "../../plugins/types.js";
 import { b64, clean, clampInt, StreamSlots, term, TtlCache, unb64 } from "../_sourcekit/common.js";
 import { fetchJson, NetError, readBody, request, type NetResponse } from "../_sourcekit/http.js";
 import type { NetPolicy } from "../_sourcekit/netguard.js";
+import { envPolicy, envUrl } from "../_sourcekit/env.js";
 import { netFailureMessage, proxyResponse, singleRange } from "../_sourcekit/proxy.js";
 import { nowSec, signedQuery, verifySigned, type SignedParams } from "../_sourcekit/signing.js";
 import { IcyStripper, metaInterval } from "./icy.js";
@@ -140,8 +141,9 @@ export function createRadioPlugin(options: RadioOptions = {}): ServerPlugin {
     version: "1.0.0",
     register(app, ctx) {
       const { secret, db, requireUser } = ctx;
-      const policy: NetPolicy = options.policy ?? {};
-      const bases = options.directoryBases ?? DEFAULT_BASES;
+      const policy: NetPolicy = options.policy ?? envPolicy();
+      const mirror = envUrl("CADENCE_RADIO_DIRECTORY_URL");
+      const bases = options.directoryBases ?? (mirror ? [mirror] : DEFAULT_BASES);
       const idleMs = options.streamIdleMs ?? 30_000;
       const headerMs = options.headerTimeoutMs ?? 15_000;
       const slots = new StreamSlots(40, 4);

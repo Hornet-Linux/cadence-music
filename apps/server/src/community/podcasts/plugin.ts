@@ -6,6 +6,7 @@ import { fetchJson, NetError, readBody, request } from "../_sourcekit/http.js";
 import type { NetPolicy } from "../_sourcekit/netguard.js";
 import { netFailureMessage, proxyResponse, singleRange } from "../_sourcekit/proxy.js";
 import { nowSec, signedQuery, verifySigned, type SignedParams } from "../_sourcekit/signing.js";
+import { envPolicy, envUrl } from "../_sourcekit/env.js";
 import { searchDirectory } from "./directory.js";
 import { buildOpml, NotAFeedError, parseOpml } from "./feed.js";
 import { feedIdFor, ID16, ID20, migrate, normaliseFeedUrl, type EpisodeRow, type FeedRow, type ProgressRow, type SubRow } from "./schema.js";
@@ -44,10 +45,10 @@ export function createPodcastsPlugin(options: PodcastOptions = {}): ServerPlugin
     version: "1.0.0",
     register(app, ctx) {
       const { db, secret, requireUser, requireAdmin, settings, jobs } = ctx;
-      const policy: NetPolicy = options.policy ?? {};
+      const policy: NetPolicy = options.policy ?? envPolicy();
       const headerMs = options.headerTimeoutMs ?? 15_000;
       const idleMs = options.streamIdleMs ?? 30_000;
-      const itunesBase = (options.itunesBase ?? "https://itunes.apple.com").replace(/\/+$/, "");
+      const itunesBase = (options.itunesBase ?? envUrl("CADENCE_ITUNES_URL") ?? "https://itunes.apple.com").replace(/\/+$/, "");
       const podcastIndexBase = (options.podcastIndexBase ?? "https://api.podcastindex.org").replace(/\/+$/, "");
 
       migrate(db);
