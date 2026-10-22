@@ -26,7 +26,8 @@ export function useAiReady(): AiReady & { recheck: () => void } {
   const user = useServer((s) => s.user);
 
   useEffect(() => {
-    const stillCurrent = guard.current.begin();
+    const latest = guard.current;
+    const stillCurrent = latest.begin();
     void (async () => {
       setReady({ state: "checking" });
       await useProviders.getState().refreshRemote().catch(() => undefined);
@@ -44,7 +45,7 @@ export function useAiReady(): AiReady & { recheck: () => void } {
       const message = setupMessage(djSetup(option, status));
       setReady(message ? { state: "problem", message, option } : { state: "ready", option });
     })();
-    return () => guard.current.cancel();
+    return () => latest.cancel();
   }, [local, selected, user, nonce]);
 
   const recheck = useCallback(() => setNonce((n) => n + 1), []);

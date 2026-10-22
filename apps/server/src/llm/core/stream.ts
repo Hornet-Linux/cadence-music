@@ -34,10 +34,22 @@ export async function* sseData(res: Response): AsyncGenerator<string> {
   }
 }
 
-/** Combine an optional caller signal with a timeout. */
+/**
+ * Combine an optional caller signal with a timeout. (Not AbortSignal.any: older
+ * phone WebViews don't have it.)
+ */
 export function withTimeout(ms: number, signal?: AbortSignal): AbortSignal {
-  const timeout = AbortSignal.timeout(ms);
-  return signal ? AbortSignal.any([timeout, signal]) : timeout;
+  if (!signal) return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  (timer as { unref?: () => void }).unref?.();
+  const stop = () => {
+    clearTimeout(timer);
+    controller.abort();
+  };
+  if (signal.aborted) stop();
+  else signal.addEventListener("abort", stop, { once: true });
+  return controller.signal;
 }
 
 /** True when the server ignored `stream: true` and answered with one JSON document. */

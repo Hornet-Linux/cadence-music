@@ -87,9 +87,10 @@ export async function askJson<T = unknown>(ref: string, opts: AskJsonOptions): P
     return extractJson<T>(await nativeBridge().aiChatJson(request));
   }
   if (ref.startsWith("local:")) {
+    const provider = localProvider(ref);
     const llm = window.host?.llm;
     if (!llm) throw new Error("AI isn't available here");
-    return llm.chatJson<T>(await localConfig(localProvider(ref)), {
+    return llm.chatJson<T>(await localConfig(provider), {
       messages: opts.messages,
       schema: opts.schema,
       ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
