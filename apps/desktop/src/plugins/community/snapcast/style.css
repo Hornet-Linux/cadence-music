@@ -1,0 +1,73 @@
+.sc-view .sc-group {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sc-ghead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sc-ghead h2 {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sc-ghead .btn {
+  min-height: 44px;
+}
+.sc-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sc-stream select {
+  min-height: 44px;
+}
+.sc-clients {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sc-client {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sc-client.offline {
+  opacity: 0.55;
+}
+.sc-cname {
+  font-weight: 600;
+}
+.sc-off {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.sc-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sc-ctrl input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  accent-color: var(--accent);
+}
+.sc-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.sc-pct {
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
