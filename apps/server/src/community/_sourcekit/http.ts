@@ -125,7 +125,10 @@ function once(url: URL, opts: RequestOptions, headers: Record<string, string>): 
     }
     const lib = url.protocol === "https:" ? https : http;
     let settled = false;
-    let headerTimer: NodeJS.Timeout | undefined;
+    const headerTimer = setTimeout(() => {
+      req.destroy();
+      fail(new NetError("timeout", "headers"));
+    }, opts.headerTimeoutMs ?? DEFAULT_HEADER_TIMEOUT);
     const fail = (e: unknown) => {
       if (settled) return;
       settled = true;
@@ -157,10 +160,6 @@ function once(url: URL, opts: RequestOptions, headers: Record<string, string>): 
         resolve({ status: res.statusCode ?? 0, headers: res.headers, stream: res, abort: () => req.destroy() });
       },
     );
-    headerTimer = setTimeout(() => {
-      req.destroy();
-      fail(new NetError("timeout", "headers"));
-    }, opts.headerTimeoutMs ?? DEFAULT_HEADER_TIMEOUT);
     req.on("error", (e: NodeJS.ErrnoException) => {
       if (opts.lenient && !settled && e.code === "HPE_INVALID_CONSTANT" && (opts.method ?? "GET") === "GET") {
         settled = true;

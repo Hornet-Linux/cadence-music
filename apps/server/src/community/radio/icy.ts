@@ -10,6 +10,7 @@ export function parseStreamTitle(block: Buffer): string | null {
   text = text.replace(/\0+$/, "");
   const m = /StreamTitle='(.*?)'\s*(?:;|$)/s.exec(text);
   if (!m) return null;
+  // eslint-disable-next-line no-control-regex
   const title = m[1].replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
   return title || null;
 }
