@@ -10,7 +10,7 @@ export interface FakeSnapserver {
 }
 
 /** A pretend Snapcast server: the JSON-RPC API over TCP (newline separated) and over HTTP /jsonrpc. */
-export async function startFakeSnapserver(): Promise<FakeSnapserver> {
+export async function startFakeSnapserver(opts: { host?: string; tcpPort?: number; httpPort?: number } = {}): Promise<FakeSnapserver> {
   const state = {
     groups: [
       {
@@ -81,7 +81,7 @@ export async function startFakeSnapserver(): Promise<FakeSnapserver> {
       }
     });
   });
-  await new Promise<void>((r) => tcp.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => tcp.listen(opts.tcpPort ?? 0, opts.host ?? "127.0.0.1", r));
 
   const web = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
@@ -95,7 +95,7 @@ export async function startFakeSnapserver(): Promise<FakeSnapserver> {
       res.end(JSON.stringify(handle(JSON.parse(Buffer.concat(chunks).toString("utf8")))));
     });
   });
-  await new Promise<void>((r) => web.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => web.listen(opts.httpPort ?? 0, opts.host ?? "127.0.0.1", r));
 
   return {
     tcpPort: (tcp.address() as AddressInfo).port,

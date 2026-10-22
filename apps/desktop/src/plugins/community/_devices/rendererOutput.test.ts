@@ -166,7 +166,7 @@ describe("renderer output edge cases", () => {
 
   it("lists devices by name and turns a server failure into a readable message", async () => {
     const { api, target } = setup();
-    expect(await target.listDevices()).toEqual([{ id: "d1", name: "Kitchen" }]);
+    expect(await target.listDevices()).toEqual([{ id: "d1", name: "Kitchen (Sonos)" }]);
     expect(api.list).toHaveBeenCalledWith(true);
     api.list.mockRejectedValue(new ApiError("Request failed (502): The device did not respond.", 502));
     await expect(target.listDevices()).rejects.toThrow("The device did not respond.");

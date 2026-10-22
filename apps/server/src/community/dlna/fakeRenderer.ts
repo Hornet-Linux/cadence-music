@@ -23,7 +23,7 @@ export interface FakeRenderer {
  * device description and the AVTransport / RenderingControl SOAP endpoints over HTTP, on 127.0.0.1.
  */
 export async function startFakeRenderer(
-  opts: { sonos?: boolean; name?: string; udn?: string; ssdpPort?: number; httpPort?: number } = {},
+  opts: { sonos?: boolean; name?: string; udn?: string; ssdpPort?: number; httpPort?: number; host?: string; advertise?: string } = {},
 ): Promise<FakeRenderer> {
   const udn = opts.udn ?? (opts.sonos ? "RINCON_000E58AAAAAA01400_MR" : "11111111-2222-3333-4444-555555555555");
   const name = opts.name ?? (opts.sonos ? "Living Room" : "Fake Speaker");
@@ -102,9 +102,9 @@ export async function startFakeRenderer(
       res.end();
     });
   });
-  await new Promise<void>((resolve) => server.listen(opts.httpPort ?? 0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => server.listen(opts.httpPort ?? 0, opts.host ?? "127.0.0.1", resolve));
   const httpPort = (server.address() as AddressInfo).port;
-  const location = `http://127.0.0.1:${httpPort}/desc.xml`;
+  const location = `http://${opts.advertise ?? opts.host ?? "127.0.0.1"}:${httpPort}/desc.xml`;
 
   const udp = dgram.createSocket({ type: "udp4", reuseAddr: true });
   udp.on("message", (msg, rinfo) => {
@@ -123,7 +123,7 @@ export async function startFakeRenderer(
     );
     udp.send(reply, rinfo.port, rinfo.address);
   });
-  await new Promise<void>((resolve) => udp.bind(opts.ssdpPort ?? 0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => udp.bind(opts.ssdpPort ?? 0, opts.host ?? "127.0.0.1", resolve));
   const ssdpPort = udp.address().port;
 
   return {

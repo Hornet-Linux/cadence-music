@@ -12,7 +12,7 @@ export interface FakeHa {
 }
 
 /** A pretend Home Assistant: GET /api/ and POST /api/states/<entity_id>, both needing the bearer token. */
-export async function startFakeHa(token = "ha-long-lived-token"): Promise<FakeHa> {
+export async function startFakeHa(token = "ha-long-lived-token", opts: { host?: string; port?: number; publicHost?: string } = {}): Promise<FakeHa> {
   const states: FakeHa["states"] = new Map();
   const posts: FakeHa["posts"] = [];
   let failing: number | null = null;
@@ -42,9 +42,9 @@ export async function startFakeHa(token = "ha-long-lived-token"): Promise<FakeHa
       res.end("{}");
     });
   });
-  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => server.listen(opts.port ?? 0, opts.host ?? "127.0.0.1", r));
   return {
-    url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+    url: `http://${opts.publicHost ?? opts.host ?? "127.0.0.1"}:${(server.address() as AddressInfo).port}`,
     token,
     states,
     posts,

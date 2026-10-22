@@ -149,7 +149,8 @@ export function createRendererTarget(ctx: PluginContext, cfg: RendererTargetConf
     async listDevices() {
       try {
         const list = await api.list(true);
-        return list.devices.map((d) => ({ id: d.id, name: d.name }));
+        // The picker only shows a name, so say what the device is where it matters (Sonos speakers are UPnP devices).
+        return list.devices.map((d) => ({ id: d.id, name: d.kind === "sonos" ? `${d.name} (Sonos)` : d.name }));
       } catch (err) {
         throw new Error(friendlyError(err, "Could not look for devices."));
       }

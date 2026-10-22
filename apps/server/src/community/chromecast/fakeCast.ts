@@ -51,7 +51,7 @@ export function castAnnouncement(opts: { id: string; fn: string; md: string; por
 }
 
 /** A pretend Chromecast: TLS CASTV2 on a local port, an mDNS responder and the plain-HTTP info endpoint. */
-export async function startFakeCast(opts: { id?: string; fn?: string; md?: string } = {}): Promise<FakeCast> {
+export async function startFakeCast(opts: { id?: string; fn?: string; md?: string; host?: string; castPort?: number; eurekaPort?: number } = {}): Promise<FakeCast> {
   const id = opts.id ?? "0123456789abcdef0123456789abcdef";
   const fn = opts.fn ?? "Kitchen speaker";
   const md = opts.md ?? "Chromecast Audio";
@@ -123,12 +123,12 @@ export async function startFakeCast(opts: { id?: string; fn?: string; md?: strin
       }
     });
   });
-  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => server.listen(opts.castPort ?? 0, opts.host ?? "127.0.0.1", r));
   const castPort = (server.address() as AddressInfo).port;
 
   const udp = dgram.createSocket("udp4");
   udp.on("message", (_msg, rinfo) => udp.send(castAnnouncement({ id, fn, md, port: castPort }), rinfo.port, rinfo.address));
-  await new Promise<void>((r) => udp.bind(0, "127.0.0.1", r));
+  await new Promise<void>((r) => udp.bind(0, opts.host ?? "127.0.0.1", r));
 
   const eureka = http.createServer((req, res) => {
     if (req.url?.startsWith("/setup/eureka_info")) {
@@ -139,7 +139,7 @@ export async function startFakeCast(opts: { id?: string; fn?: string; md?: strin
       res.end();
     }
   });
-  await new Promise<void>((r) => eureka.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => eureka.listen(opts.eurekaPort ?? 0, opts.host ?? "127.0.0.1", r));
 
   return {
     castPort,
