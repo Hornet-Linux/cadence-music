@@ -47,7 +47,16 @@ POST /api/admin/llm/providers
 `hasKey`). `POST /api/admin/llm/test` tries settings before you save them.
 The first provider becomes the default; set `isDefault` to change it.
 Admin-defined URLs may point anywhere the server can reach, including other
-machines on your network.
+machines on your network. The server rejects base URLs that contain a
+username/password, a query string or a fragment, and limits the name to 60
+characters, the model to 200 and the API key to 512.
+
+When a server provider fails, ordinary users get a short fixed message ("The AI
+provider failed. Ask the server owner to check it.", or a phrase for a rejected
+key, a missing model or an unreachable server). The upstream response and any
+network detail go to the server log, and admins (and `/api/admin/llm/test`)
+still see the full text. Errors from a provider on a person's own computer
+are passed through, shortened, because they come from that person's device.
 
 ## Using a provider on your own computer
 
@@ -64,6 +73,12 @@ open. The response is a server-sent event stream:
 Your other devices then see it in `GET /api/llm/providers` as
 `device:<deviceId>:<providerId>` while that app is open. Jobs only ever go to a
 device owned by the person who asked.
+
+Limits: a person can keep at most 5 devices connected (a sixth gets
+`429 too_many_devices`; reconnecting a known device id replaces its old
+connection and fails that connection's waiting jobs), and at most 4 jobs wait on
+one device (8 across a person's devices); beyond that the request fails with
+"That device is busy".
 
 ## On-device AI (Apple Intelligence, Gemini Nano)
 
@@ -86,9 +101,19 @@ context windows, and parses the first JSON object in the reply. If
 option simply doesn't appear. It is chosen automatically only when the server
 has no provider of its own.
 
+The bridge exists only on the server's own pages. The iOS app defines
+`window.CadenceNative` only when `location.origin` equals the configured
+server's origin, and answers the native message handlers only for the main
+frame at that origin, so a third-party page the web view lands on (a link or a
+sign-in redirect) can't use Apple Intelligence or change the server.
+
 ## Limits
 
 `POST /api/dj/picks` is the only endpoint that runs a model for ordinary
 users, so a signed-in account can't use the server's API credits for arbitrary
 prompts. It is limited to 20 requests per person per 10 minutes and one at a
 time.
+
+Whatever a model (or a device) returns is bounded before it reaches an app: at
+most 25 picks, artist and title cut to 200 characters, the intro to 400, and
+control characters replaced with spaces.

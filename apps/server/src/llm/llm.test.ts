@@ -137,7 +137,7 @@ test("AI DJ: the server calls the provider with its own key and returns clean pi
   await app.close();
 });
 
-test("AI DJ: provider failures come back as a readable 502", async () => {
+test("AI DJ: provider failures come back as a safe 502", async () => {
   const { app, admin, alice } = await setup();
   await app.inject({
     method: "POST",
@@ -148,7 +148,144 @@ test("AI DJ: provider failures come back as a readable 502", async () => {
   const res = await app.inject({ method: "POST", url: "/api/dj/picks", headers: alice, payload: { profile: PROFILE } });
   assert.equal(res.statusCode, 502);
   assert.equal(res.json().error, "llm_failed");
-  assert.match(res.json().message, /Couldn't reach Ollama/);
+  assert.match(res.json().message, /couldn't be reached/);
+  assert.ok(!res.body.includes("127.0.0.1") && !res.body.includes("ECONNREFUSED"), "no network detail for ordinary users");
+  // The admin who set it up still sees what went wrong.
+  const asAdmin = await app.inject({ method: "POST", url: "/api/dj/picks", headers: admin, payload: { profile: PROFILE } });
+  assert.match(asAdmin.json().message, /Couldn't reach Ollama/);
+  await app.close();
+});
+
+test("server provider failures never leak upstream text to ordinary users", async () => {
+  const upstream = { status: 500, body: "internal: db password is hunter2 at 10.0.0.5" };
+  const fetchFn = (async (url: string | URL | Request) => {
+    if (String(url).endsWith("/models")) return new Response("10.0.0.5 says no", { status: 503 });
+    return new Response(upstream.body, { status: upstream.status });
+  }) as typeof fetch;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-llm-"));
+  const db = openDb(":memory:");
+  await createLocalUser(db, { username: "admin", password: "admin-password", isAdmin: true });
+  await createLocalUser(db, { username: "alice", password: "alice-password" });
+  const app = await buildApp({
+    config: { host: "127.0.0.1", port: 0, dataDir: dir, musicDir: dir, scanIntervalMinutes: 0, trustProxy: false, logLevel: "silent" },
+    db,
+    secret: "s".repeat(64),
+    logger: false,
+    plugins: [createLlmPlugin({ fetchFn })],
+  });
+  const signIn = async (username: string) => {
+    const res = await app.inject({ method: "POST", url: "/api/auth/login", payload: { username, password: `${username}-password` } });
+    return { authorization: `Bearer ${(res.json() as AuthResponse).token}` };
+  };
+  const admin = await signIn("admin");
+  const alice = await signIn("alice");
+  await app.inject({
+    method: "POST",
+    url: "/api/admin/llm/providers",
+    headers: admin,
+    payload: { name: "P", kind: "openai-compatible", baseUrl: "http://10.0.0.5:1234/v1", model: "m" },
+  });
+  const picks = (headers: Record<string, string>) =>
+    app.inject({ method: "POST", url: "/api/dj/picks", headers, payload: { profile: PROFILE } });
+
+  const asAlice = await picks(alice);
+  assert.equal(asAlice.statusCode, 502);
+  assert.equal(asAlice.json().message, "The AI provider failed. Ask the server owner to check it.");
+  assert.ok(!asAlice.body.includes("hunter2") && !asAlice.body.includes("10.0.0.5"));
+  assert.match((await picks(admin)).json().message, /hunter2/, "admins see the detail");
+
+  const status = await app.inject({ method: "POST", url: "/api/llm/status", headers: alice, payload: {} });
+  assert.ok(!status.body.includes("10.0.0.5") && !status.body.includes("503"));
+  assert.equal(status.json().available, false);
+  const adminStatus = await app.inject({ method: "POST", url: "/api/llm/status", headers: admin, payload: {} });
+  assert.match(adminStatus.json().error, /503/);
+
+  upstream.status = 401;
+  assert.match((await picks(alice)).json().message, /rejected its API key/);
+  upstream.status = 404;
+  upstream.body = 'model "x" not found';
+  assert.match((await picks(alice)).json().message, /doesn't have the configured model/);
+  await app.close();
+});
+
+test("admin provider input is validated", async () => {
+  const { app, admin } = await setup();
+  const base = { name: "Local", kind: "openai-compatible", baseUrl: "http://127.0.0.1:1234/v1", model: "tiny" };
+  const post = (payload: object) => app.inject({ method: "POST", url: "/api/admin/llm/providers", headers: admin, payload });
+  const bad = [
+    { ...base, baseUrl: "http://user:pass@127.0.0.1:1234/v1" },
+    { ...base, baseUrl: "http://user@127.0.0.1:1234/v1" },
+    { ...base, baseUrl: "http://127.0.0.1:1234/v1?key=abc" },
+    { ...base, baseUrl: "http://127.0.0.1:1234/v1?" },
+    { ...base, baseUrl: "http://127.0.0.1:1234/v1#frag" },
+    { ...base, apiKey: "k".repeat(513) },
+    { ...base, model: "m".repeat(201) },
+    { ...base, name: "n".repeat(61) },
+  ];
+  for (const payload of bad) assert.equal((await post(payload)).statusCode, 400, JSON.stringify(payload).slice(0, 80));
+  assert.equal((await post({ ...base, apiKey: "k".repeat(512), model: "m".repeat(200), name: "n".repeat(60) })).statusCode, 201);
+  const test = await app.inject({
+    method: "POST",
+    url: "/api/admin/llm/test",
+    headers: admin,
+    payload: { ...base, baseUrl: "http://u:p@127.0.0.1:1/v1" },
+  });
+  assert.equal(test.statusCode, 400);
+  await app.close();
+});
+
+test("device relay limits: devices per person and jobs per device", async () => {
+  const { MAX_DEVICES_PER_USER, MAX_PENDING_PER_DEVICE, RelayHub } = await import("./relay.js");
+  const hub = new RelayHub();
+  const reg = (deviceId: string) => ({ deviceId, name: "D", providers: [{ id: "p", name: "P", kind: "ollama" as const, model: "m" }] });
+  const closed: string[] = [];
+  const sent: string[] = [];
+  const detachers: (() => void)[] = [];
+  for (let i = 0; i < MAX_DEVICES_PER_USER; i++) {
+    const id = `device-${i}000`;
+    detachers.push(hub.attach(1, reg(id), (j) => sent.push(j.jobId), () => closed.push(id))!);
+  }
+  assert.equal(hub.attach(1, reg("device-extra"), () => {}, () => {}), null, "one too many");
+  assert.notEqual(hub.attach(2, reg("device-extra"), () => {}, () => {}), null, "other people have their own budget");
+
+  // Reconnecting a known device replaces it, fails its jobs and closes the old stream.
+  const provider = hub.provider(1, "device-0000", "p");
+  const waiting = provider.chatJson({ messages: [], schema: {} });
+  assert.notEqual(hub.attach(1, reg("device-0000"), (j) => sent.push(j.jobId), () => {}), null);
+  await assert.rejects(waiting, /reconnected/);
+  assert.deepEqual(closed, ["device-0000"]);
+  detachers[0](); // the stale detach must not drop the new connection
+  assert.equal(hub.devicesFor(1).length, MAX_DEVICES_PER_USER);
+
+  // Only so many jobs may wait on one device.
+  const jobs = Array.from({ length: MAX_PENDING_PER_DEVICE }, () => provider.chatJson({ messages: [], schema: {} }));
+  jobs.forEach((j) => j.catch(() => {}));
+  await assert.rejects(provider.chatJson({ messages: [], schema: {} }), /busy/);
+  detachers[1]();
+  for (const j of jobs) await j.then(() => {}, () => {});
+});
+
+test("device relay: connecting a sixth device is refused with 429, and a dead stream doesn't throw", async () => {
+  const { app, alice } = await setup();
+  await app.listen({ host: "127.0.0.1", port: 0 });
+  const base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
+  const aborts: AbortController[] = [];
+  const connect = async (i: number) => {
+    const abort = new AbortController();
+    aborts.push(abort);
+    return fetch(`${base}/api/llm/devices/connect`, {
+      method: "POST",
+      headers: { ...alice, "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: `device-${i}000`, name: "D", providers: [] }),
+      signal: abort.signal,
+    });
+  };
+  for (let i = 0; i < 5; i++) assert.equal((await connect(i)).status, 200);
+  const sixth = await connect(9);
+  assert.equal(sixth.status, 429);
+  assert.equal(((await sixth.json()) as { error: string }).error, "too_many_devices");
+  assert.equal((await connect(0)).status, 200, "an existing device may reconnect");
+  aborts.forEach((a) => a.abort());
   await app.close();
 });
 
