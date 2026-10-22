@@ -105,7 +105,8 @@ test("explains when the web player isn't built", async () => {
   await close();
 });
 
-// The policy before the streaming plugins existed, word for word.
+// The default policy, word for word: the one from before the streaming plugins, plus the always-on
+// Bandcamp embedded-player frame (a plain iframe with no script; there is no server plugin to gate it).
 const ORIGINAL_CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com",
@@ -114,7 +115,7 @@ const ORIGINAL_CSP = [
   "media-src 'self' https: blob:",
   "font-src 'self' https: data:",
   "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
-  "frame-src https://sdk.scdn.co https://*.apple.com",
+  "frame-src https://sdk.scdn.co https://*.apple.com https://bandcamp.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",
@@ -131,6 +132,7 @@ async function cspWith(enabled: string[]): Promise<string> {
 
 test("the default CSP is unchanged when no streaming plugin is enabled", async () => {
   assert.equal(WEB_APP_CSP, ORIGINAL_CSP);
+  assert.doesNotMatch(WEB_APP_CSP, /script-src [^;]*bandcamp/, "Bandcamp never gets a script source");
   assert.equal(buildWebAppCsp(), ORIGINAL_CSP);
   assert.equal(await cspWith([]), ORIGINAL_CSP);
   // Plugins that need no extra sources, and unknown ids, change nothing either.

@@ -47,10 +47,17 @@ export const EMBED_CSP_SOURCES: Record<string, { script?: string[]; frame?: stri
   "cadence.deezer": { frame: ["https://widget.deezer.com"] },
 };
 
+/**
+ * Frame sources that are always allowed. The Bandcamp embedded player (desktop plugin `cadence.bandcamp`)
+ * has no server plugin to switch it on, so its host cannot follow an admin setting; it is a plain iframe
+ * (no script), so allowing it as a frame does not widen what code can run in the page. No script-src entry.
+ */
+export const ALWAYS_FRAME_SOURCES = ["https://bandcamp.com"];
+
 /** The policy for the web player, with the embed sources of the given enabled plugin ids added. */
 export function buildWebAppCsp(enabledPlugins: Iterable<string> = []): string {
   const script = ["'self'", "'wasm-unsafe-eval'", "https://sdk.scdn.co", "https://js-cdn.music.apple.com"];
-  const frame = ["https://sdk.scdn.co", "https://*.apple.com"];
+  const frame = ["https://sdk.scdn.co", "https://*.apple.com", ...ALWAYS_FRAME_SOURCES];
   for (const id of enabledPlugins) {
     const extra = EMBED_CSP_SOURCES[id];
     if (!extra) continue;

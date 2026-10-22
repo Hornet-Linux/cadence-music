@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!--
-      Frames: https://widget.deezer.com is the one addition for the opt-in Deezer plugin (its official widget is
-      a plain iframe, no script). script-src is deliberately NOT widened: the YouTube and SoundCloud plugins need
+      Frames: https://widget.deezer.com (opt-in Deezer plugin) and https://bandcamp.com (Bandcamp embedded player)
+      are the additions; both official widgets are plain iframes, no script. script-src is deliberately NOT widened: the YouTube and SoundCloud plugins need
       their loader scripts, so they only work in the web player, where the server adds those hosts to its CSP header
       when the admin enables them. The web build drops this tag so that header is the only policy there.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com; frame-src https://sdk.scdn.co https://*.apple.com https://widget.deezer.com; worker-src 'self' blob:; img-src 'self' https: http: data: blob:; media-src 'self' https: http: blob:; style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com; font-src 'self' https: data:; connect-src 'self' https: http: wss:;"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com; frame-src https://sdk.scdn.co https://*.apple.com https://widget.deezer.com https://bandcamp.com; worker-src 'self' blob:; img-src 'self' https: http: data: blob:; media-src 'self' https: http: blob:; style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com; font-src 'self' https: data:; connect-src 'self' https: http: wss:;"
     />
     <title>Cadence</title>
   </head>

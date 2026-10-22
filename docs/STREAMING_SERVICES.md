@@ -59,12 +59,16 @@ server plugin** (read at start-up, so, like the plugin itself, it applies after 
 | `cadence.soundcloud` | `https://w.soundcloud.com` | `https://w.soundcloud.com` |
 | `cadence.deezer` | none (plain iframe) | `https://widget.deezer.com` |
 | `cadence.tidal` | none | none |
+| always (no server plugin: the desktop `cadence.bandcamp` embed) | none | `https://bandcamp.com` |
+
+`ALWAYS_FRAME_SOURCES` in the same file holds that last row: the Bandcamp embedded player is a plain iframe with no
+script and has no server plugin an admin could switch on, so its host is always allowed as a frame and never as a script.
 
 The web build (`vite build --mode web`) drops the `<meta>` CSP from `index.html`, because a fixed meta policy
 would be intersected with the server's header and block these embeds; the header is stricter anyway.
 
 The Electron app's own policy (the meta tag in `apps/desktop/index.html`, no admin toggle) gains only
-`frame-src https://widget.deezer.com`, because the Deezer widget is an iframe with no script. Its `script-src` is
+`frame-src https://widget.deezer.com https://bandcamp.com`, because both widgets are iframes with no script. Its `script-src` is
 **not** widened, so the YouTube and SoundCloud plugins (which need their loader scripts) work in the web player and
 Android app, not in the Electron app. (YouTube's player also refuses `file://` origins.)
 
