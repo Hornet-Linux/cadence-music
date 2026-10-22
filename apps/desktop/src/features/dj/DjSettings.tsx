@@ -7,6 +7,7 @@ import { EMPTY_FORM, ProviderForm, type ProviderFormValue } from "./ProviderForm
 import {
   effectiveOption,
   getApiKey,
+  keyStorageNote,
   providerOptions,
   providerStatus,
   useProviders,
@@ -30,6 +31,7 @@ const toForm = (p: LocalProvider): ProviderFormValue => ({
 
 /** Settings → AI DJ: where the model runs, and spoken intros. */
 export function DjSettings() {
+  const KEY_NOTE = keyStorageNote();
   const { voice, setVoice } = useDj();
   const { local, remote, native, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
   const server = useServer((s) => s.user);
@@ -89,7 +91,7 @@ export function DjSettings() {
                 initial={toForm(mine)}
                 hasKey={editingHasKey}
                 canShare={!!server}
-                keyNote="Kept in this device's secure storage."
+                keyNote={KEY_NOTE}
                 onSave={saveLocal}
                 onTest={testLocal}
                 onCancel={() => setEditing(null)}
@@ -126,7 +128,7 @@ export function DjSettings() {
       {editing === "new" ? (
         <ProviderForm
           canShare={!!server}
-          keyNote="Kept in this device's secure storage."
+          keyNote={KEY_NOTE}
           onSave={saveLocal}
           onTest={testLocal}
           onCancel={() => setEditing(null)}

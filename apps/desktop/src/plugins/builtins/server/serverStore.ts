@@ -298,6 +298,16 @@ export const useServer = create<ServerState>((set, get) => {
       }
       set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       await saveToken(null);
+      // The website shares one browser between people: leave nothing of this
+      // person's Spotify, Apple Music or AI provider setup behind.
+      if (isWeb()) {
+        try {
+          const { clearWebDeviceData } = await import("@/platform/webSignOut");
+          await clearWebDeviceData();
+        } catch (err) {
+          console.warn("Could not clear this browser's streaming data", err);
+        }
+      }
     },
 
     async loadTracks() {
