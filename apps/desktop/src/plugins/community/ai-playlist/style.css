@@ -1,0 +1,89 @@
+.ai-playlist .ai-form {
+  max-width: 640px;
+}
+.ai-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+}
+.ai-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.ai-check input {
+  width: 20px;
+  height: 20px;
+}
+.ai-playlist .segmented button {
+  min-height: 44px;
+  min-width: 52px;
+}
+.ai-result {
+  margin-top: 18px;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-result-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.ai-songs {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-song {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+.ai-song:hover {
+  background: var(--surface);
+}
+.ai-song-play {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.ai-song-text {
+  min-width: 0;
+  padding-top: 2px;
+}
+.ai-why {
+  margin-top: 4px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ai-missing summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+.ai-missing ul {
+  list-style: none;
+  padding: 0 0 8px 12px;
+}
+@media (max-width: 760px) {
+  .ai-result .ai-actions .btn {
+    flex: 1 1 auto;
+  }
+}
