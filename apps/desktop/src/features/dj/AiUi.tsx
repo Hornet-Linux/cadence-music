@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ApiError } from "@/plugins/builtins/server/serverStore";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { describeAiError, NoProviderError } from "./ask";
 import { useAiReady } from "./useAiReady";
@@ -55,11 +56,13 @@ export function AiError({ error }: { error: unknown }) {
   return (
     <div className="notice error ai-problem" role="alert">
       <span>{describeAiError(error)}</span>
-      <span className="ai-actions">
-        <button className="btn" onClick={() => showSettings("dj")}>
-          {error instanceof NoProviderError ? "Open Settings → AI DJ" : "AI settings"}
-        </button>
-      </span>
+      {!(error instanceof ApiError && error.code === "chat_disabled") && (
+        <span className="ai-actions">
+          <button className="btn" onClick={() => showSettings("dj")}>
+            {error instanceof NoProviderError ? "Open Settings → AI DJ" : "AI settings"}
+          </button>
+        </span>
+      )}
     </div>
   );
 }

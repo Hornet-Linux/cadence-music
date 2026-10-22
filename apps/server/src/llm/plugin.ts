@@ -323,8 +323,11 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
       // With `schema` the reply is JSON ({ data }); otherwise text ({ text }), or
       // server-sent events (delta / done / error) with `stream: true`.
       app.post<{ Body: ChatBody }>("/api/llm/chat", { preHandler: requireUser }, async (req, reply) => {
-        // A server owner who only wants the DJ to spend API credits can switch the free-form routes off.
-        if (process.env.LLM_CHAT_DISABLED === "1") return reply.code(403).send({ error: "chat_disabled" });
+        // Off unless the server owner opted in (admin panel or LLM_CHAT_ENABLED=1): it lets people
+        // spend the server's AI credits on their own prompts.
+        if (!ctx.settings.llmChatEnabled()) {
+          return reply.code(403).send({ error: "chat_disabled", message: "AI chat is turned off on this server. Ask the server owner to enable it in the admin panel." });
+        }
         const userId = req.user!.id;
         const body = req.body ?? {};
         const ref = typeof body.provider === "string" ? body.provider : defaultRef();
@@ -415,6 +418,21 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
           if (n <= 0) busyChat.delete(userId);
           else busyChat.set(userId, n);
         }
+      });
+
+      // ---- admin: free-form AI chat switch ---------------------------------------------
+
+      app.get("/api/admin/llm/chat", { preHandler: requireAdmin }, async () => ({
+        enabled: ctx.settings.llmChatEnabled(),
+        locked: ctx.settings.llmChatLocked(),
+      }));
+
+      app.put<{ Body: { enabled?: unknown } }>("/api/admin/llm/chat", { preHandler: requireAdmin }, async (req, reply) => {
+        if (typeof req.body?.enabled !== "boolean") return reply.code(400).send({ error: "invalid_request" });
+        if (ctx.settings.llmChatLocked()) return reply.code(409).send({ error: "locked_by_environment" });
+        ctx.settings.setLlmChatEnabled(req.body.enabled);
+        req.log.info({ admin: req.user!.username, enabled: req.body.enabled }, "admin changed AI chat");
+        return { enabled: ctx.settings.llmChatEnabled(), locked: false };
       });
 
       // ---- admin: server providers --------------------------------------------

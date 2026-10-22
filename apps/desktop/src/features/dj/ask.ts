@@ -8,6 +8,7 @@ import { currentOption, localConfig, useProviders, type ProviderOption } from ".
 // the phone's own. The song chat, playlist builder and taste summary use this
 // so there is one provider system, not several.
 
+export const CHAT_DISABLED_MESSAGE = "AI chat is turned off on this server. Ask the server owner to enable AI chat in the admin panel. The AI DJ still works.";
 export const NO_PROVIDER_MESSAGE = "Add an AI provider in Settings → AI DJ first.";
 
 /** Raised when nothing is configured; the UI shows a pointer to Settings → AI DJ instead of a red error. */
@@ -61,7 +62,7 @@ export function describeAiError(e: unknown): string {
     if (e.code === "rate_limited") return "You've asked a lot in the last few minutes. Try again shortly.";
     if (e.code === "busy") return "The AI is still answering your other request. Try again in a moment.";
     if (e.code === "no_provider") return NO_PROVIDER_MESSAGE;
-    if (e.code === "chat_disabled") return "The server owner has turned off AI chat features. The DJ still works.";
+    if (e.code === "chat_disabled") return CHAT_DISABLED_MESSAGE;
     if (e.code === "provider_not_found") return "That AI provider is no longer available. Pick another in Settings → AI DJ.";
     return e.message.replace(/^Request failed \(\d+\):?\s*/, "") || "The AI request failed.";
   }

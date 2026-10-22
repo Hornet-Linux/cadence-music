@@ -201,9 +201,13 @@ test("POST /api/llm/chat: text, JSON, streaming and errors", async () => {
     app.inject({ method: "POST", url: "/api/llm/chat", headers, payload: payload as object });
 
   assert.equal((await chat(undefined, { messages: MESSAGES })).statusCode, 401);
-  process.env.LLM_CHAT_DISABLED = "1";
-  assert.equal((await chat(alice, { messages: MESSAGES })).json().error, "chat_disabled");
-  delete process.env.LLM_CHAT_DISABLED;
+  // Off by default: a clear error, even before a provider exists.
+  const off = await chat(alice, { messages: MESSAGES });
+  assert.equal(off.statusCode, 403);
+  assert.equal(off.json().error, "chat_disabled");
+  assert.match(off.json().message, /enable it in the admin panel/);
+  // The server owner opts in from the admin panel.
+  assert.equal((await app.inject({ method: "PUT", url: "/api/admin/llm/chat", headers: admin, payload: { enabled: true } })).statusCode, 200);
   assert.equal((await chat(alice, { messages: MESSAGES })).statusCode, 409, "no provider yet");
 
   await app.inject({
@@ -243,6 +247,41 @@ test("POST /api/llm/chat: text, JSON, streaming and errors", async () => {
 
   await llm.close();
   await app.close();
+});
+
+test("AI chat switch: off by default, admin-only, the admin setting or the environment turns it on", async () => {
+  const { app, admin, alice } = await setup();
+  const get = (headers?: Record<string, string>) => app.inject({ method: "GET", url: "/api/admin/llm/chat", headers });
+  const put = (headers: Record<string, string> | undefined, payload: unknown) =>
+    app.inject({ method: "PUT", url: "/api/admin/llm/chat", headers, payload: payload as object });
+  const chat = () => app.inject({ method: "POST", url: "/api/llm/chat", headers: alice, payload: { messages: MESSAGES } });
+  try {
+    delete process.env.LLM_CHAT_ENABLED;
+    assert.equal((await get()).statusCode, 401);
+    assert.equal((await get(alice)).statusCode, 403);
+    assert.equal((await put(alice, { enabled: true })).statusCode, 403);
+    assert.deepEqual((await get(admin)).json(), { enabled: false, locked: false });
+    assert.equal((await chat()).statusCode, 403);
+
+    assert.equal((await put(admin, { enabled: "yes" })).statusCode, 400);
+    assert.deepEqual((await put(admin, { enabled: true })).json(), { enabled: true, locked: false });
+    assert.notEqual((await chat()).statusCode, 403, "the admin setting enables it (409: no provider yet)");
+    assert.deepEqual((await put(admin, { enabled: false })).json(), { enabled: false, locked: false });
+    assert.equal((await chat()).statusCode, 403);
+
+    // The environment wins, and then the admin setting can't change it.
+    process.env.LLM_CHAT_ENABLED = "1";
+    assert.deepEqual((await get(admin)).json(), { enabled: true, locked: true });
+    assert.notEqual((await chat()).statusCode, 403);
+    assert.equal((await put(admin, { enabled: false })).statusCode, 409);
+    delete process.env.LLM_CHAT_ENABLED;
+    await put(admin, { enabled: true });
+    process.env.LLM_CHAT_ENABLED = "0";
+    assert.equal((await chat()).statusCode, 403, "=0 beats an admin opt-in");
+  } finally {
+    delete process.env.LLM_CHAT_ENABLED;
+    await app.close();
+  }
 });
 
 test("POST /api/dj/picks passes the host style and notes to the prompt", async () => {

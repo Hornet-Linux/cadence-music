@@ -379,7 +379,7 @@ const SCRIPT = String.raw`
   const KINDS = { ollama: "Ollama", "openai-compatible": "OpenAI-compatible", anthropic: "Anthropic" };
 
   async function renderAi() {
-    const [list, presets] = await Promise.all([api("/api/admin/llm/providers"), api("/api/llm/presets")]);
+    const [list, presets, chat] = await Promise.all([api("/api/admin/llm/providers"), api("/api/llm/presets"), api("/api/admin/llm/chat")]);
     let editing = null; // a provider being edited, "new", or null
 
     const act = (label, fn, cls) => h("button", { class: "btn" + (cls ? " " + cls : ""), type: "button", onclick: async () => {
@@ -481,6 +481,17 @@ const SCRIPT = String.raw`
           h("thead", null, h("tr", null, h("th", null, "Provider"), h("th", null, "Model"), h("th", null, ""), h("th", null, ""))),
           h("tbody", null, rows))) : null,
         editing ? form() : h("div", { style: "margin-bottom:18px" }, h("button", { class: "btn primary", type: "button", onclick: () => { editing = "new"; draw(); } }, "Add a provider")),
+        h("div", { class: "card" },
+          h("h2", null, "AI chat for plugins"),
+          h("label", { style: "display:flex;gap:6px;align-items:center;margin:0 0 8px" },
+            h("input", { type: "checkbox", style: "min-width:0", checked: chat.enabled, disabled: chat.locked, onchange: async (e) => {
+              try { const r = await api("/api/admin/llm/chat", { method: "PUT", body: JSON.stringify({ enabled: e.target.checked }) }); chat.enabled = r.enabled; toast(r.enabled ? "AI chat is on" : "AI chat is off"); }
+              catch (err) { e.target.checked = chat.enabled; toast(err.message, true); }
+            } }),
+            "Let signed-in people send their own questions to these providers"),
+          h("p", { class: "hint", style: "margin:0" }, chat.locked
+            ? "Set by LLM_CHAT_ENABLED in the server's environment."
+            : "Off by default. The song chat, playlist builder and taste summary plugins need this. They spend your provider's credits on whatever people ask, within rate limits. The AI DJ works either way.")),
         h("div", { class: "card" },
           h("h2", null, "Good to know"),
           h("p", { class: "hint", style: "margin:0" }, "Any OpenAI-compatible service works (OpenAI, LM Studio, llama.cpp, vLLM, OpenRouter, Groq…), as do Ollama and Anthropic. The default is used when someone hasn't picked one. People can also use a model on their own device or computer from Settings → AI DJ.")));

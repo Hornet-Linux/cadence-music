@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, useServer } from "@/plugins/builtins/server/serverStore";
-import { askJson, askText, describeAiError, NO_PROVIDER_MESSAGE, NoProviderError, parseSse, requireProvider } from "./ask";
+import { askJson, askText, CHAT_DISABLED_MESSAGE, describeAiError, NO_PROVIDER_MESSAGE, NoProviderError, parseSse, requireProvider } from "./ask";
 import { useProviders } from "./providers";
 
 const sse = (events: [string, unknown][]) =>
@@ -27,6 +27,8 @@ describe("describeAiError", () => {
     expect(describeAiError(new ApiError("Request failed (502): The AI provider couldn't be reached.", 502, "llm_failed"))).toBe(
       "The AI provider couldn't be reached.",
     );
+    expect(describeAiError(new ApiError("Request failed (403): AI chat is turned off", 403, "chat_disabled"))).toBe(CHAT_DISABLED_MESSAGE);
+    expect(CHAT_DISABLED_MESSAGE).toMatch(/Ask the server owner to enable AI chat in the admin panel/);
     expect(describeAiError(new Error("boom"))).toBe("boom");
     expect(describeAiError(new DOMException("x", "AbortError"))).toBe("Stopped.");
   });
@@ -66,6 +68,17 @@ describe("server-backed asking", () => {
 
     vi.stubGlobal("fetch", vi.fn(async () => sse([["done", {}]])));
     await expect(askText("server:1", { messages: [{ role: "user", content: "hi" }] })).rejects.toThrow(/empty reply/);
+  });
+
+  it("tells the person to ask the server owner when the server has AI chat switched off", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "chat_disabled", message: "off" }), { status: 403 })));
+    const err = await askText("server:1", { messages: [{ role: "user", content: "hi" }] }).catch((e) => e);
+    expect(err).toMatchObject({ status: 403, code: "chat_disabled" });
+    expect(describeAiError(err)).toBe(CHAT_DISABLED_MESSAGE);
+
+    useServer.setState({ api: (async () => Promise.reject(new ApiError("Request failed (403)", 403, "chat_disabled"))) as never });
+    const jsonErr = await askJson("server:1", { messages: [{ role: "user", content: "hi" }], schema: {} }).catch((e) => e);
+    expect(describeAiError(jsonErr)).toBe(CHAT_DISABLED_MESSAGE);
   });
 
   it("asks for JSON through the same route", async () => {
