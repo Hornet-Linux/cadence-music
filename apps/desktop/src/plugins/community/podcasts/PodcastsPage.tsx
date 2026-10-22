@@ -29,7 +29,7 @@ function EpisodeRow({ episode, showShow = true }: { episode: Episode; showShow?:
         <span className="sk-sub">
           {joinFacts([showShow && episode.feedTitle, dayLabel(episode.publishedAt), left > 0 ? `${spoken(left)} left` : spoken(episode.durationSec), played && "Played"])}
         </span>
-        <Bar position={position} duration={episode.durationSec} label={`Progress of ${episode.title}`} />
+        <Bar position={played ? 0 : position} duration={episode.durationSec} label={`Progress of ${episode.title}`} />
       </button>
       <span className="sk-actions">
         <IconButton label={played ? `Mark ${episode.title} as not played` : `Mark ${episode.title} as played`} pressed={played} onClick={() => void setPlayed(episode.id, !played)}>

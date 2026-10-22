@@ -67,9 +67,9 @@ const audiobooksPlugin: Plugin = {
     });
     ctx.registerCommand({
       id: "audiobooks.back",
-      title: "Audiobooks: back 30 seconds",
+      title: "Audiobooks: back 15 seconds",
       run: () => {
-        if (activeBook()) ctx.player.seek(Math.max(0, ctx.player.getState().position - 30));
+        if (activeBook()) ctx.player.seek(Math.max(0, ctx.player.getState().position - 15));
       },
     });
   },

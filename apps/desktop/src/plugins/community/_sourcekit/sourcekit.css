@@ -179,7 +179,13 @@
   align-items: center;
   gap: 6px;
 }
+.sk-now .sk-chips {
+  flex-wrap: wrap;
+  overflow: visible;
+}
 .sk-pill {
+  flex: none;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;

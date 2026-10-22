@@ -89,7 +89,7 @@ function NowListening() {
       </div>
       <Bar position={position} duration={duration} label="Book progress" />
       <div className="sk-now-controls">
-        <IconButton label="Back 30 seconds" onClick={() => seek(Math.max(0, position - 30))}>
+        <IconButton label="Back 15 seconds" onClick={() => seek(Math.max(0, position - 15))}>
           <Back15Icon size={24} />
         </IconButton>
         <IconButton label={playing ? "Pause" : "Play"} onClick={toggle}>
