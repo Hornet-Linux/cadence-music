@@ -9,6 +9,11 @@ import type { ServerPlugin } from "./types.js";
  * and default-export a ServerPlugin (or an array). They are found automatically, so adding one never
  * touches a shared file. The admin turns each one on; changes apply after a restart.
  */
+/** Every community plugin found on disk, whether or not the admin has turned it on (the Plugins page lists these). */
+export async function listCommunityPlugins(log: FastifyBaseLogger, dir?: string): Promise<ServerPlugin[]> {
+  return loadCommunityPlugins(log, dir);
+}
+
 export async function loadCommunityPlugins(log: FastifyBaseLogger, dir?: string): Promise<ServerPlugin[]> {
   const root = dir ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "community");
   if (!fs.existsSync(root)) return [];

@@ -33,6 +33,15 @@ export interface ServerPluginContext {
   jobs: Jobs;
 }
 
+/** One setting on a plugin's admin form. Keys named like secrets are hidden when shown again. */
+export interface PluginConfigField {
+  key: string;
+  label: string;
+  type?: "text" | "password" | "number" | "boolean" | "url";
+  help?: string;
+  placeholder?: string;
+}
+
 /**
  * A server plugin adds routes, background jobs or hooks. Built-in features such
  * as the music library are plugins too, so third-party plugins use the same
@@ -42,5 +51,12 @@ export interface ServerPlugin {
   id: string;
   name: string;
   version: string;
+  /** One sentence for the admin panel's Plugins page. */
+  description?: string;
+  /**
+   * Settings the admin can fill in on the Plugins page (stored with `settings.pluginConfig(id)`).
+   * Without it the page offers a plain JSON editor.
+   */
+  configFields?: PluginConfigField[];
   register: (app: FastifyInstance, ctx: ServerPluginContext) => void | Promise<void>;
 }
