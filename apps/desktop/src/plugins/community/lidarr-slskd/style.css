@@ -1,0 +1,10 @@
+.ld-sub {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+.ld-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
