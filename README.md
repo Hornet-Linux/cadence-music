@@ -54,6 +54,12 @@ your admin login. Manage people at `https://your-domain/admin`.
 - **iPhone / iPad:** [Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.ipa), sideloaded with a free Apple ID ([how](docs/IOS.md))
 - **Android:** [Cadence.apk](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.apk), sideloaded ([how](docs/ANDROID.md))
 
+Between versioned releases, every push to `main` refreshes the [Nightly](https://github.com/Hornet-Linux/cadence-music/releases/tag/nightly) pre-release with the newest build of every app, with no sign-in needed: 
+[Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/download/nightly/Cadence-Setup.exe), 
+[Cadence-mac-arm64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/download/nightly/Cadence-mac-arm64.dmg), 
+[Cadence.apk](https://github.com/Hornet-Linux/cadence-music/releases/download/nightly/Cadence.apk) (signed, with a `.sha256` next to it) and 
+[Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/download/nightly/Cadence.ipa). These are development builds.
+
 The Mac app isn't notarized by Apple, so the first time, open it with
 right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 

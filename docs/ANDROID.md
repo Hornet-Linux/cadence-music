@@ -12,8 +12,11 @@ account is needed.
 ## Install
 
 1. On the phone, download **Cadence.apk** from the
-   [latest release](https://github.com/Hornet-Linux/cadence-music/releases/latest)
-   (or from the `android-apk` artifact of the latest **Android** workflow run).
+   [latest release](https://github.com/Hornet-Linux/cadence-music/releases/latest),
+   from the newest development build on the
+   [Nightly](https://github.com/Hornet-Linux/cadence-music/releases/tag/nightly)
+   pre-release (it has a `Cadence.apk.sha256` to check the download against),
+   or from the `android-apk` artifact of the latest **Android** workflow run.
 2. Open it. Android asks to allow installs from your browser or file manager
    ("Install unknown apps"); allow it for that app only, then install.
    Play Protect may warn that the app is unrecognised: choose **Install anyway**.

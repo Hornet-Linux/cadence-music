@@ -116,4 +116,27 @@ jobs:
             gh release view "$TAG" -R "$REPO" >/dev/null 2>&1 && break
             sleep 30
           done
-          gh release upload "$TAG" dist/Cadence.apk -R "$REPO" --clobber
+          (cd dist && sha256sum Cadence.apk > Cadence.apk.sha256)
+          gh release upload "$TAG" dist/Cadence.apk dist/Cadence.apk.sha256 -R "$REPO" --clobber
+
+  # Every push to main refreshes the rolling "Nightly" pre-release with the
+  # signed APK and its checksum (see .github/scripts/publish-nightly.sh).
+  nightly:
+    name: Publish Cadence.apk to the Nightly release
+    runs-on: ubuntu-latest
+    needs: [apk]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd dist && sha256sum Cadence.apk > Cadence.apk.sha256)
+          bash .github/scripts/publish-nightly.sh dist/Cadence.apk dist/Cadence.apk.sha256

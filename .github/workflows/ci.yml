@@ -346,3 +346,38 @@ jobs:
           test -f dist/Cadence-mac-arm64.dmg
           test -f dist/Cadence-mac-x64.dmg
           gh release create "$TAG" dist/Cadence-Setup.exe dist/Cadence-mac-arm64.dmg dist/Cadence-mac-x64.dmg --title "Cadence $TAG" --generate-notes
+
+  # ---------------------------------------------------------------- nightly
+  # Every push to main refreshes the rolling "Nightly" pre-release, so the
+  # newest installers are one click away without signing in (see
+  # .github/scripts/publish-nightly.sh). Tagged releases above are separate.
+  nightly:
+    name: Publish to the Nightly release
+    runs-on: ubuntu-latest
+    needs: [desktop-package-windows, desktop-package-mac]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-dmg
+          path: dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-nightly.sh dist/Cadence-Setup.exe dist/Cadence-mac-arm64.dmg dist/Cadence-mac-x64.dmg
+
+  # ---------------------------------------------------------------- scripts
+  scripts:
+    name: Release scripts · shellcheck & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck .github/scripts/publish-nightly.sh .github/scripts/publish-nightly.test.sh
+      - run: bash .github/scripts/publish-nightly.test.sh
