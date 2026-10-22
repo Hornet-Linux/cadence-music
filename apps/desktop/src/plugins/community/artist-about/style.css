@@ -1,0 +1,76 @@
+.about {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.about-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.about-photo {
+  flex: 0 0 auto;
+  width: 112px;
+  height: 112px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-elevated-2);
+}
+.about.compact .about-photo {
+  width: 84px;
+  height: 84px;
+}
+.about-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.about-title h3 {
+  font-size: 1.15rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.about-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.about-bio p {
+  line-height: 1.6;
+  font-size: 0.92rem;
+  color: var(--text);
+  white-space: pre-line;
+}
+.about-bio p.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.about-more {
+  margin-top: 4px;
+  min-height: 44px;
+}
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.about-links .btn {
+  min-height: 44px;
+}
+.about-picker {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.about-picker button {
+  min-height: 44px;
+}
+@media (max-width: 480px) {
+  .about-photo {
+    width: 88px;
+    height: 88px;
+  }
+}

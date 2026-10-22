@@ -1,0 +1,68 @@
+.concert-form .row {
+  flex-wrap: wrap;
+}
+.concert-form .row .text-input {
+  min-width: 140px;
+  min-height: 44px;
+}
+.concert-form .btn {
+  min-height: 44px;
+}
+.concert-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.concert-change {
+  min-height: 44px;
+}
+.concert-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.concert-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  min-height: 56px;
+}
+.concert-row:first-child {
+  border-top: 0;
+}
+.concert-date {
+  flex: 0 0 auto;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.concert-month {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.concert-day {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.concert-body {
+  flex: 1;
+  min-width: 0;
+}
+.concert-artist,
+.concert-where {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.concert-link {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+}
