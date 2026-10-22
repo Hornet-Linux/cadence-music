@@ -14,8 +14,10 @@ import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +28,9 @@ interface PlayerCallbacks {
     fun onFailure(message: String?)
     fun onPopup(popup: WebView?)
     fun onChangeServer()
+
+    /** The WebView's renderer process died (out of memory or a crash); the screen should build a fresh player. */
+    fun onRenderGone(crashed: Boolean)
 }
 
 /**
@@ -78,6 +83,8 @@ class PlayerWebView(
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun configure(view: WebView) {
+        // chrome://inspect can attach to debug builds only; release builds keep the WebView closed.
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         view.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -132,9 +139,22 @@ class PlayerWebView(
             val description = error.description?.toString().orEmpty()
             if (description.contains("ERR_ABORTED")) return
             loadFailed = true
-            callbacks.onFailure(description.ifBlank { "The page didn't load." })
+            callbacks.onFailure(ErrorText.friendly(description))
             // Hide the browser's own error page behind our card.
             view.post { view.loadUrl("about:blank") }
+        }
+
+        // A proxy answering 502/503/504 while the server restarts: say so instead of showing its error page.
+        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+            if (!request.isForMainFrame || errorResponse.statusCode !in 500..599) return
+            loadFailed = true
+            callbacks.onFailure(ErrorText.httpStatus(errorResponse.statusCode))
+        }
+
+        // Without this, a renderer crash takes the whole app down. Tell the screen to build a new WebView.
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            callbacks.onRenderGone(detail.didCrash())
+            return true
         }
     }
 
@@ -147,6 +167,11 @@ class PlayerWebView(
             child.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     !shouldStay(request)
+
+                override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                    callbacks.onPopup(null)
+                    return true
+                }
             }
             child.webChromeClient = object : WebChromeClient() {
                 override fun onCloseWindow(window: WebView) {

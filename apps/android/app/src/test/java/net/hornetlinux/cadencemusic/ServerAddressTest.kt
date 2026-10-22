@@ -40,4 +40,19 @@ class ServerAddressTest {
         assertEquals("https://music.example.com", ServerAddress.origin("https://music.example.com/app/"))
         assertEquals("http://10.0.0.5:8787", ServerAddress.origin("http://10.0.0.5:8787/app/"))
     }
-}
+
+    @Test
+    fun lanAddressesWithoutSchemeFallBackToHttp() {
+        assertEquals("http://10.0.2.2:9110/app/", ServerAddress.lanHttpFallback("10.0.2.2:9110"))
+        assertEquals("http://192.168.1.20/app/", ServerAddress.lanHttpFallback("192.168.1.20"))
+        assertEquals("http://nas.local:8787/app/", ServerAddress.lanHttpFallback("nas.local:8787"))
+        assertEquals("http://localhost:8787/app/", ServerAddress.lanHttpFallback("localhost:8787"))
+    }
+
+    @Test
+    fun noHttpFallbackForPublicNamesOrTypedSchemes() {
+        assertNull(ServerAddress.lanHttpFallback("music.example.com"))
+        assertNull(ServerAddress.lanHttpFallback("https://192.168.1.20"))
+        assertNull(ServerAddress.lanHttpFallback("http://192.168.1.20"))
+        assertNull(ServerAddress.lanHttpFallback(""))
+    }}
