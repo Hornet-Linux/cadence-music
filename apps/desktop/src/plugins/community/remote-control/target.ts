@@ -1,4 +1,3 @@
-import { usePlayer } from "@/player/playerStore";
 import type { OutputTarget, PluginContext } from "../../types";
 import { friendlyError } from "../_devices/errors";
 import { useServer } from "../../builtins/server/serverStore";
@@ -70,7 +69,7 @@ export function createRemoteTarget(ctx: PluginContext): OutputTarget {
         throw new Error(friendlyError(err, "That device is not reachable."));
       }
       controlled = deviceId;
-      if (usePlayer.getState().isPlaying) ctx.player.toggle();
+      if (ctx.player.getState().isPlaying) ctx.player.toggle();
       useRemote.getState().select(deviceId);
     },
   };
