@@ -448,6 +448,28 @@ export const usePlayer = create<PlayerState>((set, get) => {
     el.addEventListener("durationchange", () => {
       if (el === audio && backend.kind === "html" && Number.isFinite(el.duration)) set({ duration: el.duration });
     });
+    // The system can pause or resume the element on its own (phone call, Siri, headphones
+    // unplugged, another app taking audio focus). Keep `isPlaying` honest so the lock-screen
+    // and notification buttons do the right thing. Our own pauses either set the flag
+    // themselves or release the element first (backend "none"), so they are not affected.
+    el.addEventListener("pause", () => {
+      if (el !== audio || backend.kind !== "html" || fade) return;
+      // Reaching the end also fires "pause"; the "ended" handler deals with that.
+      if (el.ended) return;
+      if (get().isPlaying) {
+        stopTicker();
+        set({ isPlaying: false });
+      }
+    });
+    el.addEventListener("play", () => {
+      if (el !== audio || backend.kind !== "html" || fade) return;
+      // A late "play" event after we already paused again must not flip the state back.
+      if (el.paused) return;
+      if (!get().isPlaying) {
+        startTicker();
+        set({ isPlaying: true });
+      }
+    });
     el.addEventListener("ended", () => {
       if (el !== audio || backend.kind !== "html") return;
       if (fade) {

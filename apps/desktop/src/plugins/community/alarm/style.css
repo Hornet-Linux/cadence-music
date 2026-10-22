@@ -30,12 +30,18 @@
 }
 .alarm-days {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(7, 44px);
+  justify-content: space-between;
 }
 .alarm-days .ax-chip {
   padding: 0;
-  min-width: 0;
+  width: 44px;
+  height: 44px;
+}
+@media (max-width: 420px) {
+  .alarm-card {
+    padding: 12px 8px;
+  }
 }
 .alarm-field {
   display: flex;

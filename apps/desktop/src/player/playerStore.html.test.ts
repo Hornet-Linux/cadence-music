@@ -128,6 +128,64 @@ describe("plain audio playback", () => {
   });
 });
 
+describe("following the audio element", () => {
+  const withPaused = (el: HTMLAudioElement, paused: boolean) =>
+    Object.defineProperty(el, "paused", { value: paused, configurable: true });
+
+  it("notices when the system pauses and resumes the element", async () => {
+    await usePlayer.getState().playQueue([track("a")], 0);
+    const el = lastPlayed();
+    expect(usePlayer.getState().isPlaying).toBe(true);
+
+    withPaused(el, true);
+    el.dispatchEvent(new Event("pause"));
+    expect(usePlayer.getState().isPlaying).toBe(false);
+
+    // The lock-screen play button now starts playback again.
+    usePlayer.getState().toggle();
+    await vi.waitFor(() => expect(usePlayer.getState().isPlaying).toBe(true));
+
+    withPaused(el, true);
+    el.dispatchEvent(new Event("pause"));
+    expect(usePlayer.getState().isPlaying).toBe(false);
+    // Another app hands audio focus back and the browser resumes by itself.
+    withPaused(el, false);
+    el.dispatchEvent(new Event("play"));
+    expect(usePlayer.getState().isPlaying).toBe(true);
+    Reflect.deleteProperty(el, "paused");
+  });
+
+  it("ignores the pause that comes with reaching the end", async () => {
+    await usePlayer.getState().playQueue([track("a"), track("b")], 0);
+    const el = lastPlayed();
+    Object.defineProperty(el, "ended", { value: true, configurable: true });
+    el.dispatchEvent(new Event("pause"));
+    expect(usePlayer.getState().isPlaying).toBe(true);
+    Reflect.deleteProperty(el, "ended");
+  });
+
+  it("does not let a late play event undo our own pause", async () => {
+    await usePlayer.getState().playQueue([track("a")], 0);
+    const el = lastPlayed();
+    usePlayer.getState().toggle(); // we pause
+    expect(usePlayer.getState().isPlaying).toBe(false);
+    withPaused(el, true);
+    el.dispatchEvent(new Event("play"));
+    expect(usePlayer.getState().isPlaying).toBe(false);
+    Reflect.deleteProperty(el, "paused");
+  });
+
+  it("ignores events from an element that was released", async () => {
+    await usePlayer.getState().playQueue([track("a")], 0);
+    const el = lastPlayed();
+    // Nothing can play this track, so the element is released and no backend is active.
+    await usePlayer.getState().playQueue([track("sdk:nothing")], 0);
+    expect(usePlayer.getState().isPlaying).toBe(false);
+    el.dispatchEvent(new Event("play"));
+    expect(usePlayer.getState().isPlaying).toBe(false);
+  });
+});
+
 describe("audio effects routing", () => {
   beforeEach(() => {
     FakeAudioContext.instances = [];
