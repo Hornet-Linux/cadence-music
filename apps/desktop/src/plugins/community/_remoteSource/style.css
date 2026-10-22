@@ -231,3 +231,14 @@
     margin-bottom: 8px;
   }
 }
+
+/* The shared switch is 25px tall; give it a 44px touch area without changing how it looks. */
+.rs-switch-row .switch {
+  position: relative;
+  flex: none;
+}
+.rs-switch-row .switch::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}

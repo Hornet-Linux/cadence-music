@@ -38,10 +38,11 @@ export class FakeS3 {
     readonly region = "us-east-1",
   ) {}
 
-  async start(): Promise<this> {
+  /** `host`/`port` choose where to listen; `publicHost` is the name clients use to reach it. */
+  async start(opts: { host?: string; port?: number; publicHost?: string } = {}): Promise<this> {
     this.server = http.createServer((req, res) => void this.handle(req, res));
-    await new Promise<void>((r) => this.server!.listen(0, "127.0.0.1", r));
-    this.url = `http://127.0.0.1:${(this.server.address() as AddressInfo).port}`;
+    await new Promise<void>((r) => this.server!.listen(opts.port ?? 0, opts.host ?? "127.0.0.1", r));
+    this.url = `http://${opts.publicHost ?? "127.0.0.1"}:${(this.server.address() as AddressInfo).port}`;
     return this;
   }
 

@@ -54,12 +54,13 @@ export class FakeCloud {
   tokenLifetimeSec = 3600;
   accounts: Record<P, string> = { google: "me@gmail.example", microsoft: "me@outlook.example" };
 
-  async start(): Promise<this> {
+  /** `host`/`port` choose where to listen; `publicHost` is the name clients use to reach it. */
+  async start(opts: { host?: string; port?: number; publicHost?: string; altHost?: string } = {}): Promise<this> {
     this.server = http.createServer((req, res) => void this.handle(req, res));
-    await new Promise<void>((r) => this.server!.listen(0, "127.0.0.1", r));
+    await new Promise<void>((r) => this.server!.listen(opts.port ?? 0, opts.host ?? "127.0.0.1", r));
     const port = (this.server.address() as AddressInfo).port;
-    this.url = `http://127.0.0.1:${port}`;
-    this.altUrl = `http://localhost:${port}`;
+    this.url = `http://${opts.publicHost ?? "127.0.0.1"}:${port}`;
+    this.altUrl = `http://${opts.altHost ?? "localhost"}:${port}`;
     return this;
   }
 
@@ -189,6 +190,20 @@ export class FakeCloud {
     const p: P = path.startsWith("/google") ? "google" : "microsoft";
     const record = (kind: FakeCloudCall["kind"]) =>
       this.calls.push({ provider: p, kind, method: req.method ?? "", path: path + url.search, authorization: req.headers.authorization, range: req.headers.range, host: req.headers.host });
+
+    // A page for trying the sign-in by hand: the person "agrees" at once and is sent back with a code.
+    if (path.endsWith("/authorize") && req.method === "GET") {
+      try {
+        const { code, state } = this.consent(p, new URL(req.url ?? "/", this.url).href);
+        const back = new URL(url.searchParams.get("redirect_uri") ?? "");
+        back.searchParams.set("code", code);
+        back.searchParams.set("state", state);
+        res.writeHead(302, { Location: back.href }).end();
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "text/plain" }).end(String(e));
+      }
+      return;
+    }
 
     if (path.endsWith("/token") && req.method === "POST") {
       record("token");
