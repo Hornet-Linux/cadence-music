@@ -36,8 +36,9 @@ cadence.<svc> (desktop plugin)  --/api/streaming/<svc>/...-->  cadence.<svc> (se
   visible player panel (widgets)                                 search proxy; secrets in settings.pluginConfig
 ```
 
-* The **admin** turns the server plugin on (Settings > Plugins, then restart the server) and enters the
-  service's credentials in the plugin's settings panel. Secrets are encrypted at rest with a key derived
+* The **admin** turns the server add-on on (community server plugins start off; the switch is the
+  server setting `plugin:<id>:enabled`, e.g. `plugin:cadence.deezer:enabled`, applied after a restart) and
+  enters the service's credentials in the plugin's settings panel. Secrets are encrypted at rest with a key derived
   from the server secret and are never sent back to a browser.
 * Each **person** presses "Connect" to log in to the service themselves (OAuth). Tokens are stored per
   person on the server, encrypted, and refreshed there. (YouTube needs no personal login.)
@@ -45,6 +46,20 @@ cadence.<svc> (desktop plugin)  --/api/streaming/<svc>/...-->  cadence.<svc> (se
 * The desktop plugins are `builtin: false`; people enable them in Settings > Plugins.
 * Embedded players (SoundCloud, YouTube, optionally Deezer) live in a **visible player panel** that Cadence
   never hides, covers, shrinks below 200x200, or overlays. Closing the panel stops playback.
+
+## Content-Security-Policy
+
+The web player's CSP (`WEB_APP_CSP` in `apps/server/src/web/webApp.ts`, and the meta tag in
+`apps/desktop/index.html`) now also allows the official embed hosts: scripts from `www.youtube.com` and
+`w.soundcloud.com`, frames from `www.youtube.com`, `www.youtube-nocookie.com`, `w.soundcloud.com` and
+`widget.deezer.com`. This applies to every user of the web player, whether or not they enable these plugins.
+
+## Testing
+
+Unit tests use mocked network and mocked widget/iframe APIs. For end-to-end checks without live
+credentials, the server honours `CADENCE_STREAMING_TEST_UPSTREAM=<origin>`: every service endpoint then points
+at `<origin>/<slug>/<host-key>/...` (see `hosts()` in `apps/server/src/community/_streaming/http.ts`).
+Never set it in production.
 
 ## Redirect URIs to register
 
