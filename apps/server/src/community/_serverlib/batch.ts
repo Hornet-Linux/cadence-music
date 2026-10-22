@@ -20,7 +20,7 @@ export interface BatchOptions<T> {
   /** Handle one item. Record its own result (also failures) so the item is not listed again. */
   work: (item: T, signal: AbortSignal) => Promise<void>;
   /** Rest between items so a big library does not hog the CPU or disk. */
-  pauseMs: number;
+  pauseMs: number | (() => number);
   log?: FastifyBaseLogger;
 }
 
@@ -82,7 +82,8 @@ export class BatchRunner<T> {
             this.state.lastError = err instanceof Error ? err.message : String(err);
             this.opts.log?.warn({ err, job: this.opts.name }, "batch item failed");
           }
-          if (this.opts.pauseMs > 0 && !abort.signal.aborted) await sleep(this.opts.pauseMs, abort.signal);
+          const pause = typeof this.opts.pauseMs === "function" ? this.opts.pauseMs() : this.opts.pauseMs;
+          if (pause > 0 && !abort.signal.aborted) await sleep(pause, abort.signal);
         }
       } finally {
         this.state.running = false;
