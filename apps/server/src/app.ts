@@ -38,9 +38,14 @@ export interface AppDeps {
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, db, secret } = deps;
+  // Fastify 5 refuses a bare hop count (it can't tell whether the immediate peer
+  // is a proxy), so a count is spelled out as "believe the first N hops". Only
+  // use it when clients can't reach the server without going through the proxy.
+  const hops = typeof config.trustProxy === "number" ? config.trustProxy : null;
+  const trustProxy = hops === null ? (config.trustProxy as boolean | string[]) : (_address: string, hop: number) => hop < hops;
   const app = Fastify({
     logger: deps.logger ?? { level: config.logLevel },
-    trustProxy: config.trustProxy,
+    trustProxy,
     bodyLimit: 1024 * 1024,
   });
 

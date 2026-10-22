@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { loadConfig, parseTrustProxy } from "./config.js";
+import { loadConfig, parseTrustProxy, PRIVATE_PROXIES } from "./config.js";
 
-test("TRUST_PROXY defaults to a single proxy hop, never every hop", () => {
-  assert.equal(loadConfig({}).trustProxy, 1);
-  assert.equal(parseTrustProxy(undefined), 1);
-  assert.equal(parseTrustProxy(""), 1);
-  assert.equal(parseTrustProxy("true"), 1);
+test("TRUST_PROXY defaults to proxies on this machine or a private network, never every hop", () => {
+  assert.deepEqual(loadConfig({}).trustProxy, PRIVATE_PROXIES);
+  assert.deepEqual(parseTrustProxy(undefined), PRIVATE_PROXIES);
+  assert.deepEqual(parseTrustProxy(""), PRIVATE_PROXIES);
+  assert.deepEqual(parseTrustProxy("true"), PRIVATE_PROXIES);
 });
 
 test("TRUST_PROXY can be off, a hop count, or an address list", () => {
