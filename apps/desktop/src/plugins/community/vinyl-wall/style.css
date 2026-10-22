@@ -183,6 +183,13 @@
   text-underline-offset: 3px;
 }
 @media (max-width: 760px) {
+  /* Stay clear of the mini player and tab bar. */
+  .vw-backdrop {
+    padding-bottom: calc(var(--player-h, 68px) + var(--tabbar-h, 56px) + env(safe-area-inset-bottom));
+  }
+  .vw-sheet {
+    max-height: 100%;
+  }
   .vw-wall {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px 16px;
