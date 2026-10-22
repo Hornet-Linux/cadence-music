@@ -6,6 +6,8 @@ export interface SseEvent {
 export interface SseStream {
   events: SseEvent[];
   /** Resolves with the first matching event (already received or yet to come). */
+  // Test helper: callers read fields off the parsed JSON without declaring a type for every event.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   waitFor(event: string, match?: (data: any) => boolean, timeoutMs?: number): Promise<any>;
   /** Resolves once the server ends the stream. */
   closed: Promise<void>;

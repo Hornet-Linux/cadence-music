@@ -13,6 +13,7 @@ export type DeliverResult = "delivered" | "unknown" | "offline";
 export class DeviceHub {
   private readonly users = new Map<number, Map<string, Entry>>();
   private readonly stateListeners = new Set<(e: StateEvent) => void>();
+  private readonly presenceListeners = new Set<(userId: number) => void>();
   /** Set by the remote-control plugin so other plugins can tell the relay is running. */
   active = false;
 
@@ -46,6 +47,13 @@ export class DeviceHub {
   }
 
   private broadcastDevices(userId: number): void {
+    for (const l of this.presenceListeners) {
+      try {
+        l(userId);
+      } catch {
+        // a listener must not break the relay
+      }
+    }
     const list = this.list(userId);
     for (const e of this.users.get(userId)?.values() ?? []) e.conn?.send("devices", { devices: list });
   }
@@ -114,6 +122,12 @@ export class DeviceHub {
       [...online].sort((a, b) => (b.state?.updatedAt ?? 0) - (a.state?.updatedAt ?? 0) || b.lastSeen - a.lastSeen)[0] ??
       null
     );
+  }
+
+  /** Called when one of the user devices connects or goes offline. */
+  onPresence(listener: (userId: number) => void): () => void {
+    this.presenceListeners.add(listener);
+    return () => this.presenceListeners.delete(listener);
   }
 
   onState(listener: (e: StateEvent) => void): () => void {
