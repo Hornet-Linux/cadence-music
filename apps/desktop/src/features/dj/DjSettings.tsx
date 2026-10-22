@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LlmStatus } from "../../../electron/llm";
-import { SettingRow, Toggle } from "@/features/settings/controls";
+import { Segmented, SettingRow, Toggle } from "@/features/settings/controls";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { useDj } from "./djStore";
 import { EMPTY_FORM, ProviderForm, type ProviderFormValue } from "./ProviderForm";
@@ -33,7 +33,7 @@ const toForm = (p: LocalProvider): ProviderFormValue => ({
 /** Settings → AI DJ: where the model runs, and spoken intros. */
 export function DjSettings() {
   const KEY_NOTE = keyStorageNote();
-  const { voice, setVoice } = useDj();
+  const { voice, setVoice, sourcePref, setSourcePref } = useDj();
   const { local, remote, native, selected, select, addLocal, updateLocal, removeLocal, refreshRemote } = useProviders();
   const server = useServer((s) => s.user);
   const relay = useRelay();
@@ -72,6 +72,21 @@ export function DjSettings() {
 
   return (
     <div className="stack">
+      <SettingRow
+        title="DJ plays from"
+        description="Where the DJ learns your taste and finds songs. Auto uses Jellyfin when it's connected, otherwise Spotify."
+      >
+        <Segmented
+          label="DJ plays from"
+          value={sourcePref}
+          onChange={setSourcePref}
+          options={[
+            { value: "auto", label: "Auto" },
+            { value: "spotify", label: "Spotify" },
+            { value: "jellyfin", label: "Jellyfin" },
+          ]}
+        />
+      </SettingRow>
       <SettingRow title="Spoken intros" description="The DJ talks over the start of each song, with the music turned down.">
         <Toggle on={voice} onChange={setVoice} label="Spoken intros" />
       </SettingRow>

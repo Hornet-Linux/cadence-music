@@ -22,14 +22,15 @@ connections) is a plugin, on both the desktop and the server.
 - **Spotify and Apple Music** — official sign-in, your library in the app, and
   full in-app playback (Premium / subscription), mixed in one queue with your
   own music. See [setup](docs/SELF_HOSTING.md#spotify-and-apple-music).
-- **Jellyfin** — browse and play your Jellyfin music in the app, signing in with your
-  own Jellyfin account. Audio and cover art are proxied through your server, so
-  phones need no direct access. See [docs/JELLYFIN.md](docs/JELLYFIN.md).
+- **Jellyfin** — browse, search and play your Jellyfin music through your Cadence
+  server, with cover art, favourites, playlists and play counts reported back.
+  The server owner sets the Jellyfin address; everyone signs in with their own
+  Jellyfin account. See [docs/JELLYFIN.md](docs/JELLYFIN.md).
 - **AI DJ** — a nonstop, personalised mix with short spoken intros, like
   Spotify's DJ. Songs are picked by an LLM you choose: a model on your own
   computer (**[Ollama](https://ollama.com)**, LM Studio, llama.cpp…), a provider
   the server owner sets up for everyone (OpenAI-compatible APIs, Anthropic), or
-  one of your own computers shared with your phone. Needs Spotify. See
+  one of your own computers shared with your phone. Needs Spotify or Jellyfin. See
   [AI DJ](#ai-dj).
 - **Plugins** — capability-based plugins on the desktop, and the same plugin
   seam on the server.

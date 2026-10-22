@@ -32,7 +32,7 @@ export function SetupWizard() {
           </div>
           <p>
             This app plays music from <strong>your own server</strong>, <strong>Spotify</strong>,{" "}
-            <strong>Apple Music</strong> and <strong>files on this computer</strong> — all in one
+            <strong>Apple Music</strong>, <strong>Jellyfin</strong> and <strong>files on this computer</strong> — all in one
             library and one queue.
           </p>
           <p className="muted">

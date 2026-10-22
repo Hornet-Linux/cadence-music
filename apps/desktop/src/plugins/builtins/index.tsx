@@ -1,6 +1,7 @@
 import type { Plugin } from "../types";
 import type { Track } from "@/shared/types";
 import { appleMusicPlugin } from "./appleMusic";
+import { jellyfinPlugin } from "./jellyfin";
 import { localFilesPlugin } from "./localFiles";
 import { serverPlugin } from "./server";
 import { spotifyPlugin } from "./spotify";
@@ -76,6 +77,7 @@ export const builtinPlugins: Plugin[] = [
   serverPlugin,
   spotifyPlugin,
   appleMusicPlugin,
+  jellyfinPlugin,
   localFilesPlugin,
   nowPlayingLogPlugin,
 ];
