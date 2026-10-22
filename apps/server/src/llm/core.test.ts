@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDjMessages, cleanReply, createProvider, extractJson, parseProviderConfig, type FetchFn } from "./core/index.js";
+import { buildDjMessages, cleanReply, createProvider, extractJson, parseJsonRequest, parseProviderConfig, type FetchFn } from "./core/index.js";
 import { endpoint } from "./core/http.js";
 import { open, seal } from "./secretBox.js";
 
@@ -33,6 +33,23 @@ const REQ = {
   ],
   schema: { type: "object", properties: { picks: { type: "array" } } },
 };
+
+test("parseJsonRequest validates requests that cross a trust boundary", () => {
+  const ok = parseJsonRequest({ ...REQ, temperature: 9, extra: "dropped" });
+  assert.deepEqual(ok, { messages: REQ.messages, schema: REQ.schema, temperature: 2 });
+  for (const bad of [
+    null,
+    { ...REQ, messages: [] },
+    { ...REQ, messages: [{ role: "tool", content: "x" }] },
+    { ...REQ, messages: [{ role: "user", content: 5 }] },
+    { ...REQ, messages: Array.from({ length: 21 }, () => REQ.messages[1]) },
+    { ...REQ, messages: [{ role: "user", content: "x".repeat(100_001) }] },
+    { ...REQ, schema: null },
+    { ...REQ, schema: [] },
+  ]) {
+    assert.throws(() => parseJsonRequest(bad), /LLM request|too large/);
+  }
+});
 
 test("extractJson copes with fences and chatter", () => {
   assert.deepEqual(extractJson('{"a":1}'), { a: 1 });
@@ -143,6 +160,16 @@ test("DJ prompt and reply cleaning", () => {
     { artist: "A", title: "T", intro: "" },
   ]);
   assert.deepEqual(cleanReply("nope"), []);
+
+  // Bounded: at most 25 picks, short fields, no control characters.
+  const many = Array.from({ length: 40 }, (_, i) => ({ artist: `A${i}`, title: "T", intro: "" }));
+  assert.equal(cleanReply({ picks: many }).length, 25);
+  const [long] = cleanReply({ picks: [{ artist: "a".repeat(500), title: "t".repeat(500), intro: "i".repeat(900) }] });
+  assert.deepEqual([long.artist.length, long.title.length, long.intro.length], [200, 200, 400]);
+  assert.deepEqual(cleanReply({ picks: [{ artist: "A\u0000\u001b[31m\nB", title: "T\u0007", intro: "x\ry\u0085z" }] }), [
+    { artist: "A [31m B", title: "T", intro: "x y z" },
+  ]);
+  assert.deepEqual(cleanReply({ picks: [{ artist: "\u0000", title: "T" }] }), [], "empty after cleaning is dropped");
 });
 
 test("sealed API keys round-trip and only open with the same secret", () => {
