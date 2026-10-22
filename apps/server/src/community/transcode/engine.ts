@@ -29,7 +29,11 @@ export interface Job {
   done: Promise<void>;
 }
 
-const exists = (file: string) => fs.promises.stat(file).then((s) => s.isFile(), () => false);
+const exists = (file: string) =>
+  fs.promises.stat(file).then(
+    (s) => s.isFile(),
+    () => false,
+  );
 
 export function outputArgs(profile: Profile): string[] {
   return ["-vn", "-map", "0:a:0", "-map_metadata", "-1", ...profile.args];
@@ -63,7 +67,11 @@ export class Transcoder {
   }
 
   /** The cached file if it exists, otherwise the (possibly already running) job that makes it. */
-  async ensure(key: string, profile: Profile, source: string): Promise<{ cached: true; final: string } | { cached: false; job: Job }> {
+  async ensure(
+    key: string,
+    profile: Profile,
+    source: string,
+  ): Promise<{ cached: true; final: string } | { cached: false; job: Job }> {
     const final = this.finalPath(key, profile);
     if (await exists(final)) return { cached: true, final };
     const running = this.jobs.get(key);
@@ -76,7 +84,9 @@ export class Transcoder {
         const res = await runFfmpeg(["-y", "-i", source, ...outputArgs(profile), part], { timeoutMs: 15 * 60_000 });
         if (res.code !== 0) {
           await fs.promises.rm(part, { force: true });
-          const reason = res.timedOut ? "transcode timed out" : res.error ?? (res.stderr.trim().split("\n").pop() || "ffmpeg failed");
+          const reason = res.timedOut
+            ? "transcode timed out"
+            : (res.error ?? (res.stderr.trim().split("\n").pop() || "ffmpeg failed"));
           throw new Error(reason.slice(0, 200));
         }
         await fs.promises.rename(part, final);

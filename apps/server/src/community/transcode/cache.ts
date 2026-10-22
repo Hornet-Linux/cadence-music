@@ -18,7 +18,12 @@ export interface EvictResult {
  * (hits touch a file's modified time). Files being written (`.part`) are kept unless they are
  * stale leftovers from a crash, and `protect` names files that are in use right now.
  */
-export async function evictCache(dir: string, maxBytes: number, protect: Set<string> = new Set(), now = Date.now()): Promise<EvictResult> {
+export async function evictCache(
+  dir: string,
+  maxBytes: number,
+  protect: Set<string> = new Set(),
+  now = Date.now(),
+): Promise<EvictResult> {
   let names: string[];
   try {
     names = await fs.promises.readdir(dir);

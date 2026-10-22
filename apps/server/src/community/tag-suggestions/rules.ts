@@ -26,7 +26,30 @@ export interface Suggestion {
 }
 
 const SMALL_WORDS = new Set([
-  "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "nor", "of", "off", "on", "onto", "or", "per", "the", "to", "up", "via", "vs", "with",
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "by",
+  "for",
+  "from",
+  "in",
+  "into",
+  "nor",
+  "of",
+  "off",
+  "on",
+  "onto",
+  "or",
+  "per",
+  "the",
+  "to",
+  "up",
+  "via",
+  "vs",
+  "with",
 ]);
 const KEEP_LOWER = new Set(["feat.", "vs.", "ft."]);
 const ROMAN = /^(?:i{1,3}|iv|vi{0,3}|ix|x{1,3})$/i;

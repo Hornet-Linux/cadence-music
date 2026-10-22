@@ -49,12 +49,31 @@ export function ensureTable(db: Db): void {
 export async function analyzeFile(file: string, durationSec: number | null, signal?: AbortSignal): Promise<AudioFeatures> {
   const start = durationSec && durationSec > CLIP_SECONDS + 20 ? Math.min(45, (durationSec - CLIP_SECONDS) / 2) : 0;
   const res = await runFfmpeg(
-    ["-v", "error", "-threads", "1", ...(start > 0 ? ["-ss", String(start)] : []), "-i", file, "-vn", "-t", String(CLIP_SECONDS), "-ac", "1", "-ar", String(SAMPLE_RATE), "-f", "s16le", "-"],
+    [
+      "-v",
+      "error",
+      "-threads",
+      "1",
+      ...(start > 0 ? ["-ss", String(start)] : []),
+      "-i",
+      file,
+      "-vn",
+      "-t",
+      String(CLIP_SECONDS),
+      "-ac",
+      "1",
+      "-ar",
+      String(SAMPLE_RATE),
+      "-f",
+      "s16le",
+      "-",
+    ],
     { timeoutMs: 5 * 60_000, signal, stdoutLimit: SAMPLE_RATE * 2 * (CLIP_SECONDS + 5) },
   );
   if (signal?.aborted) throw new Error("stopped");
   if (res.error) throw new Error(res.error);
-  if (res.stdout.length < SAMPLE_RATE * 2 * 5) throw new Error(res.stderr.trim().split("\n").pop()?.slice(0, 200) || "no audio could be decoded");
+  if (res.stdout.length < SAMPLE_RATE * 2 * 5)
+    throw new Error(res.stderr.trim().split("\n").pop()?.slice(0, 200) || "no audio could be decoded");
   const pcm = res.stdout;
   const samples = new Float32Array(Math.floor(pcm.length / 2));
   for (let i = 0; i < samples.length; i++) samples[i] = pcm.readInt16LE(i * 2) / 32768;
@@ -131,11 +150,23 @@ export const audioAnalysisPlugin: ServerPlugin = {
       pauseMs: () => Math.min(config().pauseMs, 60_000),
       analyze: async (abs, signal) => {
         const id = byPath.get(abs);
-        const d = id ? (durations.get(id) as { duration_sec: number | null } | undefined)?.duration_sec ?? null : null;
+        const d = id ? ((durations.get(id) as { duration_sec: number | null } | undefined)?.duration_sec ?? null) : null;
         return analyzeFile(abs, d, signal);
       },
       store: (t, f, error) =>
-        put.run(t.id, f?.bpm ?? null, f?.bpmConfidence ?? null, f?.energy ?? null, f?.key ?? null, f?.camelot ?? null, f?.keyConfidence ?? null, t.size, t.mtime_ms, error, Date.now()),
+        put.run(
+          t.id,
+          f?.bpm ?? null,
+          f?.bpmConfidence ?? null,
+          f?.energy ?? null,
+          f?.key ?? null,
+          f?.camelot ?? null,
+          f?.keyConfidence ?? null,
+          t.size,
+          t.mtime_ms,
+          error,
+          Date.now(),
+        ),
     });
     // Remember which id each absolute path belongs to for the duration lookup above.
     const index = () => {
@@ -162,7 +193,10 @@ export const audioAnalysisPlugin: ServerPlugin = {
     app.addHook("onClose", async () => runner.stop());
 
     decorateTracks(app, (tracks) => {
-      const found = audioFor(db, tracks.map((t) => t.id));
+      const found = audioFor(
+        db,
+        tracks.map((t) => t.id),
+      );
       for (const t of tracks) {
         const a = found.get(t.id);
         if (a) Object.assign(t, { bpm: a.bpm, energy: a.energy, key: a.key, camelot: a.camelot });
@@ -177,7 +211,8 @@ export const audioAnalysisPlugin: ServerPlugin = {
     }));
 
     app.post("/api/audio-analysis/start", { preHandler: requireAdmin }, async (_req, reply) => {
-      if (!(await ffmpegInfo()).available) return reply.code(409).send({ error: "ffmpeg_missing", message: "Audio analysis needs ffmpeg on the server." });
+      if (!(await ffmpegInfo()).available)
+        return reply.code(409).send({ error: "ffmpeg_missing", message: "Audio analysis needs ffmpeg on the server." });
       start().catch((err) => ctx.log.warn({ err }, "audio analysis run failed"));
       return reply.code(202).send({ started: true });
     });
@@ -187,84 +222,133 @@ export const audioAnalysisPlugin: ServerPlugin = {
       return { stopped: true };
     });
 
-    app.put<{ Body: Partial<Config> | undefined }>("/api/audio-analysis/settings", { preHandler: requireAdmin }, async (req, reply) => {
-      const body = req.body ?? {};
-      const next = config();
-      if (body.auto !== undefined) {
-        if (typeof body.auto !== "boolean") return reply.code(400).send({ error: "invalid_auto" });
-        next.auto = body.auto;
-      }
-      if (body.pauseMs !== undefined) {
-        if (!Number.isInteger(body.pauseMs) || body.pauseMs < 0 || body.pauseMs > 60_000) return reply.code(400).send({ error: "invalid_pause" });
-        next.pauseMs = body.pauseMs;
-      }
-      settings.setPluginConfig("cadence.audio-analysis", next);
-      return next;
-    });
+    app.put<{ Body: Partial<Config> | undefined }>(
+      "/api/audio-analysis/settings",
+      { preHandler: requireAdmin },
+      async (req, reply) => {
+        const body = req.body ?? {};
+        const next = config();
+        if (body.auto !== undefined) {
+          if (typeof body.auto !== "boolean") return reply.code(400).send({ error: "invalid_auto" });
+          next.auto = body.auto;
+        }
+        if (body.pauseMs !== undefined) {
+          if (!Number.isInteger(body.pauseMs) || body.pauseMs < 0 || body.pauseMs > 60_000)
+            return reply.code(400).send({ error: "invalid_pause" });
+          next.pauseMs = body.pauseMs;
+        }
+        settings.setPluginConfig("cadence.audio-analysis", next);
+        return next;
+      },
+    );
 
     app.get<{ Querystring: { ids?: string } }>("/api/audio-analysis", { preHandler: requireUser }, async (req) => {
-      const ids = (req.query.ids ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 500);
+      const ids = (req.query.ids ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 500);
       return { items: Object.fromEntries(audioFor(db, ids)) };
     });
 
     // Find tracks by tempo, key or energy (what a DJ set or a smart playlist needs).
-    app.get<{ Querystring: Record<string, string | undefined> }>("/api/audio-analysis/tracks", { preHandler: requireUser }, async (req) => {
-      const q = req.query;
-      const where = ["a.error IS NULL"];
-      const args: (string | number)[] = [];
-      const range = (col: string, min: number | null, max: number | null) => {
-        if (min !== null) {
-          where.push(`${col} >= ?`);
-          args.push(min);
+    app.get<{ Querystring: Record<string, string | undefined> }>(
+      "/api/audio-analysis/tracks",
+      { preHandler: requireUser },
+      async (req) => {
+        const q = req.query;
+        const where = ["a.error IS NULL"];
+        const args: (string | number)[] = [];
+        const range = (col: string, min: number | null, max: number | null) => {
+          if (min !== null) {
+            where.push(`${col} >= ?`);
+            args.push(min);
+          }
+          if (max !== null) {
+            where.push(`${col} <= ?`);
+            args.push(max);
+          }
+        };
+        range("a.bpm", num(q.bpmMin), num(q.bpmMax));
+        range("a.energy", num(q.energyMin), num(q.energyMax));
+        const camelot = (q.camelot ?? "")
+          .split(",")
+          .map((s) => s.trim().toUpperCase())
+          .filter((s) => /^\d{1,2}[AB]$/.test(s));
+        if (camelot.length > 0) {
+          where.push(`a.camelot IN (${placeholders(camelot.length)})`);
+          args.push(...camelot);
         }
-        if (max !== null) {
-          where.push(`${col} <= ?`);
-          args.push(max);
-        }
-      };
-      range("a.bpm", num(q.bpmMin), num(q.bpmMax));
-      range("a.energy", num(q.energyMin), num(q.energyMax));
-      const camelot = (q.camelot ?? "").split(",").map((s) => s.trim().toUpperCase()).filter((s) => /^\d{1,2}[AB]$/.test(s));
-      if (camelot.length > 0) {
-        where.push(`a.camelot IN (${placeholders(camelot.length)})`);
-        args.push(...camelot);
-      }
-      const limit = Math.min(500, Math.max(1, num(q.limit) ?? 100));
-      const rows = db
-        .prepare(
-          `SELECT t.id, t.title, t.artist, t.album, t.duration_sec, a.* FROM track_audio a JOIN tracks t ON t.id = a.track_id
+        const limit = Math.min(500, Math.max(1, num(q.limit) ?? 100));
+        const rows = db
+          .prepare(
+            `SELECT t.id, t.title, t.artist, t.album, t.duration_sec, a.* FROM track_audio a JOIN tracks t ON t.id = a.track_id
             WHERE ${where.join(" AND ")} ORDER BY a.bpm LIMIT ?`,
-        )
-        .all(...args, limit) as unknown as (Row & { id: string; title: string; artist: string | null; album: string | null; duration_sec: number | null })[];
-      return {
-        items: rows.map((r) => ({ id: r.id, title: r.title, artist: r.artist, album: r.album, durationSec: r.duration_sec, ...toInfo(r) })),
-      };
-    });
+          )
+          .all(...args, limit) as unknown as (Row & {
+          id: string;
+          title: string;
+          artist: string | null;
+          album: string | null;
+          duration_sec: number | null;
+        })[];
+        return {
+          items: rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            artist: r.artist,
+            album: r.album,
+            durationSec: r.duration_sec,
+            ...toInfo(r),
+          })),
+        };
+      },
+    );
 
     // Tracks that mix well after this one: neighbouring key on the Camelot wheel and a close tempo.
-    app.get<{ Params: { id: string }; Querystring: { limit?: string } }>("/api/audio-analysis/compatible/:id", { preHandler: requireUser }, async (req, reply) => {
-      const base = audioFor(db, [req.params.id]).get(req.params.id);
-      if (!base) return reply.code(404).send({ error: "not_analysed" });
-      const codes = base.camelot ? compatibleCamelot(base.camelot) : [];
-      const where = ["a.error IS NULL", "a.track_id != ?"];
-      const args: (string | number)[] = [req.params.id];
-      if (codes.length > 0) {
-        where.push(`a.camelot IN (${placeholders(codes.length)})`);
-        args.push(...codes);
-      }
-      if (base.bpm !== null) {
-        where.push("a.bpm BETWEEN ? AND ?");
-        args.push(base.bpm * 0.94, base.bpm * 1.06);
-      }
-      const limit = Math.min(100, Math.max(1, num(req.query.limit) ?? 20));
-      const rows = db
-        .prepare(
-          `SELECT t.id, t.title, t.artist, t.album, t.duration_sec, a.* FROM track_audio a JOIN tracks t ON t.id = a.track_id
+    app.get<{ Params: { id: string }; Querystring: { limit?: string } }>(
+      "/api/audio-analysis/compatible/:id",
+      { preHandler: requireUser },
+      async (req, reply) => {
+        const base = audioFor(db, [req.params.id]).get(req.params.id);
+        if (!base) return reply.code(404).send({ error: "not_analysed" });
+        const codes = base.camelot ? compatibleCamelot(base.camelot) : [];
+        const where = ["a.error IS NULL", "a.track_id != ?"];
+        const args: (string | number)[] = [req.params.id];
+        if (codes.length > 0) {
+          where.push(`a.camelot IN (${placeholders(codes.length)})`);
+          args.push(...codes);
+        }
+        if (base.bpm !== null) {
+          where.push("a.bpm BETWEEN ? AND ?");
+          args.push(base.bpm * 0.94, base.bpm * 1.06);
+        }
+        const limit = Math.min(100, Math.max(1, num(req.query.limit) ?? 20));
+        const rows = db
+          .prepare(
+            `SELECT t.id, t.title, t.artist, t.album, t.duration_sec, a.* FROM track_audio a JOIN tracks t ON t.id = a.track_id
             WHERE ${where.join(" AND ")} ORDER BY ABS(a.bpm - ?) LIMIT ?`,
-        )
-        .all(...args, base.bpm ?? 0, limit) as unknown as (Row & { id: string; title: string; artist: string | null; album: string | null; duration_sec: number | null })[];
-      return { base, items: rows.map((r) => ({ id: r.id, title: r.title, artist: r.artist, album: r.album, durationSec: r.duration_sec, ...toInfo(r) })) };
-    });
+          )
+          .all(...args, base.bpm ?? 0, limit) as unknown as (Row & {
+          id: string;
+          title: string;
+          artist: string | null;
+          album: string | null;
+          duration_sec: number | null;
+        })[];
+        return {
+          base,
+          items: rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            artist: r.artist,
+            album: r.album,
+            durationSec: r.duration_sec,
+            ...toInfo(r),
+          })),
+        };
+      },
+    );
 
     app.get<{ Params: { id: string } }>("/api/audio-analysis/:id", { preHandler: requireUser }, async (req, reply) => {
       return audioFor(db, [req.params.id]).get(req.params.id) ?? reply.code(404).send({ error: "not_analysed" });

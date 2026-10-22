@@ -32,7 +32,10 @@ export const tagSuggestionsPlugin: ServerPlugin = {
     ensureTables(db);
 
     decorateTracks(app, (tracks) => {
-      const overlays = overlaysFor(db, tracks.map((t) => t.id));
+      const overlays = overlaysFor(
+        db,
+        tracks.map((t) => t.id),
+      );
       for (const t of tracks) {
         const o = overlays.get(t.id);
         if (!o) continue;

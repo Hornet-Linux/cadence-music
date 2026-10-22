@@ -22,7 +22,9 @@ test("library health reports duplicates, missing artwork, and unreadable files f
     const res = await kit.app.inject({ method: "POST", url: "/api/library-health/scan?wait=1", headers: kit.admin });
     assert.equal(res.statusCode, 200);
 
-    const report = (await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })).json() as HealthReport;
+    const report = (
+      await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })
+    ).json() as HealthReport;
     assert.equal(report.summary.tracks, 5);
     assert.equal(report.summary.indexed, 5);
     assert.equal(report.summary.exactDuplicateGroups, 1);
@@ -38,7 +40,9 @@ test("library health reports duplicates, missing artwork, and unreadable files f
     kit.put("Artist/Album/new track.wav", makeWav(1, sine(300)));
     await kit.rescan();
     await kit.app.inject({ method: "POST", url: "/api/library-health/scan?wait=1", headers: kit.admin });
-    const again = (await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })).json() as HealthReport;
+    const again = (
+      await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })
+    ).json() as HealthReport;
     assert.equal(again.summary.tracks, 6);
     assert.ok(!again.missingArtwork.some((a) => a.folder === "Artist/Album"));
 
@@ -65,13 +69,19 @@ test("the report and scan are admin-only", async () => {
   }
 });
 
-test("the deep scan finds files ffmpeg cannot decode", { skip: !hasFfmpeg() }, async () => {
+test("the deep scan decodes every file with ffmpeg and does not flag healthy ones", { skip: !hasFfmpeg() }, async () => {
   const truncated = tone.subarray(0, 30);
-  const kit = await makeKit([libraryHealth], { "a/ok.wav": tone, "a/cut.wav": Buffer.concat([tone.subarray(0, 44), Buffer.alloc(3, 1)]), "a/tiny.wav": truncated });
+  const kit = await makeKit([libraryHealth], {
+    "a/ok.wav": tone,
+    "a/cut.wav": Buffer.concat([tone.subarray(0, 44), Buffer.alloc(3, 1)]),
+    "a/tiny.wav": truncated,
+  });
   try {
     const res = await kit.app.inject({ method: "POST", url: "/api/library-health/scan?wait=1&deep=1", headers: kit.admin });
     assert.equal(res.statusCode, 200);
-    const report = (await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })).json() as HealthReport;
+    const report = (
+      await kit.app.inject({ method: "GET", url: "/api/library-health/report", headers: kit.admin })
+    ).json() as HealthReport;
     assert.ok(!report.problems.some((p) => p.relPath === "a/ok.wav"), "a healthy file is not flagged");
   } finally {
     await kit.close();

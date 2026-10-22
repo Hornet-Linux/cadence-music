@@ -66,14 +66,19 @@ function infoChunk(tags: WavTags): Buffer {
   return Buffer.concat([head, body]);
 }
 
-export const sine = (freq: number, amp = 0.5) => (t: number) => amp * Math.sin(2 * Math.PI * freq * t);
+export const sine =
+  (freq: number, amp = 0.5) =>
+  (t: number) =>
+    amp * Math.sin(2 * Math.PI * freq * t);
 
 /** Several harmonics per note so pitch detection has something to work with. */
-export const chord = (freqs: number[], amp = 0.6) => (t: number) => {
-  let v = 0;
-  for (const f of freqs) for (let h = 1; h <= 4; h++) v += Math.sin(2 * Math.PI * f * h * t) / h;
-  return (amp * v) / (freqs.length * 1.5);
-};
+export const chord =
+  (freqs: number[], amp = 0.6) =>
+  (t: number) => {
+    let v = 0;
+    for (const f of freqs) for (let h = 1; h <= 4; h++) v += Math.sin(2 * Math.PI * f * h * t) / h;
+    return (amp * v) / (freqs.length * 1.5);
+  };
 
 /** Decaying clicks on every beat (a drum-machine stand-in). */
 export const clickTrack = (bpm: number, amp = 0.9) => {

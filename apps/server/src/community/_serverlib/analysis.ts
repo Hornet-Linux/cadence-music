@@ -26,7 +26,11 @@ export function pendingAnalysis(db: Db, table: "track_loudness" | "track_audio")
 }
 
 /** Tracks analysed and tracks the analysis failed on, for progress displays. */
-export function analysisCounts(db: Db, table: "track_loudness" | "track_audio", pending: number): { total: number; analysed: number; failed: number; pending: number } {
+export function analysisCounts(
+  db: Db,
+  table: "track_loudness" | "track_audio",
+  pending: number,
+): { total: number; analysed: number; failed: number; pending: number } {
   const total = (db.prepare("SELECT COUNT(*) AS n FROM tracks").get() as { n: number }).n;
   const failed = (db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE error IS NOT NULL`).get() as { n: number }).n;
   return { total, analysed: Math.max(0, total - pending - failed), failed, pending };

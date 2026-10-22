@@ -31,7 +31,9 @@ test("parses the ebur128 summary and ignores progress lines", () => {
 });
 
 test("silence has no loudness and gets no gain", () => {
-  const silent = parseEbur128("Summary:\n  Integrated loudness:\n    I:         -inf LUFS\n  Loudness range:\n    LRA:         0.0 LU\n  True peak:\n    Peak:       -inf dBFS\n");
+  const silent = parseEbur128(
+    "Summary:\n  Integrated loudness:\n    I:         -inf LUFS\n  Loudness range:\n    LRA:         0.0 LU\n  True peak:\n    Peak:       -inf dBFS\n",
+  );
   assert.deepEqual(silent, { lufs: null, lra: 0, truePeakDb: null });
   assert.equal(replayGainDb({ lufs: null, truePeakDb: null }), null);
 });
@@ -71,7 +73,12 @@ test("the job analyses tracks, resumes, and the track API carries the result", {
     "a/broken.wav": Buffer.from("not audio"),
   });
   try {
-    await kit.app.inject({ method: "PUT", url: "/api/loudness/settings", headers: kit.admin, payload: { pauseMs: 0, auto: false } });
+    await kit.app.inject({
+      method: "PUT",
+      url: "/api/loudness/settings",
+      headers: kit.admin,
+      payload: { pauseMs: 0, auto: false },
+    });
     assert.equal((await kit.app.inject({ method: "POST", url: "/api/loudness/start", headers: kit.member })).statusCode, 403);
     assert.equal((await kit.app.inject({ method: "POST", url: "/api/loudness/start", headers: kit.admin })).statusCode, 202);
     for (let i = 0; i < 100; i++) {
@@ -83,14 +90,18 @@ test("the job analyses tracks, resumes, and the track API carries the result", {
     assert.equal(status.analysed, 2);
     assert.equal(status.failed, 1, "an unreadable file is recorded once, not retried forever");
     assert.equal(status.pending, 0);
-    const tracks = ((await kit.app.inject({ method: "GET", url: "/api/tracks", headers: kit.member })).json() as TrackListResponse).items as (TrackListResponse["items"][number] & { replayGainDb?: number; loudnessLufs?: number })[];
+    const tracks = (
+      (await kit.app.inject({ method: "GET", url: "/api/tracks", headers: kit.member })).json() as TrackListResponse
+    ).items as (TrackListResponse["items"][number] & { replayGainDb?: number; loudnessLufs?: number })[];
     const one = tracks.find((t) => t.title === "one")!;
     const two = tracks.find((t) => t.title === "two")!;
     assert.ok(typeof one.loudnessLufs === "number" && typeof one.replayGainDb === "number");
     assert.ok(two.replayGainDb! > one.replayGainDb!, "the quieter track needs more gain");
     const single = (await kit.app.inject({ method: "GET", url: `/api/loudness/${one.id}`, headers: kit.member })).json();
     assert.equal(single.loudnessLufs, one.loudnessLufs);
-    const bulk = (await kit.app.inject({ method: "GET", url: `/api/loudness?ids=${one.id},${two.id}`, headers: kit.member })).json();
+    const bulk = (
+      await kit.app.inject({ method: "GET", url: `/api/loudness?ids=${one.id},${two.id}`, headers: kit.member })
+    ).json();
     assert.deepEqual(Object.keys(bulk.items).sort(), [one.id, two.id].sort());
   } finally {
     await kit.close();

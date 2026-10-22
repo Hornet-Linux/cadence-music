@@ -108,7 +108,9 @@ export const libraryHealthPlugin: ServerPlugin = {
 
     const fingerprint = () => {
       const r = db
-        .prepare("SELECT (SELECT COUNT(*) FROM tracks) AS t, (SELECT COUNT(*) FROM track_facts) AS f, (SELECT MAX(indexed_at) FROM track_facts) AS i, (SELECT MAX(deep_checked_at) FROM track_facts) AS d, (SELECT MAX(mtime_ms) FROM tracks) AS m")
+        .prepare(
+          "SELECT (SELECT COUNT(*) FROM tracks) AS t, (SELECT COUNT(*) FROM track_facts) AS f, (SELECT MAX(indexed_at) FROM track_facts) AS i, (SELECT MAX(deep_checked_at) FROM track_facts) AS d, (SELECT MAX(mtime_ms) FROM tracks) AS m",
+        )
         .get() as unknown as Record<string, number | null>;
       return JSON.stringify(r);
     };

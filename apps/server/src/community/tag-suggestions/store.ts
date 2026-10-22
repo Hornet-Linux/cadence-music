@@ -61,9 +61,15 @@ interface TrackRow {
 
 /** The library as the API serves it: file tags with accepted overlays on top. */
 export function loadEffectiveTracks(db: Db): TagTrack[] {
-  const rows = db.prepare("SELECT id, rel_path, title, artist, album, album_artist, track_no FROM tracks").all() as unknown as TrackRow[];
+  const rows = db
+    .prepare("SELECT id, rel_path, title, artist, album, album_artist, track_no FROM tracks")
+    .all() as unknown as TrackRow[];
   const overlays = new Map<string, Map<string, string>>();
-  for (const o of db.prepare("SELECT track_id, field, value FROM tag_overlay").all() as unknown as { track_id: string; field: string; value: string }[]) {
+  for (const o of db.prepare("SELECT track_id, field, value FROM tag_overlay").all() as unknown as {
+    track_id: string;
+    field: string;
+    value: string;
+  }[]) {
     const m = overlays.get(o.track_id) ?? new Map();
     m.set(o.field, o.value);
     overlays.set(o.track_id, m);
@@ -157,7 +163,9 @@ export function listSuggestions(
     args.push(`%,${q.rule},%`);
   }
   const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  const rows = db.prepare(`${SELECT} ${clause} ORDER BY t.rel_path, s.field LIMIT ? OFFSET ?`).all(...args, q.limit, q.offset) as unknown as Row[];
+  const rows = db
+    .prepare(`${SELECT} ${clause} ORDER BY t.rel_path, s.field LIMIT ? OFFSET ?`)
+    .all(...args, q.limit, q.offset) as unknown as Row[];
   const total = (db.prepare(`SELECT COUNT(*) AS n FROM tag_suggestions s ${clause}`).get(...args) as { n: number }).n;
   return { items: rows.map(toStored), total };
 }
@@ -169,11 +177,16 @@ export function getSuggestion(db: Db, id: number): StoredSuggestion | null {
 
 export function counts(db: Db): { byStatus: Record<string, number>; pendingByRule: Record<string, number>; overlays: number } {
   const byStatus: Record<string, number> = { pending: 0, accepted: 0, rejected: 0, reverted: 0 };
-  for (const r of db.prepare("SELECT status, COUNT(*) AS n FROM tag_suggestions GROUP BY status").all() as unknown as { status: string; n: number }[]) {
+  for (const r of db.prepare("SELECT status, COUNT(*) AS n FROM tag_suggestions GROUP BY status").all() as unknown as {
+    status: string;
+    n: number;
+  }[]) {
     byStatus[r.status] = r.n;
   }
   const pendingByRule: Record<string, number> = {};
-  for (const r of db.prepare("SELECT rule, COUNT(*) AS n FROM tag_suggestions WHERE status = 'pending' GROUP BY rule").all() as unknown as { rule: string; n: number }[]) {
+  for (const r of db
+    .prepare("SELECT rule, COUNT(*) AS n FROM tag_suggestions WHERE status = 'pending' GROUP BY rule")
+    .all() as unknown as { rule: string; n: number }[]) {
     for (const rule of r.rule.split(",")) pendingByRule[rule] = (pendingByRule[rule] ?? 0) + r.n;
   }
   const overlays = (db.prepare("SELECT COUNT(*) AS n FROM tag_overlay").get() as { n: number }).n;
@@ -198,7 +211,9 @@ export function acceptSuggestions(db: Db, ids: number[], overrides: Map<number, 
   if (ids.length === 0) return 0;
   return transaction(db, () => {
     const rows = db
-      .prepare(`SELECT id, track_id, field, old_value, new_value FROM tag_suggestions WHERE status = 'pending' AND id IN (${placeholders(ids.length)})`)
+      .prepare(
+        `SELECT id, track_id, field, old_value, new_value FROM tag_suggestions WHERE status = 'pending' AND id IN (${placeholders(ids.length)})`,
+      )
       .all(...ids) as unknown as { id: number; track_id: string; field: string; old_value: string | null; new_value: string }[];
     const putOverlay = db.prepare(
       `INSERT INTO tag_overlay (track_id, field, value, original, suggestion_id, updated_at) VALUES (?, ?, ?, ?, ?, ?)
@@ -228,7 +243,9 @@ export function acceptSuggestions(db: Db, ids: number[], overrides: Map<number, 
 export function rejectSuggestions(db: Db, ids: number[], now = Date.now()): number {
   if (ids.length === 0) return 0;
   const res = db
-    .prepare(`UPDATE tag_suggestions SET status = 'rejected', decided_at = ? WHERE status = 'pending' AND id IN (${placeholders(ids.length)})`)
+    .prepare(
+      `UPDATE tag_suggestions SET status = 'rejected', decided_at = ? WHERE status = 'pending' AND id IN (${placeholders(ids.length)})`,
+    )
     .run(now, ...ids);
   return Number(res.changes);
 }
@@ -237,8 +254,7 @@ export function rejectSuggestions(db: Db, ids: number[], now = Date.now()): numb
 export function revertSuggestion(db: Db, id: number, now = Date.now()): boolean {
   return transaction(db, () => {
     const row = db.prepare("SELECT track_id, field FROM tag_suggestions WHERE id = ? AND status = 'accepted'").get(id) as
-      | { track_id: string; field: string }
-      | undefined;
+      { track_id: string; field: string } | undefined;
     if (!row) return false;
     db.prepare("DELETE FROM tag_overlay WHERE track_id = ? AND field = ? AND suggestion_id = ?").run(row.track_id, row.field, id);
     db.prepare("UPDATE tag_suggestions SET status = 'reverted', decided_at = ? WHERE id = ?").run(now, id);

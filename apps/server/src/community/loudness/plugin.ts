@@ -43,7 +43,9 @@ export function loudnessFor(db: Db, ids: string[]): Map<string, LoudnessInfo> {
   for (let i = 0; i < ids.length; i += 400) {
     const chunk = ids.slice(i, i + 400);
     const rows = db
-      .prepare(`SELECT track_id, lufs, lra, true_peak_db FROM track_loudness WHERE error IS NULL AND track_id IN (${placeholders(chunk.length)})`)
+      .prepare(
+        `SELECT track_id, lufs, lra, true_peak_db FROM track_loudness WHERE error IS NULL AND track_id IN (${placeholders(chunk.length)})`,
+      )
       .all(...chunk) as unknown as { track_id: string; lufs: number | null; lra: number | null; true_peak_db: number | null }[];
     for (const r of rows) {
       out.set(r.track_id, {
@@ -81,7 +83,8 @@ export const loudnessPlugin: ServerPlugin = {
       name: "loudness",
       pauseMs: () => Math.min(config().pauseMs, 60_000),
       analyze: analyzeLoudness,
-      store: (t, l, error) => put.run(t.id, l?.lufs ?? null, l?.lra ?? null, l?.truePeakDb ?? null, t.size, t.mtime_ms, error, Date.now()),
+      store: (t, l, error) =>
+        put.run(t.id, l?.lufs ?? null, l?.lra ?? null, l?.truePeakDb ?? null, t.size, t.mtime_ms, error, Date.now()),
     });
     // The job keeps going until the library is done; the next tick resumes anything added since.
     ctx.jobs.every(
@@ -97,7 +100,10 @@ export const loudnessPlugin: ServerPlugin = {
     app.addHook("onClose", async () => runner.stop());
 
     decorateTracks(app, (tracks) => {
-      const found = loudnessFor(db, tracks.map((t) => t.id));
+      const found = loudnessFor(
+        db,
+        tracks.map((t) => t.id),
+      );
       for (const t of tracks) {
         const info = found.get(t.id);
         if (info) Object.assign(t, info);
@@ -118,7 +124,8 @@ export const loudnessPlugin: ServerPlugin = {
     });
 
     app.post("/api/loudness/start", { preHandler: requireAdmin }, async (_req, reply) => {
-      if (!(await ffmpegInfo()).available) return reply.code(409).send({ error: "ffmpeg_missing", message: "Loudness analysis needs ffmpeg on the server." });
+      if (!(await ffmpegInfo()).available)
+        return reply.code(409).send({ error: "ffmpeg_missing", message: "Loudness analysis needs ffmpeg on the server." });
       runner.start().catch((err) => ctx.log.warn({ err }, "loudness run failed"));
       return reply.code(202).send({ started: true });
     });
@@ -136,7 +143,8 @@ export const loudnessPlugin: ServerPlugin = {
         next.auto = body.auto;
       }
       if (body.pauseMs !== undefined) {
-        if (!Number.isInteger(body.pauseMs) || body.pauseMs < 0 || body.pauseMs > 60_000) return reply.code(400).send({ error: "invalid_pause" });
+        if (!Number.isInteger(body.pauseMs) || body.pauseMs < 0 || body.pauseMs > 60_000)
+          return reply.code(400).send({ error: "invalid_pause" });
         next.pauseMs = body.pauseMs;
       }
       settings.setPluginConfig("cadence.loudness", next);
@@ -144,7 +152,11 @@ export const loudnessPlugin: ServerPlugin = {
     });
 
     app.get<{ Querystring: { ids?: string } }>("/api/loudness", { preHandler: requireUser }, async (req) => {
-      const ids = (req.query.ids ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 500);
+      const ids = (req.query.ids ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 500);
       return { items: Object.fromEntries(loudnessFor(db, ids)) };
     });
 

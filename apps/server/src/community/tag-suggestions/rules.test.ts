@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, fixCasing, normalizeFeat, parseFilenamePrefix, suggestForLibrary, titleCase, type TagTrack } from "./rules.js";
+import {
+  cleanText,
+  fixCasing,
+  normalizeFeat,
+  parseFilenamePrefix,
+  suggestForLibrary,
+  titleCase,
+  type TagTrack,
+} from "./rules.js";
 
 const t = (id: string, over: Partial<TagTrack> = {}): TagTrack => ({
   id,
@@ -39,7 +47,10 @@ test("feat. wording is normalised", () => {
 });
 
 test("cleanText reports which rules fired, in order", () => {
-  assert.deepEqual(cleanText("SOME  SONG ft. BOB", "title"), { value: "Some Song feat. Bob", rules: ["spacing", "feat", "casing"] });
+  assert.deepEqual(cleanText("SOME  SONG ft. BOB", "title"), {
+    value: "Some Song feat. Bob",
+    rules: ["spacing", "feat", "casing"],
+  });
   assert.deepEqual(cleanText("Fine Song", "title"), { value: "Fine Song", rules: [] });
 });
 
@@ -82,6 +93,9 @@ test("suggests titles and track numbers from file names when tags are missing", 
   assert.match(title.rule, /title-from-filename/);
   assert.equal(suggestions.find((s) => s.trackId === "x" && s.field === "trackNo")!.newValue, "3");
   assert.equal(suggestions.find((s) => s.trackId === "y" && s.field === "trackNo")!.newValue, "4");
-  assert.ok(!suggestions.some((s) => s.trackId === "y" && s.field === "title"), "a real title tag is never replaced by the file name");
+  assert.ok(
+    !suggestions.some((s) => s.trackId === "y" && s.field === "title"),
+    "a real title tag is never replaced by the file name",
+  );
   assert.ok(!suggestions.some((s) => s.trackId === "z" && s.field === "trackNo"), "an existing track number is kept");
 });

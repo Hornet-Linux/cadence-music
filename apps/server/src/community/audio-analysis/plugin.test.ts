@@ -51,8 +51,16 @@ test("the job analyses the library; tracks carry bpm/key and can be searched and
     "a/broken.wav": Buffer.from("nope"),
   });
   try {
-    await kit.app.inject({ method: "PUT", url: "/api/audio-analysis/settings", headers: kit.admin, payload: { pauseMs: 0, auto: false } });
-    assert.equal((await kit.app.inject({ method: "POST", url: "/api/audio-analysis/start", headers: kit.admin })).statusCode, 202);
+    await kit.app.inject({
+      method: "PUT",
+      url: "/api/audio-analysis/settings",
+      headers: kit.admin,
+      payload: { pauseMs: 0, auto: false },
+    });
+    assert.equal(
+      (await kit.app.inject({ method: "POST", url: "/api/audio-analysis/start", headers: kit.admin })).statusCode,
+      202,
+    );
     for (let i = 0; i < 200; i++) {
       const s = (await kit.app.inject({ method: "GET", url: "/api/audio-analysis/status", headers: kit.member })).json();
       if (!s.run.running && s.run.finishedAt) break;
@@ -62,17 +70,25 @@ test("the job analyses the library; tracks carry bpm/key and can be searched and
     assert.equal(status.analysed, 3);
     assert.equal(status.failed, 1);
     type T = TrackListResponse["items"][number] & { bpm?: number; key?: string; camelot?: string };
-    const items = ((await kit.app.inject({ method: "GET", url: "/api/tracks", headers: kit.member })).json() as TrackListResponse).items as T[];
+    const items = ((await kit.app.inject({ method: "GET", url: "/api/tracks", headers: kit.member })).json() as TrackListResponse)
+      .items as T[];
     const slow = items.find((t) => t.title === "slow")!;
     const fast = items.find((t) => t.title === "fast")!;
     const near = items.find((t) => t.title === "near")!;
     assert.ok(Math.abs(slow.bpm! - 80) <= 2, `slow ${slow.bpm}`);
     assert.equal(slow.key, "A minor");
     assert.equal(fast.camelot, "8B");
-    const range = (await kit.app.inject({ method: "GET", url: "/api/audio-analysis/tracks?bpmMin=100&bpmMax=130", headers: kit.member })).json();
+    const range = (
+      await kit.app.inject({ method: "GET", url: "/api/audio-analysis/tracks?bpmMin=100&bpmMax=130", headers: kit.member })
+    ).json();
     assert.deepEqual(range.items.map((t: { title: string }) => t.title).sort(), ["fast", "near"]);
-    const match = (await kit.app.inject({ method: "GET", url: `/api/audio-analysis/compatible/${fast.id}`, headers: kit.member })).json();
-    assert.deepEqual(match.items.map((t: { id: string }) => t.id), [near.id]);
+    const match = (
+      await kit.app.inject({ method: "GET", url: `/api/audio-analysis/compatible/${fast.id}`, headers: kit.member })
+    ).json();
+    assert.deepEqual(
+      match.items.map((t: { id: string }) => t.id),
+      [near.id],
+    );
   } finally {
     await kit.close();
   }
@@ -81,8 +97,14 @@ test("the job analyses the library; tracks carry bpm/key and can be searched and
 test("without ffmpeg the plugin reports it and refuses to start", { skip: hasFfmpeg() }, async () => {
   const kit = await makeKit([plugin], { "a/x.wav": makeWav(1, () => 0, 8000) });
   try {
-    assert.equal((await kit.app.inject({ method: "POST", url: "/api/audio-analysis/start", headers: kit.admin })).statusCode, 409);
-    assert.equal((await kit.app.inject({ method: "GET", url: "/api/audio-analysis/status", headers: kit.member })).json().ffmpeg, false);
+    assert.equal(
+      (await kit.app.inject({ method: "POST", url: "/api/audio-analysis/start", headers: kit.admin })).statusCode,
+      409,
+    );
+    assert.equal(
+      (await kit.app.inject({ method: "GET", url: "/api/audio-analysis/status", headers: kit.member })).json().ffmpeg,
+      false,
+    );
     assert.equal((await kit.app.inject({ method: "GET", url: "/api/audio-analysis/nope", headers: kit.member })).statusCode, 404);
   } finally {
     await kit.close();

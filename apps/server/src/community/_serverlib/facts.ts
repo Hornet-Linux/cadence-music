@@ -113,7 +113,8 @@ export async function indexTrackFacts(db: Db, musicRoot: string, row: PendingTra
   try {
     const meta = await parseFile(abs, { duration: true, skipCovers: false });
     const c = meta.common;
-    const duration = typeof meta.format.duration === "number" && Number.isFinite(meta.format.duration) ? meta.format.duration : null;
+    const duration =
+      typeof meta.format.duration === "number" && Number.isFinite(meta.format.duration) ? meta.format.duration : null;
     const year = c.year ?? (c.date ? Number.parseInt(c.date.slice(0, 4), 10) : null);
     // Embedded art only: cover files next to the music can appear later, so reports look at folders live.
     const hasArt = (c.picture?.length ?? 0) > 0;

@@ -70,7 +70,15 @@ test("the report counts missing tags, artwork by album, and problem files", () =
     track("broken", { error: "unreadable tags: bad header", size: 4_444_444, title: "broken" }),
     track("short", { error: "no playable duration (file may be truncated or corrupt)", size: 5_555_555, title: "short" }),
     track("decode", { decodeError: "invalid data found", size: 6_666_666, title: "decode" }),
-    track("pending", { indexed: false, hasArtwork: null, hasTitleTag: null, genre: null, year: null, size: 7_777_777, title: "pending" }),
+    track("pending", {
+      indexed: false,
+      hasArtwork: null,
+      hasTitleTag: null,
+      genre: null,
+      year: null,
+      size: 7_777_777,
+      title: "pending",
+    }),
   ]);
   assert.equal(report.summary.tracks, 8);
   assert.equal(report.summary.indexed, 7);

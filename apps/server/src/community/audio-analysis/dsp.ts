@@ -98,7 +98,7 @@ export function estimateEnergy(samples: Float32Array): number {
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i]!;
     sumSq += s * s;
-    if (i > 0 && (s >= 0) !== (samples[i - 1]! >= 0)) crossings++;
+    if (i > 0 && s >= 0 !== samples[i - 1]! >= 0) crossings++;
   }
   const rmsDb = 20 * Math.log10(Math.sqrt(sumSq / samples.length) + 1e-9);
   const loudness = clamp01((rmsDb + 36) / 24); // -36 dBFS -> 0, -12 dBFS -> 1

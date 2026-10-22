@@ -83,7 +83,12 @@ test("every profile produces playable output in its container", { skip: !hasFfmp
 test("long songs start playing while they are converted, and the finished file matches", { skip: !hasFfmpeg() }, async () => {
   const kit = await makeKit([plugin], { "a/tone.wav": WAV });
   try {
-    await kit.app.inject({ method: "PUT", url: "/api/transcode/settings", headers: kit.admin, payload: { liveStartAfterSec: 1 } });
+    await kit.app.inject({
+      method: "PUT",
+      url: "/api/transcode/settings",
+      headers: kit.admin,
+      payload: { liveStartAfterSec: 1 },
+    });
     const id = await trackId(kit);
     const url = (await streamPath(kit, id)) + "&profile=opus-96";
     const live = await kit.app.inject({ method: "GET", url });
@@ -109,7 +114,10 @@ test("a time offset streams from that point without caching", { skip: !hasFfmpeg
     const half = await kit.app.inject({ method: "GET", url: url + "&start=3" });
     assert.equal(half.statusCode, 200);
     assert.equal(half.headers["accept-ranges"], "none");
-    assert.ok(half.rawPayload.length > 1000 && half.rawPayload.length < whole.rawPayload.length * 0.75, `${half.rawPayload.length} vs ${whole.rawPayload.length}`);
+    assert.ok(
+      half.rawPayload.length > 1000 && half.rawPayload.length < whole.rawPayload.length * 0.75,
+      `${half.rawPayload.length} vs ${whole.rawPayload.length}`,
+    );
   } finally {
     await kit.close();
   }
@@ -121,7 +129,12 @@ test("stream URLs follow the device preference, and an explicit profile wins", a
     const id = await trackId(kit);
     assert.ok(!(await streamPath(kit, id)).includes("profile="), "no preference: original");
 
-    const set = await kit.app.inject({ method: "PUT", url: "/api/transcode/preference", headers: kit.member, payload: { profile: "opus-96" } });
+    const set = await kit.app.inject({
+      method: "PUT",
+      url: "/api/transcode/preference",
+      headers: kit.member,
+      payload: { profile: "opus-96" },
+    });
     assert.equal(set.statusCode, 200);
     assert.match(await streamPath(kit, id), /&profile=opus-96$/);
     assert.match(await streamPath(kit, id, "?profile=mp3-192"), /&profile=mp3-192$/);
@@ -130,13 +143,47 @@ test("stream URLs follow the device preference, and an explicit profile wins", a
     const other = await kit.app.inject({ method: "GET", url: `/api/tracks/${id}/stream-url`, headers: kit.admin });
     assert.ok(!other.json().path.includes("profile="));
 
-    assert.equal((await kit.app.inject({ method: "PUT", url: "/api/transcode/preference", headers: kit.member, payload: { profile: "bogus" } })).statusCode, 400);
+    assert.equal(
+      (
+        await kit.app.inject({
+          method: "PUT",
+          url: "/api/transcode/preference",
+          headers: kit.member,
+          payload: { profile: "bogus" },
+        })
+      ).statusCode,
+      400,
+    );
     await kit.app.inject({ method: "PUT", url: "/api/transcode/preference", headers: kit.member, payload: { profile: null } });
     assert.ok(!(await streamPath(kit, id)).includes("profile="));
+    // "original" is a choice of its own: it wins over a server default.
+    await kit.app.inject({
+      method: "PUT",
+      url: "/api/transcode/preference",
+      headers: kit.member,
+      payload: { profile: "original" },
+    });
 
     // The admin can set a default for every device.
-    assert.equal((await kit.app.inject({ method: "PUT", url: "/api/transcode/settings", headers: kit.member, payload: { defaultProfile: "aac-128" } })).statusCode, 403);
-    await kit.app.inject({ method: "PUT", url: "/api/transcode/settings", headers: kit.admin, payload: { defaultProfile: "aac-128", maxCacheMb: 100 } });
+    assert.equal(
+      (
+        await kit.app.inject({
+          method: "PUT",
+          url: "/api/transcode/settings",
+          headers: kit.member,
+          payload: { defaultProfile: "aac-128" },
+        })
+      ).statusCode,
+      403,
+    );
+    await kit.app.inject({
+      method: "PUT",
+      url: "/api/transcode/settings",
+      headers: kit.admin,
+      payload: { defaultProfile: "aac-128", maxCacheMb: 100 },
+    });
+    assert.ok(!(await streamPath(kit, id)).includes("profile="), "this device chose original");
+    await kit.app.inject({ method: "PUT", url: "/api/transcode/preference", headers: kit.member, payload: { profile: null } });
     assert.match(await streamPath(kit, id), /&profile=aac-128$/);
   } finally {
     await kit.close();
@@ -148,7 +195,10 @@ test("bad signatures and unknown profiles are refused; the library route is unch
   try {
     const id = await trackId(kit);
     const url = await streamPath(kit, id);
-    assert.equal((await kit.app.inject({ method: "GET", url: url.replace(/sig=[^&]+/, "sig=nope") + "&profile=opus-96" })).statusCode, 403);
+    assert.equal(
+      (await kit.app.inject({ method: "GET", url: url.replace(/sig=[^&]+/, "sig=nope") + "&profile=opus-96" })).statusCode,
+      403,
+    );
     assert.equal((await kit.app.inject({ method: "GET", url: url + "&profile=warp-9" })).statusCode, 400);
     const plain = await kit.app.inject({ method: "GET", url });
     assert.equal(plain.statusCode, 200);
@@ -188,7 +238,10 @@ test("clearing the cache is admin-only and empties it", { skip: !hasFfmpeg() }, 
     assert.equal((await kit.app.inject({ method: "DELETE", url: "/api/transcode/cache", headers: kit.member })).statusCode, 403);
     const res = (await kit.app.inject({ method: "DELETE", url: "/api/transcode/cache", headers: kit.admin })).json();
     assert.equal(res.removed, 1);
-    assert.equal((await kit.app.inject({ method: "GET", url: "/api/transcode/status", headers: kit.member })).json().cache.files, 0);
+    assert.equal(
+      (await kit.app.inject({ method: "GET", url: "/api/transcode/status", headers: kit.member })).json().cache.files,
+      0,
+    );
   } finally {
     await kit.close();
   }

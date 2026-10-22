@@ -38,14 +38,23 @@ function parseRange(header: string, size: number): { start: number; end: number 
 }
 
 /** Send a finished file with exact Range support. */
-async function sendFile(req: FastifyRequest, reply: FastifyReply, file: string, mime: string, extra: Record<string, string> = {}) {
+async function sendFile(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  file: string,
+  mime: string,
+  extra: Record<string, string> = {},
+) {
   const size = (await fs.promises.stat(file)).size;
   reply.header("Accept-Ranges", "bytes").header("Content-Type", mime).header("Cache-Control", "private, max-age=3600");
   for (const [k, v] of Object.entries(extra)) reply.header(k, v);
   const range = req.headers.range ? parseRange(req.headers.range, size) : null;
   if (range === "invalid") return reply.code(416).header("Content-Range", `bytes */${size}`).send();
   if (range) {
-    reply.code(206).header("Content-Range", `bytes ${range.start}-${range.end}/${size}`).header("Content-Length", range.end - range.start + 1);
+    reply
+      .code(206)
+      .header("Content-Range", `bytes ${range.start}-${range.end}/${size}`)
+      .header("Content-Length", range.end - range.start + 1);
     return reply.send(fs.createReadStream(file, { start: range.start, end: range.end }));
   }
   reply.header("Content-Length", size);
@@ -128,7 +137,11 @@ export const transcodePlugin: ServerPlugin = {
       const startSec = Number(query.start);
       if (Number.isFinite(startSec) && startSec > 0) {
         // A time offset: cut with ffmpeg -ss. Not cached and not byte-seekable.
-        reply.header("Content-Type", profile.mime).header("Accept-Ranges", "none").header("X-Transcode-Profile", profile.id).header("Cache-Control", "no-store");
+        reply
+          .header("Content-Type", profile.mime)
+          .header("Accept-Ranges", "none")
+          .header("X-Transcode-Profile", profile.id)
+          .header("Cache-Control", "no-store");
         return reply.send(transcoder.live(source, profile, Math.min(startSec, 24 * 3600)));
       }
 
@@ -171,7 +184,8 @@ export const transcodePlugin: ServerPlugin = {
     const devicePref = (req: FastifyRequest): string | null => {
       const hash = deviceHash(req);
       if (!hash) return null;
-      const row = db.prepare("SELECT profile FROM transcode_device_prefs WHERE session_hash = ?").get(hash) as { profile: string } | undefined;
+      const row = db.prepare("SELECT profile FROM transcode_device_prefs WHERE session_hash = ?").get(hash) as
+        { profile: string } | undefined;
       return row?.profile ?? null;
     };
     app.addHook("preSerialization", async (req, _reply, payload) => {
@@ -190,50 +204,68 @@ export const transcodePlugin: ServerPlugin = {
       const cfg = config();
       return {
         ffmpeg: { available: info.available, version: info.version },
-        profiles: PROFILES.map((p) => ({ id: p.id, label: p.label, kbps: p.kbps, available: info.available && info.encoders.includes(p.encoder) })),
+        profiles: PROFILES.map((p) => ({
+          id: p.id,
+          label: p.label,
+          kbps: p.kbps,
+          available: info.available && info.encoders.includes(p.encoder),
+        })),
         defaultProfile: cfg.defaultProfile,
         devicePreference: devicePref(req),
         cache: { ...usage, maxBytes: maxBytes() },
       };
     });
 
-    app.put<{ Body: { profile?: string | null } | undefined }>("/api/transcode/preference", { preHandler: requireUser }, async (req, reply) => {
-      const profile = req.body?.profile;
-      const hash = deviceHash(req);
-      if (!hash) return reply.code(400).send({ error: "no_session" });
-      if (profile === null || profile === "original") {
-        db.prepare("DELETE FROM transcode_device_prefs WHERE session_hash = ?").run(hash);
-        return { profile: null };
-      }
-      if (typeof profile !== "string" || !profileById(profile)) return reply.code(400).send({ error: "unknown_profile" });
-      db.prepare(
-        `INSERT INTO transcode_device_prefs (session_hash, profile, updated_at) VALUES (?, ?, ?)
+    app.put<{ Body: { profile?: string | null } | undefined }>(
+      "/api/transcode/preference",
+      { preHandler: requireUser },
+      async (req, reply) => {
+        const profile = req.body?.profile;
+        const hash = deviceHash(req);
+        if (!hash) return reply.code(400).send({ error: "no_session" });
+        // null: follow the server default again. "original": this device always wants the untouched file.
+        if (profile === null) {
+          db.prepare("DELETE FROM transcode_device_prefs WHERE session_hash = ?").run(hash);
+          return { profile: null };
+        }
+        if (typeof profile !== "string" || (profile !== "original" && !profileById(profile)))
+          return reply.code(400).send({ error: "unknown_profile" });
+        db.prepare(
+          `INSERT INTO transcode_device_prefs (session_hash, profile, updated_at) VALUES (?, ?, ?)
          ON CONFLICT (session_hash) DO UPDATE SET profile = excluded.profile, updated_at = excluded.updated_at`,
-      ).run(hash, profile, Date.now());
-      // Preferences of signed-out devices are of no use any more.
-      db.exec("DELETE FROM transcode_device_prefs WHERE session_hash NOT IN (SELECT token_hash FROM sessions)");
-      return { profile };
-    });
+        ).run(hash, profile, Date.now());
+        // Preferences of signed-out devices are of no use any more.
+        db.exec("DELETE FROM transcode_device_prefs WHERE session_hash NOT IN (SELECT token_hash FROM sessions)");
+        return { profile };
+      },
+    );
 
-    app.put<{ Body: Partial<Config> | undefined }>("/api/transcode/settings", { preHandler: requireAdmin }, async (req, reply) => {
-      const body = req.body ?? {};
-      const next = config();
-      if (body.maxCacheMb !== undefined) {
-        if (!Number.isInteger(body.maxCacheMb) || body.maxCacheMb < 50 || body.maxCacheMb > 1_000_000) return reply.code(400).send({ error: "invalid_cache_size" });
-        next.maxCacheMb = body.maxCacheMb;
-      }
-      if (body.liveStartAfterSec !== undefined) {
-        if (!Number.isInteger(body.liveStartAfterSec) || body.liveStartAfterSec < 1 || body.liveStartAfterSec > 86_400) return reply.code(400).send({ error: "invalid_live_start" });
-        next.liveStartAfterSec = body.liveStartAfterSec;
-      }
-      if (body.defaultProfile !== undefined) {
-        if (body.defaultProfile !== null && !profileById(body.defaultProfile)) return reply.code(400).send({ error: "unknown_profile" });
-        next.defaultProfile = body.defaultProfile;
-      }
-      settings.setPluginConfig("cadence.transcode", next);
-      void evict();
-      return next;
-    });
+    app.put<{ Body: Partial<Config> | undefined }>(
+      "/api/transcode/settings",
+      { preHandler: requireAdmin },
+      async (req, reply) => {
+        const body = req.body ?? {};
+        const next = config();
+        if (body.maxCacheMb !== undefined) {
+          if (!Number.isInteger(body.maxCacheMb) || body.maxCacheMb < 50 || body.maxCacheMb > 1_000_000)
+            return reply.code(400).send({ error: "invalid_cache_size" });
+          next.maxCacheMb = body.maxCacheMb;
+        }
+        if (body.liveStartAfterSec !== undefined) {
+          if (!Number.isInteger(body.liveStartAfterSec) || body.liveStartAfterSec < 1 || body.liveStartAfterSec > 86_400)
+            return reply.code(400).send({ error: "invalid_live_start" });
+          next.liveStartAfterSec = body.liveStartAfterSec;
+        }
+        if (body.defaultProfile !== undefined) {
+          if (body.defaultProfile !== null && !profileById(body.defaultProfile))
+            return reply.code(400).send({ error: "unknown_profile" });
+          next.defaultProfile = body.defaultProfile;
+        }
+        settings.setPluginConfig("cadence.transcode", next);
+        void evict();
+        return next;
+      },
+    );
 
     app.delete("/api/transcode/cache", { preHandler: requireAdmin }, async () => {
       const result = await evictCache(cacheDir, 0, transcoder.activeNames());
