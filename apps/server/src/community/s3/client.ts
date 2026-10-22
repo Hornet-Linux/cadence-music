@@ -1,6 +1,7 @@
 import { RemoteError, type RemoteFile } from "../../sources/indexer.js";
 import { readBody, request, type NetPolicy, type UpstreamResponse } from "../../sources/net.js";
 import { isAudioName } from "../../sources/tags.js";
+import { hasControlChars } from "../../sources/text.js";
 import { child, childText, children, parseXml, XmlError, type XmlNode } from "../../sources/xml.js";
 import { amzDate, authorizationHeader, canonicalQuery, EMPTY_SHA256, presignUrl, uriEncode, type S3Credentials } from "./sigv4.js";
 
@@ -169,7 +170,7 @@ export async function testBucket(c: S3Connection, policy: NetPolicy, signal?: Ab
 
 /** Normalises a prefix typed or chosen by a person: no leading slash, a trailing slash unless empty, no "..". */
 export function normalizePrefix(raw: string): string | null {
-  if (typeof raw !== "string" || raw.length > 1000 || /[\u0000-\u001f\\]/.test(raw)) return null;
+  if (typeof raw !== "string" || raw.length > 1000 || hasControlChars(raw, true)) return null;
   const parts = raw.split("/").filter((p) => p !== "" && p !== ".");
   if (parts.some((p) => p === "..")) return null;
   return parts.length ? parts.join("/") + "/" : "";

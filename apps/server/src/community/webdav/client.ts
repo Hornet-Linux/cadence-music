@@ -1,6 +1,7 @@
 import { RemoteError, type RemoteFile } from "../../sources/indexer.js";
 import { readBody, request, type NetPolicy, type UpstreamResponse } from "../../sources/net.js";
 import { isAudioName } from "../../sources/tags.js";
+import { hasControlChars } from "../../sources/text.js";
 import { child, childText, children, parseXml, XmlError, type XmlNode } from "../../sources/xml.js";
 
 /** A WebDAV share: the base address (a Nextcloud user's /remote.php/dav/files/NAME/, a NAS root...) and a login. */
@@ -37,7 +38,7 @@ function basePath(base: URL): string {
 
 /** Normalises a folder or file path typed or chosen by a person: leading slash, no "..", no control characters. */
 export function normalizeDavPath(raw: string): string | null {
-  if (typeof raw !== "string" || raw.length > 2000 || /[\u0000-\u001f\\]/.test(raw)) return null;
+  if (typeof raw !== "string" || raw.length > 2000 || hasControlChars(raw, true)) return null;
   const parts = raw.split("/").filter((p) => p !== "" && p !== ".");
   if (parts.some((p) => p === "..")) return null;
   return "/" + parts.join("/");
