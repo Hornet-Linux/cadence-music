@@ -1,3 +1,4 @@
+import { webSessionState } from "./webSessionState";
 import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
 import type { CadenceNativeBridge } from "../host";
@@ -101,6 +102,7 @@ async function importLegacySpotify(): Promise<void> {
 
 const spotify: HostBridge["spotify"] = {
   async status() {
+    if (!webSessionState.signedIn) return { connected: false, clientId: null, redirectUri: location.origin + SPOTIFY_CALLBACK };
     await importLegacySpotify();
     const r = await serverCall<{ connected: boolean; clientId: string | null }>("api/me/spotify").catch(() => null);
     const s = r?.ok ? r.body : null;
@@ -123,6 +125,7 @@ const spotify: HostBridge["spotify"] = {
     return new Promise<never>(() => undefined); // the page navigates away
   },
   async token() {
+    if (!webSessionState.signedIn) return null;
     if (access && access.expiresAt - Date.now() > 60_000) return access;
     if (!refreshing) {
       refreshing = (async () => {

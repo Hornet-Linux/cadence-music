@@ -26,7 +26,7 @@ import {
 import { MAX_PASSWORD, checkPassword } from "./passwords.js";
 import { RateLimiter } from "./rateLimit.js";
 import { registerAccountRoutes } from "./account.js";
-import { createSession, deleteSession } from "./sessions.js";
+import { createSession, deleteSession, userForToken } from "./sessions.js";
 import { clearSessionCookie, sessionCredential } from "./webSession.js";
 import {
   countPasswordUsers,
@@ -419,6 +419,14 @@ export function registerAuthRoutes(
     deleteSession(db, credential.token);
     if (credential.via === "cookie") clearSessionCookie(req, reply);
     return reply.code(204).send();
+  });
+
+  // Who is signed in, if anyone. Always 200, so the web player can check its
+  // cookie on start without a 401 in the console for a signed-out visitor.
+  app.get("/api/auth/session", async (req): Promise<{ user: PublicUser | null }> => {
+    const credential = sessionCredential(req);
+    const user = credential ? userForToken(db, credential.token) : null;
+    return { user: user && !user.disabled_at ? toPublicUser(user) : null };
   });
 
   // The web player moves a session it used to keep in localStorage into the

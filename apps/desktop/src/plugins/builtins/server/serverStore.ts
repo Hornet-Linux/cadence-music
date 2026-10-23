@@ -11,6 +11,7 @@ import type {
 } from "@uma/shared";
 import type { Track } from "@/shared/types";
 import { isWeb } from "@/platform/webHost";
+import { webSessionState } from "@/platform/webSessionState";
 
 const URL_KEY = "server:url";
 const TOKEN_KEY = "server.token";
@@ -167,14 +168,16 @@ async function webSession(url: string, legacyToken: string | null): Promise<stri
       await window.host?.secrets.delete(TOKEN_KEY).catch(() => undefined);
       if (res.ok) return WEB_SESSION;
     }
-    const me = await fetch(apiUrl(url, "api/me"));
-    return me.ok ? WEB_SESSION : null;
+    const res = await fetch(apiUrl(url, "api/auth/session"));
+    const body = res.ok ? ((await res.json()) as { user: PublicUser | null }) : null;
+    return body?.user ? WEB_SESSION : null;
   } catch {
     return null;
   }
 }
 
 export const useServer = create<ServerState>((set, get) => {
+  queueMicrotask(() => useServer.subscribe((st) => (webSessionState.signedIn = st.token === WEB_SESSION)));
   async function request<T>(route: string, init: RequestInit = {}): Promise<T> {
     const { url, token } = get();
     if (!url) throw new Error("No server configured");
