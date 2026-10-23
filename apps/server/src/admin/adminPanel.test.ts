@@ -9,6 +9,7 @@ import { openDb } from "../db.js";
 import { createLocalUser, findUserByUsername } from "../auth/users.js";
 import { libraryPlugin } from "../library/plugin.js";
 import type { Config } from "../config.js";
+import type { ServerPlugin } from "../plugins/types.js";
 import { genericAuditAction } from "./audit.js";
 import { makeAdminPlugin } from "./plugin.js";
 import { maskConfig, unmaskConfig, MASK } from "./pluginConfig.js";
@@ -19,7 +20,7 @@ type FetchFn = typeof fetch;
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-async function setup(opts: { fetchFn?: FetchFn; config?: Partial<Config>; library?: boolean } = {}) {
+async function setup(opts: { fetchFn?: FetchFn; config?: Partial<Config>; library?: boolean; extra?: ServerPlugin[] } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-panel-"));
   const pluginsDir = path.join(dir, "community");
   fs.mkdirSync(path.join(pluginsDir, "demo"), { recursive: true });
@@ -39,7 +40,7 @@ async function setup(opts: { fetchFn?: FetchFn; config?: Partial<Config>; librar
     logger: false,
     onSetupCode: () => undefined,
     // The library plugin rescans on start-up, which would sweep away tracks a test inserts by hand.
-    plugins: [...(opts.library === false ? [] : [libraryPlugin]), makeAdminPlugin({ fetchFn: opts.fetchFn, communityDir: pluginsDir })],
+    plugins: [...(opts.library === false ? [] : [libraryPlugin]), makeAdminPlugin({ fetchFn: opts.fetchFn, communityDir: pluginsDir }), ...(opts.extra ?? [])],
   });
   const login = async (username: string, password: string) =>
     (await app.inject({ method: "POST", url: "/api/auth/login", payload: { username, password } })).json().token as string;
@@ -202,6 +203,9 @@ test("audit actions are only derived for successful admin writes", () => {
   assert.equal(genericAuditAction("PUT", "/api/admin/jellyfin", 200), "jellyfin.update");
   assert.equal(genericAuditAction("POST", "/api/me/password", 200), null);
   assert.equal(genericAuditAction("POST", "/api/library/scan", 202), "library.scan");
+  const pluginAdmin = new Set(["POST /api/webhooks/endpoints"]);
+  assert.equal(genericAuditAction("POST", "/api/webhooks/endpoints", 201, pluginAdmin), "post webhooks/endpoints");
+  assert.equal(genericAuditAction("POST", "/api/webhooks/endpoints", 201), null, "unknown routes are not guessed at");
 });
 
 test("update check compares against the latest GitHub release, only when asked", async () => {
@@ -343,4 +347,26 @@ test("the account page is served with the same lock-down", async () => {
   }
   assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/.test(script));
   await close();
+});
+test("admin changes made through a plugin route are audited, and member writes are not", async () => {
+  const extra: ServerPlugin = {
+    id: "test.admin-route",
+    name: "Admin route",
+    version: "0.0.0",
+    register: (app, ctx) => {
+      app.post("/api/test-plugin/thing", { preHandler: ctx.requireAdmin }, async () => ({ ok: true }));
+      app.post("/api/test-plugin/mine", { preHandler: ctx.requireUser }, async () => ({ ok: true }));
+    },
+  };
+  const { login, as, close } = await setup({ library: false, extra: [extra] });
+  try {
+    const admin = as(await login("owner", "owner-password"));
+    assert.equal((await admin("POST", "/api/test-plugin/thing")).statusCode, 200);
+    assert.equal((await admin("POST", "/api/test-plugin/mine")).statusCode, 200);
+    const actions = ((await admin("GET", "/api/admin/audit")).json() as { items: { action: string }[] }).items.map((i) => i.action);
+    assert.ok(actions.includes("post test-plugin/thing"), actions.join(", "));
+    assert.ok(!actions.includes("post test-plugin/mine"), "a personal route is not an admin action");
+  } finally {
+    await close();
+  }
 });
