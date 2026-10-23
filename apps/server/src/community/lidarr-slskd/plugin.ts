@@ -268,7 +268,8 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
     if (query.length < 2) return reply.code(400).send({ error: "invalid_request", message: "Type at least two characters." });
     try {
       req.log.info({ admin: req.user!.username }, "admin started a slskd search");
-      return reply.code(202).send({ id: await client.startSearch(query) });
+      // 201, not 202: the player drops the body of a 202 and needs this id to poll for results.
+      return reply.code(201).send({ id: await client.startSearch(query) });
     } catch (err) {
       return upstream(reply, err);
     }

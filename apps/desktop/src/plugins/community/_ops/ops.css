@@ -57,6 +57,7 @@
 .ops-panel input[type="url"],
 .ops-panel input[type="number"],
 .ops-panel input[type="password"],
+.ops-panel input[type="search"],
 .ops-panel select {
   min-height: 44px;
   width: 100%;
@@ -289,4 +290,20 @@
 }
 .ops-panel > .ops-section-head {
   margin-top: 10px;
+}
+
+/* Hit areas of at least 44px for switches and segmented buttons inside ops pages. */
+.web .ops .segmented button,
+.ops .segmented button,
+.ops-panel .segmented button {
+  min-height: 44px;
+}
+.ops .switch::before,
+.ops-panel .switch::before {
+  content: "";
+  position: absolute;
+  inset: -9px 0;
+}
+.ops-check input {
+  margin: 0;
 }

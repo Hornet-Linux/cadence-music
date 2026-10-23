@@ -191,7 +191,7 @@ test("slskd: status and search only, and the strongest sources come first", asyn
     const status = (await s.t.app.inject({ method: "GET", url: "/api/slskd/status", headers: s.admin })).json() as { connected: boolean; version: string; username: string };
     assert.deepEqual([status.connected, status.version, status.username], [true, "0.21.0", "me"]);
     const started = await s.t.app.inject({ method: "POST", url: "/api/slskd/search", headers: s.admin, payload: { query: "radiohead ok computer" } });
-    assert.equal(started.statusCode, 202);
+    assert.equal(started.statusCode, 201);
     const id = (started.json() as { id: string }).id;
     const post = s.calls.find((c) => c.method === "POST" && c.url.pathname === "/api/v0/searches")!;
     assert.equal((post.body as { searchText: string }).searchText, "radiohead ok computer");

@@ -181,6 +181,7 @@ function Slskd() {
   const [q, setQ] = useState("");
   const [id, setId] = useState<string | null>(null);
   const [result, setResult] = useState<SlskdResult | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null);
   const status = useLoad(() => api<{ connected: boolean; version: string | null; state: string | null }>("api/slskd/status"));
 
   useEffect(() => {
@@ -192,9 +193,10 @@ function Slskd() {
         const r = await api<SlskdResult>(`api/slskd/search/${id}`);
         if (!alive) return;
         setResult(r);
+        setPollError(null);
         if (!r.isComplete) timer = setTimeout(() => void poll(), 2500);
-      } catch {
-        // The error shows on the next manual search.
+      } catch (err) {
+        if (alive) setPollError(err instanceof Error ? err.message : "Could not read the search results.");
       }
     };
     void poll();
@@ -206,6 +208,7 @@ function Slskd() {
 
   const start = async () => {
     setResult(null);
+    setPollError(null);
     const res = await run(() => api<{ id: string }>("api/slskd/search", { method: "POST", body: JSON.stringify({ query: q.trim() }) }));
     if (res) setId(res.id);
   };
@@ -220,6 +223,9 @@ function Slskd() {
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the network" aria-label="Search slskd" onKeyDown={(e) => e.key === "Enter" && q.trim().length > 1 && void start()} />
         <button className="btn" disabled={busy || q.trim().length < 2} onClick={() => void start()}>Search</button>
       </div>
+      {pollError && <Notice tone="error">{pollError}</Notice>}
+      {id && !result && !pollError && <p className="muted small">Searching...</p>}
+      {result && result.isComplete && result.responses.length === 0 && <p className="muted">Nobody answered that search.</p>}
       {result && (
         <>
           <p className="muted small">{result.isComplete ? "Finished" : "Searching"}: {result.responseCount} people, {result.fileCount} files.</p>
@@ -228,7 +234,7 @@ function Slskd() {
               <div className="ops-item" key={r.username}>
                 <div className="ops-item-text">
                   <div className="ops-item-title">{r.username} {r.freeUploadSlots && <span className="ops-pill ok">free slot</span>}</div>
-                  <div className="ops-item-sub">{r.fileCount} files, for example {r.files[0]?.filename.split(/[\\/]/).pop() ?? ""}</div>
+                  <div className="ops-item-sub">{r.fileCount} file{r.fileCount === 1 ? "" : "s"}, for example {r.files[0]?.filename.split(/[\\/]/).pop() ?? ""}</div>
                 </div>
               </div>
             ))}
