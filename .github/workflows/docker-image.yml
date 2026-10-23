@@ -39,7 +39,7 @@ jobs:
     name: Server image · build & publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Third-party actions are pinned by commit, like the rest of the repo.
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0 (pinned by commit: third-party action)

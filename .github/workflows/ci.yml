@@ -26,11 +26,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
@@ -50,11 +50,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
@@ -63,7 +63,7 @@ jobs:
       - run: npm run test:coverage
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-coverage
           path: apps/desktop/coverage/
@@ -76,11 +76,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
@@ -92,7 +92,7 @@ jobs:
       - name: Ensure the build left tracked files unchanged
         run: git diff --exit-code
       - name: Upload renderer build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-renderer-dist
           path: apps/desktop/dist/
@@ -109,11 +109,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
@@ -127,7 +127,7 @@ jobs:
         run: xvfb-run -a --server-args="-screen 0 1920x1080x24" npm run e2e
       - name: Upload screenshots
         if: runner.os == 'Linux' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-screenshots
           path: apps/desktop/e2e/screenshots/
@@ -152,11 +152,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: env.EVS_ACCOUNT_NAME != ''
         with:
           python-version: "3.12"
@@ -171,7 +171,7 @@ jobs:
       - name: Build Windows installer
         run: npm run electron:build:win
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: apps/desktop/release/*.exe
@@ -191,11 +191,11 @@ jobs:
       run:
         working-directory: apps/desktop
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: env.EVS_ACCOUNT_NAME != ''
         with:
           python-version: "3.12"
@@ -217,7 +217,7 @@ jobs:
           app=$(ls -d release/mac-arm64/Cadence.app 2>/dev/null || ls -d release/mac/Cadence.app)
           "$app/Contents/MacOS/Cadence" --widevine-probe
       - name: Upload disk images
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mac-dmg
           path: apps/desktop/release/*.dmg
@@ -231,11 +231,11 @@ jobs:
       run:
         working-directory: apps/server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-npm-server-${{ hashFiles('apps/server/package-lock.json') }}
@@ -252,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [server]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build image
         run: docker build -f apps/server/Dockerfile -t cadence-server:ci .
       - name: Smoke-test the running container
@@ -263,7 +263,7 @@ jobs:
           SHOTS: ${{ github.workspace }}/web-screenshots
       - name: Upload web player screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-screenshots
           path: web-screenshots/
@@ -339,12 +339,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: windows-installer
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: mac-dmg
           path: dist
@@ -371,12 +371,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: windows-installer
           path: dist
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: mac-dmg
           path: dist
@@ -390,6 +390,6 @@ jobs:
     name: Release scripts · shellcheck & tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: shellcheck .github/scripts/publish-nightly.sh .github/scripts/publish-nightly.test.sh
       - run: bash .github/scripts/publish-nightly.test.sh
