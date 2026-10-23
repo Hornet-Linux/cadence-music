@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webFrame } from "electron";
 import type { AuthResponse } from "@uma/shared";
 import type { DiscordStatus, PresenceActivity } from "./discordIpc";
 import type { ControlInfo, ControlRequest, ShortcutResult } from "./integrations";
@@ -13,6 +13,10 @@ const api = {
     minimize: () => ipcRenderer.send("window:minimize"),
     toggleMaximize: () => ipcRenderer.send("window:toggle-maximize"),
     close: () => ipcRenderer.send("window:close"),
+  },
+  /** Interface size: the page zoom factor (1 = 100%). */
+  ui: {
+    setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(3, Math.max(0.5, factor))),
   },
   /** OS-encrypted key/value storage for tokens. */
   secrets: {

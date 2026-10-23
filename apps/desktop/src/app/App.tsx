@@ -12,10 +12,12 @@ import { SettingsModal } from "@/features/settings/SettingsModal";
 import { startPlayerIntegrations } from "@/player/integrations";
 import { Sidebar } from "@/ui/Sidebar";
 import { TitleBar } from "@/ui/TitleBar";
+import { UpdateNotice } from "@/ui/UpdateNotice";
 import { PlayerBar } from "@/ui/PlayerBar";
 import { QueueDrawer } from "@/ui/QueueDrawer";
 import { startNavShortcuts, useNav, type Route } from "./navStore";
 import { useTheme } from "./theme";
+import { startUiScale } from "./uiScale";
 
 function MainView({ route }: { route: Route }) {
   const sidebarItems = usePluginHost((s) => s.contributions.sidebar);
@@ -56,6 +58,7 @@ export function App() {
     startPlayerIntegrations();
     startHistoryTracking();
     startNavShortcuts();
+    startUiScale();
     return disconnectPlayer;
   }, [register]);
 
@@ -70,6 +73,7 @@ export function App() {
       <div className="stage">
         <div className="ambient" aria-hidden />
         <TitleBar />
+        <UpdateNotice />
         <main className="main" ref={mainRef}>
           {/* Keyed by page so every navigation replays the enter animation. */}
           <div className="page" key={JSON.stringify(route)}>
