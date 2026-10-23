@@ -1,5 +1,5 @@
 import type { Plugin } from "../../types";
-import { WavesIcon } from "@/ui/icons";
+import { BucketIcon } from "../_sourcekit/icons";
 import { useServer } from "../../builtins/server/serverStore";
 import { remoteId } from "../_remoteSource/logic";
 import { RemoteSourcePage } from "../_remoteSource/RemoteSourcePage";
@@ -39,14 +39,14 @@ const s3Plugin: Plugin = {
       id: "s3",
       title: "S3 storage",
       description: "Music in an Amazon S3, MinIO, Backblaze B2 or Cloudflare R2 bucket.",
-      icon: <WavesIcon size={19} />,
+      icon: <BucketIcon size={19} />,
       keywords: ["aws", "bucket", "minio", "backblaze", "b2", "cloudflare", "r2", "object storage", "cloud"],
       render: () => <S3Settings />,
     });
     ctx.registerSidebarItem({
       id: "s3",
       label: "S3 storage",
-      icon: <WavesIcon />,
+      icon: <BucketIcon />,
       render: () => (
         <RemoteSourcePage
           store={useS3}

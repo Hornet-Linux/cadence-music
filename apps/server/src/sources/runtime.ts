@@ -109,7 +109,7 @@ export function publicFailure(label: string, area: string, e: unknown): { status
       case "insecure":
         return {
           status: 400,
-          body: { error: "address_not_allowed", message: "Use an https:// address. Plain http is only accepted for servers on a private network." },
+          body: { error: "address_not_allowed", message: "Use an https:// address. Plain http only works for a server on your own network, once the server owner allows those under Server owner options." },
         };
       case "timeout":
         return { status: 504, body: { error: code("failed"), message: `${label} took too long to answer` } };
