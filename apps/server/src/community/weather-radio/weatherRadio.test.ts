@@ -89,7 +89,7 @@ test("the tags route needs a sign-in and lists the indexed genres", async () => 
   const db = openDb(":memory:");
   await createLocalUser(db, { username: "alice", password: "alice-password" });
   seedTracks(db, [["a", "one.mp3", 1]]);
-  new TagIndexer(db, dir, async () => ({ genres: ["Ambient"], bpm: 70 })).run().then(() => undefined);
+  const indexed = new TagIndexer(db, dir, async () => ({ genres: ["Ambient"], bpm: 70 })).run();
   const app = await buildApp({
     config: { host: "127.0.0.1", port: 0, dataDir: dir, musicDir: dir, scanIntervalMinutes: 0, trustProxy: false, logLevel: "silent" },
     db,
@@ -101,8 +101,7 @@ test("the tags route needs a sign-in and lists the indexed genres", async () => 
     assert.equal((await app.inject({ method: "GET", url: "/api/weather-radio/tags" })).statusCode, 401);
     const login = await app.inject({ method: "POST", url: "/api/auth/login", payload: { username: "alice", password: "alice-password" } });
     const headers = { authorization: `Bearer ${(login.json() as AuthResponse).token}` };
-    // Let the indexing finish.
-    await new Promise((r) => setTimeout(r, 50));
+    await indexed;
     const res = await app.inject({ method: "GET", url: "/api/weather-radio/tags", headers });
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.json(), { items: [{ id: "a", genres: ["Ambient"], bpm: 70 }], pending: 0 });
