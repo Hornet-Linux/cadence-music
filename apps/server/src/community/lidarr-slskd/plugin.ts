@@ -169,7 +169,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.post("/api/lidarr/test", { preHandler: requireAdmin }, async (_req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const out: { lidarr: unknown; slskd: unknown } = { lidarr: null, slskd: null };
     const l = lidarr(c);
     if (l) {
@@ -193,7 +193,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
   // ---- Lidarr ------------------------------------------------------------------
   app.get<{ Querystring: { q?: string } }>("/api/lidarr/search", { preHandler: requireAdmin }, async (req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = lidarr(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "Lidarr is not set up yet." });
     const q = str(req.query.q, 200);
@@ -207,7 +207,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.post<{ Body: { foreignAlbumId?: unknown } }>("/api/lidarr/request", { preHandler: requireAdmin }, async (req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = lidarr(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "Lidarr is not set up yet." });
     const id = str(req.body?.foreignAlbumId, 100);
@@ -231,7 +231,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.get("/api/lidarr/status", { preHandler: requireAdmin }, async (_req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = lidarr(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "Lidarr is not set up yet." });
     try {
@@ -249,7 +249,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
   // ---- slskd: status and search only ----------------------------------------------
   app.get("/api/slskd/status", { preHandler: requireAdmin }, async (_req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = slskd(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "slskd is not set up yet." });
     try {
@@ -261,14 +261,15 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.post<{ Body: { query?: unknown } }>("/api/slskd/search", { preHandler: requireAdmin }, async (req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = slskd(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "slskd is not set up yet." });
     const query = str(req.body?.query, 200);
     if (query.length < 2) return reply.code(400).send({ error: "invalid_request", message: "Type at least two characters." });
     try {
       req.log.info({ admin: req.user!.username }, "admin started a slskd search");
-      return reply.code(202).send({ id: await client.startSearch(query) });
+      // 201, not 202: the player drops the body of a 202 and needs this id to poll for results.
+      return reply.code(201).send({ id: await client.startSearch(query) });
     } catch (err) {
       return upstream(reply, err);
     }
@@ -276,7 +277,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.get<{ Params: { id: string } }>("/api/slskd/search/:id", { preHandler: requireAdmin }, async (req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = slskd(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "slskd is not set up yet." });
     if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return reply.code(400).send({ error: "invalid_request" });
@@ -291,7 +292,7 @@ function registerLidarrSlskd(app: FastifyInstance, ctx: ServerPluginContext, opt
 
   app.delete<{ Params: { id: string } }>("/api/slskd/search/:id", { preHandler: requireAdmin }, async (req, reply) => {
     const c = read();
-    if (!gate(reply, c)) return;
+    if (!gate(reply, c)) return reply;
     const client = slskd(c);
     if (!client) return reply.code(409).send({ error: "not_configured", message: "slskd is not set up yet." });
     if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return reply.code(400).send({ error: "invalid_request" });

@@ -108,17 +108,56 @@ async function renderSso() {
 async function renderPlugins() {
   const data = await api("/api/admin/plugins");
   let items = data.items;
+  // Find and filter: with dozens of plugins, scrolling for one is tiring. Kept across redraws.
+  let query = "";
+  let show = "all";
+  const SHOWS = [["all", "All"], ["on", "On"], ["off", "Off"]];
+  const search = h("input", { type: "search", id: "plugin-search", placeholder: "Find a plugin", "aria-label": "Find a plugin", autocomplete: "off",
+    oninput: () => { query = search.value.trim().toLowerCase(); applyFilter(); } });
+  const seg = h("div", { class: "seg", role: "radiogroup", "aria-label": "Show" }, SHOWS.map((o) =>
+    h("button", { type: "button", role: "radio", "aria-checked": String(o[0] === show), "data-show": o[0], onclick: () => {
+      show = o[0];
+      seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.show === show)));
+      applyFilter();
+    } }, o[1])));
+  const count = h("span", { class: "faint small", role: "status", "aria-live": "polite" });
+  const toolbar = h("div", { class: "plugin-tools" }, search, seg, count);
+  const noMatch = h("section", { class: "card empty", hidden: true }, h("h2", null, "No plugins match"),
+    h("p", { class: "hint" }, "Try another word, or show all plugins."),
+    h("div", { class: "form-actions", style: "justify-content:center" }, h("button", { class: "btn", type: "button", onclick: () => {
+      query = ""; search.value = ""; show = "all";
+      seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.show === "all")));
+      applyFilter(); search.focus();
+    } }, "Clear filter")));
+  let cards = [];
+
+  function matches(p) {
+    if (show === "on" && !p.enabled) return false;
+    if (show === "off" && p.enabled) return false;
+    if (!query) return true;
+    return (p.name + " " + p.id + " " + (p.description || "")).toLowerCase().includes(query);
+  }
+  function applyFilter() {
+    let n = 0;
+    cards.forEach((c) => { const ok = matches(c.p); c.el.hidden = !ok; if (ok) n++; });
+    noMatch.hidden = n > 0 || !items.length;
+    const on = items.filter((i) => i.enabled).length;
+    count.textContent = n === items.length ? items.length + " plugins, " + on + " on" : n + " of " + items.length + " shown";
+  }
 
   function drawAll() {
     setRestart(items.some((i) => i.restartRequired));
+    cards = items.map((p) => ({ p, el: pluginCard(p) }));
     render(pageHead("Plugins", "Community plugins add features to the server. They start off; you choose which to run."),
       items.some((i) => i.restartRequired)
         ? h("div", { class: "banner warn", role: "status" }, h("div", null, h("b", null, "Restart required. "), "Changes below apply the next time the server starts (for example docker compose restart server). Until then the server keeps running as before."))
         : null,
-      items.length ? items.map(pluginCard) : card("No community plugins installed", "Community plugins are folders compiled into this server (src/community/<name>/plugin.ts). This build doesn't include any, so there is nothing to turn on. The built-in features (library, history, AI DJ, Jellyfin) are always on."));
+      items.length > 1 ? toolbar : null,
+      noMatch,
+      items.length ? cards.map((c) => c.el) : card("No community plugins installed", "Community plugins are folders compiled into this server (src/community/<name>/plugin.ts). This build doesn't include any, so there is nothing to turn on. The built-in features (library, history, AI DJ, Jellyfin) are always on."));
   }
 
-  function update(next) { items = items.map((i) => (i.id === next.id ? next : i)); drawAll(); }
+  function update(next) { items = items.map((i) => (i.id === next.id ? next : i)); drawAll(); applyFilter(); }
 
   function pluginCard(p) {
     const sw = h("button", { class: "switch", type: "button", role: "switch", "aria-checked": String(p.enabled), "aria-label": (p.enabled ? "Turn off " : "Turn on ") + p.name, onclick: guard(async () => {
@@ -127,6 +166,9 @@ async function renderPlugins() {
         const next = await api("/api/admin/plugins/" + encodeURIComponent(p.id), { method: "PUT", body: JSON.stringify({ enabled: !p.enabled }) });
         toast(next.enabled ? p.name + " will run after the server restarts" : p.name + " will stop after the server restarts");
         update(next);
+        // Redrawing replaced this switch; put focus on the new one so keyboard users stay in place.
+        const again = cards.find((c) => c.p.id === next.id);
+        if (again) again.el.querySelector(".switch").focus();
       } finally { sw.disabled = false; }
     }) });
     const panel = h("div", { hidden: true, style: "margin-top:14px" });
@@ -153,6 +195,7 @@ async function renderPlugins() {
   }
 
   drawAll();
+  applyFilter();
 }
 
 function routesList(p) {

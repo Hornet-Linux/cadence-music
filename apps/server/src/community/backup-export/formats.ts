@@ -15,7 +15,8 @@ export interface ExportPlay {
   track: ExportTrack;
 }
 
-const artistLine = (t: ExportTrack) => t.artists.map((a) => a.name).filter(Boolean).join(", ");
+/** Placeholder names the player shows for untagged files are not artists and are left out of exports. */
+const artistLine = (t: ExportTrack) => t.artists.map((a) => a.name).filter((n) => n && !/^unknown artist$/i.test(n.trim())).join(", ");
 
 /** One line only: playlist formats break on embedded newlines. */
 const oneLine = (s: string) => s.replace(/[\r\n\t]+/g, " ").trim();

@@ -66,11 +66,14 @@ const KNOWN: Record<string, string> = {
   "POST /api/library/scan": "library.scan",
 };
 
-/** The audit action for a request that is not handled by a route with its own note, or null if it is not an admin write. */
-export function genericAuditAction(method: string, routeUrl: string, status: number): string | null {
+/**
+ * The audit action for a request that is not handled by a route with its own note, or null if it is not an admin write.
+ * `adminRoutes` holds "METHOD /url" for every route guarded by requireAdmin (plugins add their own, e.g. webhooks and backups).
+ */
+export function genericAuditAction(method: string, routeUrl: string, status: number, adminRoutes: ReadonlySet<string> = new Set()): string | null {
   if (status >= 400) return null;
   const key = `${method} ${routeUrl}`;
-  const isAdmin = routeUrl.startsWith("/api/admin/") || EXTRA_ADMIN_ROUTES.has(key);
+  const isAdmin = routeUrl.startsWith("/api/admin/") || EXTRA_ADMIN_ROUTES.has(key) || adminRoutes.has(key);
   if (!isAdmin || method === "GET" || method === "HEAD" || method === "OPTIONS") return null;
   // "Test connection" and "check for updates" change nothing.
   if (routeUrl.endsWith("/test") || routeUrl.endsWith("/update-check")) return null;

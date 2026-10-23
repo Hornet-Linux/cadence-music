@@ -110,9 +110,14 @@ interface PlaylistRow {
 
 const displayName = (row: { display_name: string | null; username: string }) => row.display_name || row.username;
 
-/** Order items by score, then by when they were added. Exported for tests. */
+/**
+ * Order items by score, then by when they were added. Items added in the same
+ * millisecond keep the order they arrive in (the caller passes them in insertion
+ * order and Array#sort is stable), so ties never fall back to the random id.
+ * Exported for tests.
+ */
 export function orderItems<T extends { score: number; addedAt: number; id: string }>(items: T[]): T[] {
-  return [...items].sort((a, b) => b.score - a.score || a.addedAt - b.addedAt || a.id.localeCompare(b.id));
+  return [...items].sort((a, b) => b.score - a.score || a.addedAt - b.addedAt);
 }
 
 export class PlaylistService {
@@ -212,7 +217,8 @@ export class PlaylistService {
                 COALESCE((SELECT SUM(value) FROM sp_votes v WHERE v.item_id = i.id), 0) AS score,
                 COALESCE((SELECT value FROM sp_votes v WHERE v.item_id = i.id AND v.user_id = ?), 0) AS my_vote
            FROM sp_items i LEFT JOIN users u ON u.id = i.added_by
-          WHERE i.playlist_id = ?`,
+          WHERE i.playlist_id = ?
+          ORDER BY i.rowid`,
       )
       .all(userId, id) as unknown as {
       id: string;

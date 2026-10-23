@@ -156,11 +156,20 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
         discovered.map((p) => [p.id, { enabled: settings.pluginEnabled(p.id), config: JSON.stringify(settings.pluginConfig(p.id) ?? null) }]),
       );
 
+      // Routes guarded by requireAdmin, including the ones community plugins register after this,
+      // so their changes (webhooks, backups, quotas, metrics tokens...) are audited too.
+      const adminRoutes = new Set<string>();
+      app.addHook("onRoute", (route) => {
+        const pre = [route.preHandler].flat();
+        if (!pre.includes(requireAdmin)) return;
+        for (const m of [route.method].flat()) adminRoutes.add(`${m} ${route.url}`);
+      });
+
       // Every successful admin change leaves a line in the audit log.
       app.addHook("onResponse", async (req: FastifyRequest, reply) => {
         if (!req.user?.is_admin) return;
         const note = takeAuditNote(req);
-        const action = note?.action ?? genericAuditAction(req.method, req.routeOptions?.url ?? "", reply.statusCode);
+        const action = note?.action ?? genericAuditAction(req.method, req.routeOptions?.url ?? "", reply.statusCode, adminRoutes);
         if (!action || (note && reply.statusCode >= 400)) return;
         try {
           recordAudit(db, req.user, action, note?.target, note?.detail);

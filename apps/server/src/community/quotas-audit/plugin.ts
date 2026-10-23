@@ -141,9 +141,12 @@ function registerQuotas(app: FastifyInstance, ctx: ServerPluginContext, options:
   });
 
   // Remember who each signed stream address was issued to.
-  app.addHook("onSend", async (req, reply, payload) => {
-    if (req.method !== "GET" || reply.statusCode !== 200 || !req.user) return payload;
-    if (!STREAM_URL_RE.test(req.url.split("?")[0]) || typeof payload !== "string") return payload;
+  // Deliberately a callback hook, not async: an async onSend on every route delays the write by a
+  // tick, and a route that calls reply.send() and then resolves undefined gets answered twice
+  // (an empty body plus "Reply was already sent"). Seen with /api/lidarr/status once quotas were on.
+  app.addHook("onSend", (req, reply, payload, done) => {
+    if (req.method !== "GET" || reply.statusCode !== 200 || !req.user) return done(null, payload);
+    if (!STREAM_URL_RE.test(req.url.split("?")[0]) || typeof payload !== "string") return done(null, payload);
     try {
       const { path } = JSON.parse(payload) as { path?: string };
       const q = new URL(path ?? "", "http://x/").searchParams;
@@ -153,7 +156,7 @@ function registerQuotas(app: FastifyInstance, ctx: ServerPluginContext, options:
     } catch {
       // Not the expected shape; nothing to remember.
     }
-    return payload;
+    done(null, payload);
   });
   registerCollector(PLUGIN_ID, () => [
     { name: "cadence_quota_denied_total", help: "Streams refused by a quota.", type: "counter" as const, labels: { reason: "concurrent" }, value: engine.denied.concurrent },

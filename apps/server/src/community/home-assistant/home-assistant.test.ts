@@ -41,6 +41,7 @@ const report = (state: Record<string, unknown>) =>
     headers: bearer(srv.alice),
     payload: { deviceId: PLAYER, state: { track, duration: 200, volume: 0.5, queue: [track], index: 0, ...state } },
   });
+/** Only used to show that nothing is sent: a slow machine can make these checks weaker, never fail. */
 const settle = () => new Promise((r) => setTimeout(r, 150));
 
 test("the token is validated, stored encrypted and never returned", async () => {
@@ -76,7 +77,7 @@ test("playing state is pushed to Home Assistant with the official REST call", as
   await player.waitFor("hello");
   ha.posts.length = 0;
   assert.equal((await report({ isPlaying: true, position: 10 })).statusCode, 200);
-  await settle();
+  await ha.waitForPost((p) => p.body.state === "playing", 0);
   const playing = ha.states.get("media_player.cadence_alice")!;
   assert.equal(playing.state, "playing");
   assert.equal(playing.attributes["media_title"], "Song");
@@ -85,21 +86,23 @@ test("playing state is pushed to Home Assistant with the official REST call", as
   assert.equal(playing.attributes["media_position"], 10);
   assert.equal(playing.attributes["source"], "Laptop");
   assert.match(String(playing.attributes["media_position_updated_at"]), /^\d{4}-\d\d-\d\dT/);
+  const mark = ha.posts.length;
   await report({ isPlaying: false, position: 11 });
-  await settle();
+  await ha.waitForPost((p) => p.body.state === "paused", mark);
   assert.equal(ha.states.get("media_player.cadence_alice")?.state, "paused");
 });
 
 test("routine progress reports are not pushed, but a seek is", async () => {
+  const mark = ha.posts.length;
   await report({ isPlaying: true, position: 20 });
-  await settle();
+  await ha.waitForPost((p) => p.body.state === "playing" && p.body.attributes["media_position"] === 20, mark);
   const before = ha.posts.length;
   await report({ isPlaying: true, position: 21 });
   await report({ isPlaying: true, position: 22 });
   await settle();
   assert.equal(ha.posts.length, before, "on-track progress does not spam Home Assistant");
   await report({ isPlaying: true, position: 150 });
-  await settle();
+  await ha.waitForPost((p) => p.body.attributes["media_position"] === 150, before);
   assert.equal(ha.posts.length, before + 1);
   assert.equal(ha.states.get("media_player.cadence_alice")?.attributes["media_position"], 150);
 });
@@ -164,8 +167,9 @@ test("repeated bad tokens are rate limited, and a revoked token stops working", 
 });
 
 test("going offline tells Home Assistant, and a failing Home Assistant is backed off", async () => {
+  const mark = ha.posts.length;
   player.close();
-  await settle();
+  await ha.waitForPost((p) => p.body.state === "off", mark);
   assert.equal(ha.states.get("media_player.cadence_alice")?.state, "off");
   // A new player while Home Assistant is down: one failed attempt, then no retry storm.
   ha.setFailing(500);

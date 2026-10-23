@@ -13,7 +13,7 @@ export interface TagTrack {
   trackNo: number | null;
 }
 
-export type RuleName = "casing" | "feat" | "spacing" | "album-artist" | "track-number" | "title-from-filename";
+export type RuleName = "casing" | "feat" | "spacing" | "album-artist" | "track-number" | "title-from-filename" | "from-folders";
 
 export interface Suggestion {
   trackId: string;
@@ -121,6 +121,7 @@ const REASONS: Record<RuleName, string> = {
   "album-artist": "Fill in the album artist",
   "track-number": "Track number from the file name",
   "title-from-filename": "Title from the file name",
+  "from-folders": "From the Artist/Album folders",
 };
 
 const baseName = (relPath: string) => {
@@ -128,6 +129,20 @@ const baseName = (relPath: string) => {
   const dot = file.lastIndexOf(".");
   return dot > 0 ? file.slice(0, dot) : file;
 };
+/**
+ * "Artist/Album/01 Song.flac" -> artist and album from the two folders above the file.
+ * Only for that exact depth or deeper (the last two folders), never from a lone folder,
+ * and never from folder names that are plainly not names ("Music", "Disc 1", "CD2", "Unknown ...").
+ */
+export function folderTags(relPath: string): { artist: string; album: string } | null {
+  const parts = relPath.split("/").filter(Boolean);
+  if (parts.length < 3) return null;
+  const artist = collapseSpaces(parts[parts.length - 3]!);
+  const album = collapseSpaces(parts[parts.length - 2]!);
+  const junk = (n: string) => !n || /^(?:music|audio|downloads?|various|unknown\b.*|(?:disc|disk|cd)\s*\d+)$/i.test(n);
+  if (junk(artist) || junk(album)) return null;
+  return { artist, album };
+}
 const folderOf = (relPath: string) => (relPath.includes("/") ? relPath.slice(0, relPath.lastIndexOf("/")) : "");
 
 /** "01 - Song", "1. Song", "01-05 Song" (disc-track), "07 Song" -> track number and the rest. */
@@ -211,6 +226,9 @@ export function suggestForLibrary(tracks: TagTrack[]): Suggestion[] {
       if (cleaned.value !== original && rules.length > 0) add(field, original, cleaned.value, rules);
     }
 
+    const folders = !t.artist || !t.album ? folderTags(t.relPath) : null;
+    if (folders && !t.artist) add("artist", null, folders.artist, ["from-folders"]);
+    if (folders && !t.album) add("album", null, folders.album, ["from-folders"]);
     if (!t.albumArtist && guesses.has(t.id)) add("albumArtist", null, guesses.get(t.id)!, ["album-artist"]);
     if (t.trackNo === null && prefix && prefix.trackNo >= 1 && prefix.trackNo <= 999) {
       add("trackNo", null, String(prefix.trackNo), ["track-number"]);

@@ -152,3 +152,22 @@
     flex: 1 1 120px;
   }
 }
+
+/* Hit areas of at least 44px for the shared pace buttons and switches, without changing how they look. */
+.web .sl-page .segmented button,
+.sl-page .segmented button {
+  min-height: 44px;
+}
+.sl-page .switch {
+  position: relative;
+}
+.sl-page .switch::before {
+  content: "";
+  position: absolute;
+  inset: -9px 0;
+}
+
+.sl-page .sl-play {
+  min-width: 44px;
+  min-height: 44px;
+}
