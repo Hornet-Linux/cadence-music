@@ -8,7 +8,9 @@ export type TrackRecord = Record<string, unknown> & { id: string };
  * never affect the database.
  */
 export function decorateTracks(app: FastifyInstance, decorate: (tracks: TrackRecord[]) => void): void {
-  app.addHook("preSerialization", async (req, _reply, payload) => {
+  // A callback hook on purpose: an async hook here runs on every route, defers the send by a tick,
+  // and then any handler that calls reply.send() without returning reply is answered twice.
+  app.addHook("preSerialization", (req, _reply, payload, done) => {
     const route = req.routeOptions?.url;
     if (route === "/api/tracks") {
       const items = (payload as { items?: unknown } | null)?.items;
@@ -17,7 +19,7 @@ export function decorateTracks(app: FastifyInstance, decorate: (tracks: TrackRec
       const one = payload as { id?: unknown } | null;
       if (one && typeof one.id === "string") decorate([one as TrackRecord]);
     }
-    return payload;
+    done(null, payload);
   });
 }
 

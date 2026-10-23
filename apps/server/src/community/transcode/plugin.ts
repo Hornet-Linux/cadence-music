@@ -195,14 +195,16 @@ export const transcodePlugin: ServerPlugin = {
         { profile: string } | undefined;
       return row?.profile ?? null;
     };
-    app.addHook("preSerialization", async (req, _reply, payload) => {
-      if (req.routeOptions?.url !== "/api/tracks/:id/stream-url") return payload;
+    // A callback hook on purpose: an async hook here runs on every route, defers the send by a tick,
+    // and then any handler that calls reply.send() without returning reply is answered twice.
+    app.addHook("preSerialization", (req, _reply, payload, done) => {
+      if (req.routeOptions?.url !== "/api/tracks/:id/stream-url") return done(null, payload);
       const body = payload as { path?: unknown } | null;
-      if (!body || typeof body.path !== "string") return payload;
+      if (!body || typeof body.path !== "string") return done(null, payload);
       const explicit = (req.query as { profile?: string }).profile;
       const wanted = explicit ?? devicePref(req) ?? config().defaultProfile;
       if (wanted && wanted !== "original" && profileById(wanted)) body.path += `&profile=${wanted}`;
-      return payload;
+      done(null, payload);
     });
 
     app.get("/api/transcode/status", { preHandler: requireUser }, async (req) => {

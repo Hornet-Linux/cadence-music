@@ -209,3 +209,17 @@ test("slskd: status and search only, and the strongest sources come first", asyn
     await s.t.cleanup();
   }
 });
+test("a refused request still explains itself over a real connection", async () => {
+  const s = await setup();
+  try {
+    await s.t.app.listen({ port: 0, host: "127.0.0.1" });
+    const { port } = s.t.app.server.address() as import("node:net").AddressInfo;
+    for (const path of ["/api/lidarr/status", "/api/slskd/status", "/api/lidarr/search?q=x"]) {
+      const res = await fetch(`http://127.0.0.1:${port}${path}`, { headers: s.admin });
+      assert.equal(res.status, 403);
+      assert.equal(((await res.json()) as { error: string }).error, "notice_not_accepted", path);
+    }
+  } finally {
+    await s.t.cleanup();
+  }
+});
