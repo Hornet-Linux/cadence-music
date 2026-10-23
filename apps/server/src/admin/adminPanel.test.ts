@@ -242,10 +242,10 @@ test("version comparison", () => {
   assert.equal(compareVersions("0.2.0", "nightly"), null);
 });
 
-test("single sign-on status is read-only and checks the provider", async () => {
+test("single sign-on status checks the provider and locks values from the environment", async () => {
   const seen: string[] = [];
   const { login, as, close } = await setup({
-    fetchFn: (async (url: string) => { seen.push(String(url)); return json({ issuer: "https://id.example.com" }); }) as unknown as FetchFn,
+    fetchFn: (async (url: string) => { seen.push(String(url)); return json({ issuer: "https://id.example.com/app/", authorization_endpoint: "https://id.example.com/auth", token_endpoint: "https://id.example.com/token" }); }) as unknown as FetchFn,
     config: {
       publicUrl: "https://music.example.com",
       oidc: { issuer: "https://id.example.com/app/", clientId: "cadence", clientSecret: "hush", displayName: "Authentik", scopes: "openid email", allowedGroups: ["music"], adminGroups: ["admins"] },
@@ -260,13 +260,18 @@ test("single sign-on status is read-only and checks the provider", async () => {
   assert.equal(sso.discovery.ok, true);
   assert.deepEqual(seen, ["https://id.example.com/app/.well-known/openid-configuration"]);
   assert.equal(sso.callbackUrl, "https://music.example.com/api/auth/oidc/callback");
-  assert.equal((await admin("PUT", "/api/admin/sso", { clientId: "x" })).statusCode, 404, "there is no way to change it here");
+  const put = await admin("PUT", "/api/admin/sso", { clientId: "x" });
+  assert.equal(put.statusCode, 200);
+  assert.equal(put.json().clientId, "cadence", "a value from the environment can't be changed here");
+  assert.equal(put.json().locked.clientId, true);
   await close();
 });
 
 test("single sign-on status says so when it isn't configured or the provider is down", async () => {
   const a = await setup();
-  assert.deepEqual((await a.as(await a.login("owner", "owner-password"))("GET", "/api/admin/sso")).json(), { configured: false });
+  const none = (await a.as(await a.login("owner", "owner-password"))("GET", "/api/admin/sso")).json();
+  assert.equal(none.configured, false);
+  assert.equal(none.discovery, null);
   await a.close();
   const b = await setup({
     fetchFn: (async () => { throw new Error("connect ECONNREFUSED"); }) as unknown as FetchFn,
