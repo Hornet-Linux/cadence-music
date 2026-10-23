@@ -331,7 +331,7 @@ code {
 .view {
   padding: 0 var(--sp-6) var(--sp-7);
   max-width: 1500px;
-  animation: view-in 0.3s ease-out;
+  animation: view-in 0.2s ease-out;
 }
 @keyframes view-in {
   from {
@@ -2492,4 +2492,555 @@ code {
   font-size: 11px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Plugin list (QA: many plugins) ---------- */
+.plugin-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface, var(--bg));
+}
+.plugin-search {
+  flex: 1 1 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.plugin-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+}
+.plugin-group-title {
+  margin: 20px 0 0;
+  font-size: var(--fs-sm, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.plugin-card .switch {
+  flex-shrink: 0;
+  align-self: center;
+}
+.plugin-card .caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+/* Tap targets: shelf arrows and the hero Play button are 44px. */
+.shelf-arrows .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+.btn.big {
+  min-height: 44px;
+}
+.home-widgets .show-more {
+  min-height: 44px;
+}
+.more-search {
+  flex: none;
+  min-height: 44px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  font: inherit;
+}
+@media (min-width: 761px) {
+  /* With many plugin pages the popover must never run off the bottom of the window. */
+  .more-sheet {
+    top: clamp(12px, var(--pop-y, 80px), calc(100vh - min(70vh, 520px) - 12px));
+  }
+}
+
+/* ---------- Compact plugin rows ---------- */
+.plugin-card {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.plugin-card .pic {
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+.plugin-card.on .pic {
+  color: var(--accent-from);
+}
+.plugin-card .pname {
+  gap: 8px;
+  min-width: 0;
+}
+.plugin-card .ptitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plugin-card .pdesc {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 0;
+  text-align: left;
+  line-height: 1.45;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.plugin-card .pdesc-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.plugin-card.expanded .pdesc-text {
+  display: block;
+}
+.plugin-card .pmore {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.paccess summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--fs-sm, 0.85rem);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.paccess ul {
+  margin: 2px 0 0;
+  padding-left: 18px;
+  font-size: var(--fs-sm, 0.85rem);
+  line-height: 1.6;
+}
+.paccess code {
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+/* ---------- Settings: list → section on phones ---------- */
+.settings-list-head,
+.settings-back,
+.settings-chevron {
+  display: none;
+}
+.settings-link-text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-head-text {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .web .settings.phone-list .settings-pane,
+  .web .settings.phone-pane .settings-nav {
+    display: none;
+  }
+  .web .settings.phone-list .settings-nav {
+    display: flex;
+    min-height: 0;
+    padding: 8px 16px 12px;
+    border-bottom: 0;
+    animation: fade-in 0.16s ease-out;
+  }
+  .web .settings.phone-pane .settings-pane {
+    animation: slide-in-pane 0.2s ease-out;
+  }
+  .web .settings-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 10px;
+  }
+  .web .settings-list-head h1 {
+    font-size: var(--fs-xl);
+    font-weight: 700;
+  }
+  .web .settings-search {
+    display: flex;
+    min-height: 44px;
+  }
+  .web .settings-group-label {
+    display: block;
+    padding: 18px 4px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .web .account {
+    display: flex;
+  }
+  .web .settings-groups {
+    display: block;
+    margin-top: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .web .settings-group {
+    display: block;
+  }
+  .web .settings-link {
+    width: 100%;
+    min-height: 52px;
+    padding: 10px 8px;
+    white-space: normal;
+    color: var(--text);
+  }
+  .web .settings-link svg {
+    color: var(--text-muted);
+  }
+  .web .settings-link.active {
+    background: none;
+  }
+  .web .settings-chevron {
+    display: inline-flex;
+    color: var(--text-faint);
+  }
+  .web .settings-back {
+    display: inline-grid;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+  }
+  .web .settings-head {
+    align-items: center;
+    gap: 6px;
+  }
+  .web .settings-head .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+@keyframes slide-in-pane {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+/* Queue: 44px targets on phones. */
+@media (max-width: 760px) {
+  .web .queue-drawer .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .web .queue-drawer .queue-main {
+    min-height: 52px;
+  }
+}
+/* Smooth scrolling: the blurred hero art gets its own layer, and plugin widgets
+   below the fold are not laid out or painted until they scroll near the screen. */
+.hero-bg {
+  transform: translateZ(0);
+  contain: paint;
+}
+.home-widgets .section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+
+/* ---------- Sidebar: every page, grouped (desktop and tablets) ----------
+   ≥ 1024px the rail is a full labelled sidebar (foldable to icons); 761–1023px
+   it is an icon rail whose toggle opens the full list as a flyout. Phones keep
+   the bottom tab bar. */
+.app {
+  transition: grid-template-columns 0.18s ease-out;
+}
+.app:has(> .rail.expanded:not(.flyout)) {
+  --rail-w: 236px;
+}
+.rail {
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px 0 10px;
+}
+.rail-top {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px 0 18px;
+  margin-bottom: 10px;
+}
+.rail-top .rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+}
+.rail-wordmark {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.rail-toggle {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.rail-toggle:hover,
+.rail-toggle:focus-visible {
+  color: var(--text);
+  background: var(--surface);
+}
+.rail-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-faint);
+}
+.rail-search:focus-within {
+  border-color: var(--accent-from);
+}
+.rail-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  padding: 0 10px 8px;
+}
+.nav-heading {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 4px;
+  border-radius: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: left;
+}
+.nav-heading:hover,
+.nav-heading:focus-visible {
+  color: var(--text-muted);
+}
+.nav-caret {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.15s ease-out;
+}
+.nav-caret.open {
+  transform: rotate(90deg);
+}
+.nav-section:first-child .nav-heading {
+  padding-top: 2px;
+}
+.nav-item {
+  position: relative;
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.nav-item:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+.nav-item.active {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-from);
+}
+.nav-item.active .nav-icon {
+  color: var(--accent-from);
+}
+.nav-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+}
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rail-empty {
+  padding: 8px 10px;
+}
+.rail-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--border);
+}
+.rail-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--accent-from);
+  color: var(--accent-fg);
+}
+.rail-tip {
+  position: fixed;
+  z-index: 200;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Icon rail */
+.rail.icons .rail-top {
+  flex-direction: column;
+  padding: 0;
+  gap: 6px;
+}
+.rail.icons .rail-wordmark,
+.rail.icons .nav-label {
+  display: none;
+}
+.rail.icons .rail-toggle {
+  width: 44px;
+  height: 32px;
+}
+.rail.icons .rail-scroll {
+  padding: 0 14px 8px;
+  scrollbar-width: none;
+}
+.rail.icons .rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+.rail.icons .nav-section + .nav-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.rail.icons .nav-item {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+.rail.icons .nav-item.active::before {
+  left: -14px;
+  top: 13px;
+  bottom: 13px;
+}
+.rail.icons .rail-bottom {
+  padding: 8px 14px 0;
+}
+
+/* Tablet flyout */
+.rail.flyout {
+  position: fixed;
+  z-index: 61;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--bg-deep);
+  border-right: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  animation: rail-in 0.18s ease-out;
+}
+.rail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(5, 6, 8, 0.45);
+  animation: fade-in 0.18s ease-out;
+}
+@keyframes rail-in {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+.mac .rail-top {
+  padding-top: 0;
+}
+
+/* Wide screens: centre the page column so extra width becomes calm margins. */
+.view {
+  margin-inline: auto;
 }

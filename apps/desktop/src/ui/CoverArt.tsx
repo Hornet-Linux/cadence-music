@@ -39,7 +39,18 @@ export function CoverArt({ src, seed, label, showInitial = true }: Props) {
   const angle = (hashString(seed) % 8) * 45;
   return (
     <div className="cover" style={{ background: `linear-gradient(${angle}deg, ${a}, ${b})` }} aria-label={label}>
-      {showInitial && (label?.[0]?.toUpperCase() ?? "")}
+      {showInitial && coverInitial(label)}
     </div>
   );
+}
+
+/**
+ * The letter shown on a generated cover: the first letter of the label,
+ * skipping leading digits and punctuation ("01 Intro" → "I", "(Live)" → "L").
+ * Labels without any letter get a quiet note glyph instead of a stray "0".
+ */
+export function coverInitial(label?: string): string {
+  if (!label) return "";
+  const m = label.match(/\p{L}/u);
+  return m ? m[0].toLocaleUpperCase() : "♪";
 }
