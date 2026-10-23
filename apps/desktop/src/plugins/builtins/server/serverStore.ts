@@ -16,6 +16,23 @@ const URL_KEY = "server:url";
 const TOKEN_KEY = "server.token";
 export const SERVER_TRACK_PREFIX = "server:";
 
+/**
+ * The web player's session lives in an HttpOnly cookie the page can't read;
+ * `token` then holds this marker instead of a real token.
+ */
+export const WEB_SESSION = "web-session";
+
+/** Headers that authenticate a request to the server, for the app's token or the web player's cookie. */
+export function authHeaders(token: string | null): Record<string, string> {
+  if (!token) return {};
+  // The cookie goes along by itself (same origin); writes must prove they came from this page.
+  if (token === WEB_SESSION) return { "x-cadence-csrf": "1" };
+  return { authorization: `Bearer ${token}` };
+}
+
+/** Sign-in requests from the web player ask for the cookie instead of a token in the reply. */
+const signInHeaders = (): Record<string, string> => (isWeb() ? { "x-cadence-session": "cookie" } : {});
+
 type Status = "disconnected" | "checking" | "online" | "offline";
 
 interface ServerState {
@@ -121,6 +138,11 @@ function readSavedUrl(): string {
 async function saveToken(token: string | null): Promise<void> {
   const secrets = window.host?.secrets;
   if (!secrets) return;
+  // The web player never stores a token: the cookie is the session.
+  if (isWeb()) {
+    await secrets.delete(TOKEN_KEY).catch(() => undefined);
+    return;
+  }
   try {
     if (token) await secrets.set(TOKEN_KEY, token);
     else await secrets.delete(TOKEN_KEY);
@@ -131,12 +153,33 @@ async function saveToken(token: string | null): Promise<void> {
   }
 }
 
+/**
+ * The web player's session: the HttpOnly cookie if there is one. A token an
+ * older version left in localStorage is moved into the cookie and forgotten.
+ */
+async function webSession(url: string, legacyToken: string | null): Promise<string | null> {
+  try {
+    if (legacyToken) {
+      const res = await fetch(apiUrl(url, "api/auth/web-session"), {
+        method: "POST",
+        headers: { authorization: `Bearer ${legacyToken}`, "x-cadence-session": "cookie" },
+      });
+      await window.host?.secrets.delete(TOKEN_KEY).catch(() => undefined);
+      if (res.ok) return WEB_SESSION;
+    }
+    const me = await fetch(apiUrl(url, "api/me"));
+    return me.ok ? WEB_SESSION : null;
+  } catch {
+    return null;
+  }
+}
+
 export const useServer = create<ServerState>((set, get) => {
   async function request<T>(route: string, init: RequestInit = {}): Promise<T> {
     const { url, token } = get();
     if (!url) throw new Error("No server configured");
     const headers = new Headers(init.headers);
-    if (token) headers.set("authorization", `Bearer ${token}`);
+    for (const [k, v] of Object.entries(authHeaders(token))) headers.set(k, v);
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     const res = await fetch(apiUrl(url, route), { ...init, headers });
     if (res.status === 401 && token && !(isJellyfinRoute(route) && (await errorCode(res)) !== "unauthorized")) {
@@ -161,8 +204,10 @@ export const useServer = create<ServerState>((set, get) => {
   }
 
   async function signedIn(auth: AuthResponse) {
-    set({ token: auth.token, user: auth.user, error: null });
-    await saveToken(auth.token);
+    // The web player got a cookie and an empty token.
+    const token = isWeb() && !auth.token ? WEB_SESSION : auth.token;
+    set({ token, user: auth.user, error: null });
+    await saveToken(token);
     await get().loadTracks();
   }
 
@@ -187,7 +232,8 @@ export const useServer = create<ServerState>((set, get) => {
       // The web player always talks to the server it was loaded from.
       const url = isWeb() ? location.origin : readSavedUrl();
       if (!url) return;
-      const token = (await window.host?.secrets.get(TOKEN_KEY).catch(() => null)) ?? null;
+      let token = (await window.host?.secrets.get(TOKEN_KEY).catch(() => null)) ?? null;
+      if (isWeb()) token = await webSession(url, token);
       set({ url, token });
       await get().connect(url);
       // A failed sign-in redirect (web) leaves its reason here.
@@ -240,6 +286,7 @@ export const useServer = create<ServerState>((set, get) => {
       try {
         const auth = await request<AuthResponse>("api/auth/login", {
           method: "POST",
+          headers: signInHeaders(),
           body: JSON.stringify({ username, password }),
         });
         await signedIn(auth);
@@ -258,6 +305,7 @@ export const useServer = create<ServerState>((set, get) => {
       try {
         const auth = await request<AuthResponse>("api/auth/register", {
           method: "POST",
+          headers: signInHeaders(),
           body: JSON.stringify({ username: username.trim(), password, inviteCode: inviteCode?.trim() }),
         });
         await signedIn(auth);
@@ -283,6 +331,7 @@ export const useServer = create<ServerState>((set, get) => {
       try {
         const auth = await request<AuthResponse>("api/setup/admin", {
           method: "POST",
+          headers: signInHeaders(),
           body: JSON.stringify({ setupCode: setupCode.trim(), username: username.trim(), password }),
         });
         const health = get().health;
@@ -320,6 +369,11 @@ export const useServer = create<ServerState>((set, get) => {
     },
 
     async logout() {
+      // Plays not yet uploaded are this person's; send them before the session ends (web clears them).
+      if (isWeb() && get().user) {
+        const { uploadPendingPlays } = await import("./historySync");
+        await Promise.race([uploadPendingPlays(), new Promise((r) => setTimeout(r, 3000))]).catch(() => undefined);
+      }
       try {
         if (get().token) await request<void>("api/auth/logout", { method: "POST" });
       } catch {
