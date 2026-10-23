@@ -10,6 +10,7 @@ const RETRY_MS = 5_000;
 /** Downloading a model can take a while on a slow connection. */
 const PULL_TIMEOUT_MS = 2 * 60 * 60_000;
 const PULL_ATTEMPTS = 3;
+const WARM_TIMEOUT_MS = 4 * 60_000;
 
 const sameModel = (a: string, b: string) => {
   const norm = (m: string) => (m.includes(":") ? m : `${m}:latest`);
@@ -68,7 +69,10 @@ export async function pullModelInBackground(
     log.warn({ url, error: lastError }, "The server's Ollama didn't answer; the AI DJ won't work until it does");
     return "unreachable";
   }
-  if (models.some((m) => sameModel(m, model))) return "present";
+  if (models.some((m) => sameModel(m, model))) {
+    await warm(url, model, log, signal, fetchImpl);
+    return "present";
+  }
 
   log.info({ model }, "Downloading the AI DJ's model into the server's Ollama (this can take a few minutes)");
   // Ollama resumes a partial download, so a dropped connection just tries again.
@@ -76,6 +80,7 @@ export async function pullModelInBackground(
     const error = await pull(url, model, log, signal, fetchImpl);
     if (error === null) {
       log.info({ model }, "The AI DJ's model is ready");
+      await warm(url, model, log, signal, fetchImpl);
       return "pulled";
     }
     if (signal.aborted) return "aborted";
@@ -83,6 +88,24 @@ export async function pullModelInBackground(
     if (attempt < PULL_ATTEMPTS) await sleep((opts.retryMs ?? RETRY_MS) * 6, signal);
   }
   return signal.aborted ? "aborted" : "failed";
+}
+
+/**
+ * Load the model into memory (an empty prompt only loads it), so the first
+ * listener doesn't wait for it: loading an 8B model can take over a minute.
+ */
+async function warm(url: string, model: string, log: FastifyBaseLogger, signal: AbortSignal, fetchImpl: FetchFn): Promise<void> {
+  try {
+    const res = await fetchImpl(endpoint(url, "api/generate"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt: "", stream: false }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(WARM_TIMEOUT_MS)]),
+    });
+    await res.body?.cancel().catch(() => undefined);
+  } catch (e) {
+    if (!signal.aborted) log.info({ model, error: describeFetchError(e) }, "Couldn't preload the AI DJ's model; the first set will be slower");
+  }
 }
 
 /**

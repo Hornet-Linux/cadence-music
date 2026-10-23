@@ -64,6 +64,7 @@ function fakeOllama(installed: string[], opts: { failFirst?: number; pullError?:
       installed.push(body.model);
       return ndjson({ status: "pulling manifest" }, { status: "pulling abc", total: 100, completed: 50 }, { status: "success" });
     }
+    if (url.endsWith("/api/generate")) return Response.json({ done: true });
     return new Response("not found", { status: 404 });
   };
   return { calls, fetchFn };
@@ -73,12 +74,12 @@ test("the model is downloaded only when missing, after Ollama comes up", async (
   const signal = new AbortController().signal;
   const present = fakeOllama(["llama3.2:3b"]);
   assert.equal(await pullModelInBackground("http://ollama:11434", "llama3.2:3b", silent, signal, present.fetchFn), "present");
-  assert.deepEqual(present.calls, ["GET /api/tags"]);
+  assert.deepEqual(present.calls, ["GET /api/tags", "POST /api/generate"], "preloads the model");
 
   const missing = fakeOllama([], { failFirst: 2 });
   const result = await pullModelInBackground("http://ollama:11434", "qwen3:8b", silent, signal, missing.fetchFn, { retryMs: 1 });
   assert.equal(result, "pulled");
-  assert.deepEqual(missing.calls, ["GET /api/tags", "GET /api/tags", "GET /api/tags", "POST /api/pull"]);
+  assert.deepEqual(missing.calls, ["GET /api/tags", "GET /api/tags", "GET /api/tags", "POST /api/pull", "POST /api/generate"]);
 
   const broken = fakeOllama([], { pullError: "pull model manifest: file does not exist" });
   assert.equal(await pullModelInBackground("http://ollama:11434", "nope", silent, signal, broken.fetchFn, { retryMs: 1 }), "failed");
