@@ -2759,3 +2759,288 @@ code {
   content-visibility: auto;
   contain-intrinsic-size: auto 260px;
 }
+
+/* ---------- Sidebar: every page, grouped (desktop and tablets) ----------
+   ≥ 1024px the rail is a full labelled sidebar (foldable to icons); 761–1023px
+   it is an icon rail whose toggle opens the full list as a flyout. Phones keep
+   the bottom tab bar. */
+.app {
+  transition: grid-template-columns 0.18s ease-out;
+}
+.app:has(> .rail.expanded:not(.flyout)) {
+  --rail-w: 236px;
+}
+.rail {
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px 0 10px;
+}
+.rail-top {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px 0 18px;
+  margin-bottom: 10px;
+}
+.rail-top .rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
+}
+.rail-wordmark {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.rail-toggle {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.rail-toggle:hover,
+.rail-toggle:focus-visible {
+  color: var(--text);
+  background: var(--surface);
+}
+.rail-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-faint);
+}
+.rail-search:focus-within {
+  border-color: var(--accent-from);
+}
+.rail-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  padding: 0 10px 8px;
+}
+.nav-heading {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 4px;
+  border-radius: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: left;
+}
+.nav-heading:hover,
+.nav-heading:focus-visible {
+  color: var(--text-muted);
+}
+.nav-caret {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.15s ease-out;
+}
+.nav-caret.open {
+  transform: rotate(90deg);
+}
+.nav-section:first-child .nav-heading {
+  padding-top: 2px;
+}
+.nav-item {
+  position: relative;
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.nav-item:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+.nav-item.active {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-from);
+}
+.nav-item.active .nav-icon {
+  color: var(--accent-from);
+}
+.nav-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+}
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rail-empty {
+  padding: 8px 10px;
+}
+.rail-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--border);
+}
+.rail-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--accent-from);
+  color: var(--accent-fg);
+}
+.rail-tip {
+  position: fixed;
+  z-index: 200;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Icon rail */
+.rail.icons .rail-top {
+  flex-direction: column;
+  padding: 0;
+  gap: 6px;
+}
+.rail.icons .rail-wordmark,
+.rail.icons .nav-label {
+  display: none;
+}
+.rail.icons .rail-toggle {
+  width: 44px;
+  height: 32px;
+}
+.rail.icons .rail-scroll {
+  padding: 0 14px 8px;
+  scrollbar-width: none;
+}
+.rail.icons .rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+.rail.icons .nav-section + .nav-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.rail.icons .nav-item {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+.rail.icons .nav-item.active::before {
+  left: -14px;
+  top: 13px;
+  bottom: 13px;
+}
+.rail.icons .rail-bottom {
+  padding: 8px 14px 0;
+}
+
+/* Tablet flyout */
+.rail.flyout {
+  position: fixed;
+  z-index: 61;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--bg-deep);
+  border-right: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  animation: rail-in 0.18s ease-out;
+}
+.rail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(5, 6, 8, 0.45);
+  animation: fade-in 0.18s ease-out;
+}
+@keyframes rail-in {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+.mac .rail-top {
+  padding-top: 0;
+}
+
+/* Wide screens: centre the page column so extra width becomes calm margins. */
+.view {
+  margin-inline: auto;
+}

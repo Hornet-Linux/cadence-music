@@ -45,6 +45,14 @@ interface Contributions {
   trackActions: TrackActionContribution[];
 }
 
+// Which plugin added each sidebar page, so navigation can group pages by what
+// the plugin does. Kept beside the contributions so the public types stay unchanged.
+const sidebarOwners = new Map<string, string>();
+/** The id of the plugin that registered a sidebar page, if known. */
+export function sidebarItemOwner(itemId: string): string | undefined {
+  return sidebarOwners.get(itemId);
+}
+
 type NowPlayingListener = (track: Track | null) => void;
 type PlaybackListener = (event: PlaybackEvent) => void;
 
@@ -186,6 +194,7 @@ function makeContext(
     can,
     registerSidebarItem(item) {
       requireCap("ui.sidebar", "registerSidebarItem");
+      sidebarOwners.set(item.id, manifest.id);
       target.sidebar.push(item);
     },
     registerHomeWidget(widget) {
