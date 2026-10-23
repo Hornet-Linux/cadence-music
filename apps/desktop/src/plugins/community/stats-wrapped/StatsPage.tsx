@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNav } from "@/app/navStore";
 import { CoverArt } from "@/ui/CoverArt";
 import { primaryArtist } from "@/shared/types";
 import { Notice, Page, Stat, Tabs } from "../_social/ui";
+import { useSignedIn } from "../_social/serverApi";
 import { copyImage, downloadBlob, safeFileName, shareImage } from "../_social/canvasCard";
 import { renderSummaryCard } from "./card";
 import {
@@ -72,6 +73,13 @@ function ShareSection({ stats, label, onClose }: { stats: Stats; label: string; 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const filename = safeFileName(`cadence-${label}`, "png");
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // The card opens below the summary; on a phone that is off screen, so bring it into view.
+  useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    sectionRef.current?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }, []);
 
   useEffect(() => {
     let revoked: string | null = null;
@@ -104,7 +112,7 @@ function ShareSection({ stats, label, onClose }: { stats: Stats; label: string; 
   };
 
   return (
-    <section className="sx-card sw-share" aria-label="Shareable summary card">
+    <section ref={sectionRef} className="sx-card sw-share" aria-label="Shareable summary card">
       <div className="sx-row" style={{ justifyContent: "space-between" }}>
         <h2>Shareable card</h2>
         <button className="btn ghost" onClick={onClose}>
@@ -136,9 +144,10 @@ export function StatsPage() {
   const [rangeId, setRangeId] = useState("30d");
   const [sharing, setSharing] = useState(false);
 
+  const signedIn = useSignedIn();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, signedIn]);
 
   const now = useMemo(() => new Date(), []);
   const ranges = useMemo(() => makeRanges(now, yearsWithPlays(plays)), [now, plays]);
@@ -288,9 +297,10 @@ export function StatsPage() {
 export function StatsWidget() {
   const { plays, load } = useStatsData();
   const navigate = useNav((s) => s.navigate);
+  const signedIn = useSignedIn();
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, signedIn]);
   const stats = useMemo(() => {
     const now = new Date();
     const week = makeRanges(now, [])[0];

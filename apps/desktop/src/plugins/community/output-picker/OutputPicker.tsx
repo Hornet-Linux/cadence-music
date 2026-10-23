@@ -40,6 +40,12 @@ function DeviceButton({ name, detail, selected, disabled, onPick }: { name: stri
 }
 
 /** "Play on...": choose This device or any device the enabled plugins can find. */
+/** What to try when a target finds nothing. Other Cadence players appear on their own; speakers can be added by address. */
+function emptyHint(targetId: string): string {
+  if (targetId.includes("remote")) return "Nothing found. Open Cadence on another device signed in to your account and it appears here.";
+  return "Nothing found. Check Settings for how to add a device by address.";
+}
+
 export function OutputPicker() {
   const targets = usePluginHost((s) => s.contributions.outputTargets);
   const { active, error, busy } = useOutput();
@@ -95,7 +101,7 @@ export function OutputPicker() {
               </button>
             </div>
             {listing?.status === "error" && <p className="notice warn">{listing.message}</p>}
-            {listing?.status === "ok" && listing.devices.length === 0 && <p className="muted small">Nothing found. Check Settings for how to add a device by address.</p>}
+            {listing?.status === "ok" && listing.devices.length === 0 && <p className="muted small">{emptyHint(target.id)}</p>}
             {listing?.status === "ok" && listing.devices.length > 0 && (
               <div role="radiogroup" aria-label={target.label} className="po-list">
                 {listing.devices.map((d) => (
