@@ -176,6 +176,7 @@ function registerWebhooks(app: FastifyInstance, ctx: ServerPluginContext, option
     const events = Array.isArray(body.events)
       ? body.events.filter((e): e is string => typeof e === "string" && (EVENTS as readonly string[]).includes(e))
       : (existing?.events ?? [...EVENTS]);
+    if (events.length === 0) return { error: "invalid_events" as const, message: "Pick at least one event to send." };
     const template = (TEMPLATES as readonly string[]).includes(body.template as string) ? (body.template as TemplateId) : (existing?.template ?? "generic");
     const enabled = typeof body.enabled === "boolean" ? body.enabled : (existing?.enabled ?? true);
     return { value: { name, url, allowPrivate, events, template, enabled } };
