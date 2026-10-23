@@ -196,8 +196,9 @@
   position: absolute;
   inset: -9px -2px;
 }
-.ax .segmented button,
-.viz-page .segmented button {
+.ax.ax .segmented button,
+.viz-page.viz-page .segmented button {
+  /* doubled class: outranks the app-wide 40px rule for phones */
   min-height: 44px;
 }
 
