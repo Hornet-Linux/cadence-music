@@ -1,0 +1,64 @@
+# Cadence — the easy way to run your own music server.
+#
+#   1. Save this file as docker-compose.yml in a new folder.
+#   2. Change the music folder (under "volumes") and PUBLIC_URL below.
+#   3. Run:  docker compose up -d
+#   4. Open http://<this machine>:8787/app and enter the setup code from:
+#            docker compose logs cadence | grep "setup code"
+#
+# No .env file is needed: every setting lives in this file.
+# Want HTTPS with a domain name? Use docker-compose.caddy.yml instead.
+# Updating later:  docker compose pull && docker compose up -d
+# Full guide: https://github.com/Hornet-Linux/cadence-music/blob/main/docs/SELF_HOSTING.md
+
+name: cadence
+
+services:
+  cadence:
+    # :latest is the newest stable release. To stay on one version, use a
+    # version tag such as :1.4.2 (exact) or :1.4 (that line's bug fixes).
+    # :nightly follows the main branch (development builds).
+    image: ${CADENCE_IMAGE:-ghcr.io/hornet-linux/cadence-music:latest}
+    restart: unless-stopped
+    ports:
+      # host port : container port. Change the left number to use another port.
+      - "8787:8787"
+    volumes:
+      # Accounts, settings and the library index. Keep this volume to keep your data.
+      - cadence-data:/data
+      # Your music folder on this machine (left side), mounted read-only.
+      # Example: /srv/music:/music:ro   or on Windows  C:/Users/me/Music:/music:ro
+      - ./music:/music:ro
+    environment:
+      # The address people use to reach this server. Needed for single sign-on
+      # and correct links. Use your domain if you have one, e.g. https://music.example.com
+      PUBLIC_URL: "http://localhost:8787"
+
+      # Who can create an account: closed (only you add people), invite or open.
+      # The first account is always yours: claim it with the setup code from the logs.
+      SIGNUP_MODE: "closed"
+      # SIGNUP_INVITE_CODE: "pick-a-code"   # needed when SIGNUP_MODE is invite
+
+      # Rescan the music folder every N minutes (0 = only at start-up / on demand).
+      SCAN_INTERVAL_MINUTES: "60"
+      LOG_LEVEL: "info"
+
+      # ---- Optional: single sign-on (Authentik, Keycloak, Authelia...) ----------
+      # You can also set this up later in the admin panel (/admin > Single sign-on),
+      # without touching this file. Values set here win and are locked there.
+      # Redirect URI to register at your provider: <PUBLIC_URL>/api/auth/oidc/callback
+      # OIDC_ISSUER: "https://auth.example.com/realms/home"
+      # OIDC_CLIENT_ID: "cadence"
+      # OIDC_CLIENT_SECRET: "..."
+      # OIDC_NAME: "Keycloak"
+      # OIDC_ALLOWED_GROUPS: "music-users"
+      # OIDC_ADMIN_GROUPS: "music-admins"
+
+      # ---- Optional: Spotify (client ID of your Spotify developer app; not a secret)
+      # SPOTIFY_CLIENT_ID: "0123456789abcdef0123456789abcdef"
+
+      # ---- Optional: Jellyfin, as this server reaches it (not localhost inside Docker)
+      # JELLYFIN_URL: "http://jellyfin:8096"
+
+volumes:
+  cadence-data:
