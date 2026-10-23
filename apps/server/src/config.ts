@@ -235,7 +235,7 @@ export function loadConfig(env: Env = process.env): Config {
     try {
       jellyfinUrl = parseJellyfinUrl(env.JELLYFIN_URL);
     } catch (e) {
-      throw new Error(`JELLYFIN_URL: ${e instanceof Error ? e.message : "invalid address"}`);
+      throw new Error(`JELLYFIN_URL: ${e instanceof Error ? e.message : "invalid address"}`, { cause: e });
     }
   }
 
