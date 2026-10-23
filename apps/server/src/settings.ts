@@ -94,6 +94,27 @@ export class Settings {
     else this.write(key, value);
   }
 
+  /**
+   * Whether signed-in people may send free-form prompts through the server's AI
+   * provider (song chat, playlist builder, taste summary). Off by default.
+   * LLM_CHAT_ENABLED=1 or =0 in the environment wins over the admin setting.
+   */
+  llmChatEnabled(): boolean {
+    const env = process.env.LLM_CHAT_ENABLED;
+    if (env === "1") return true;
+    if (env === "0") return false;
+    return this.read<boolean>("llm:chatEnabled") === true;
+  }
+
+  /** True when the environment decides, so the admin setting has no effect. */
+  llmChatLocked(): boolean {
+    return process.env.LLM_CHAT_ENABLED === "1" || process.env.LLM_CHAT_ENABLED === "0";
+  }
+
+  setLlmChatEnabled(enabled: boolean): void {
+    this.write("llm:chatEnabled", enabled);
+  }
+
   /** A person's own Spotify app ID, saved so all their devices can use it. */
   userSpotifyClientId(userId: number): string | undefined {
     return this.read<string>(`user:${userId}:spotifyClientId`);

@@ -1,7 +1,8 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import type { Config } from "./config.js";
 import type { Db } from "./db.js";
-import { OidcClient, type FetchFn } from "./auth/oidc.js";
+import type { FetchFn } from "./auth/oidc.js";
+import { oidcResolver } from "./auth/oidcSettings.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { startSessionPurge, userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
@@ -84,14 +85,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (!req.user?.is_admin) return reply.code(403).send({ error: "forbidden" });
   }
 
-  const oidc =
-    config.oidc && config.publicUrl
-      ? new OidcClient(config.oidc, `${config.publicUrl}/api/auth/oidc/callback`, deps.fetchFn)
-      : null;
+  // Resolved per request, so changes on the admin panel's Single sign-on page apply at once.
+  const oidc = oidcResolver(config, db, secret, deps.fetchFn);
 
   const settings = new Settings(db, config);
   registerAuthRoutes(app, { db, config, oidc, requireUser, settings, onSetupCode: deps.onSetupCode });
-  registerWebApp(app, config.webDir);
+  registerWebApp(app, config.webDir, (id) => settings.pluginEnabled(id));
 
   const events = new ServerEvents(app.log);
   const jobs = new Jobs(app.log);

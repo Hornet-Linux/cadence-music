@@ -3,6 +3,18 @@ import fs from "node:fs";
 import type { FastifyRequest } from "fastify";
 import type { FetchFn } from "../auth/oidc.js";
 import { deleteUserEverywhere } from "../auth/account.js";
+import {
+  DEFAULT_OIDC_NAME,
+  DEFAULT_OIDC_SCOPES,
+  OIDC_FIELDS,
+  applyOidcInput,
+  effectiveOidc,
+  readStoredOidc,
+  testDiscovery,
+  writeStoredOidc,
+  type OidcField,
+  type OidcInput,
+} from "../auth/oidcSettings.js";
 import type { Db } from "../db.js";
 import { MAX_PASSWORD, hashPassword } from "../auth/passwords.js";
 import { IDLE_LIMIT_MS } from "../auth/sessions.js";
@@ -133,7 +145,7 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
     name: "Admin",
     version: "1.1.0",
     async register(app, ctx) {
-      const { db, settings, requireAdmin, config } = ctx;
+      const { db, settings, requireAdmin, config, secret } = ctx;
       const fetchFn = options.fetchFn ?? (fetch as FetchFn);
       const updates = new UpdateChecker(SERVER_VERSION, fetchFn);
       registerAdminPage(app);
@@ -172,7 +184,7 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
           plays: count(db, "SELECT COUNT(*) AS n FROM plays"),
           activeSessions: count(db, "SELECT COUNT(*) AS n FROM sessions WHERE last_used_at > ?", Date.now() - 7 * 86_400_000),
           signup: signup ? { mode: signup.mode, inviteCode: signup.mode === "invite" ? signup.inviteCode : null } : { mode: "closed", inviteCode: null },
-          oidc: config.oidc ? { name: config.oidc.displayName, issuer: config.oidc.issuer } : null,
+          oidc: ((o) => (o ? { name: o.displayName, issuer: o.issuer } : null))(effectiveOidc(config, db, secret).config),
           publicUrl: config.publicUrl ?? null,
           storage: {
             dbBytes: file ? fileSize(file) : null,
@@ -213,33 +225,67 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
         status: await updates.check(),
       }));
 
-      // ---- Single sign-on (read-only) ---------------------------------------------
-      app.get("/api/admin/sso", { preHandler: requireAdmin }, async () => {
-        const oidc = config.oidc;
-        if (!oidc) return { configured: false };
-        let discovery: { ok: boolean; error: string | null } = { ok: false, error: null };
-        try {
-          const url = `${oidc.issuer.replace(/\/+$/, "")}/.well-known/openid-configuration`;
-          const res = await fetchFn(url, { signal: AbortSignal.timeout(4000) });
-          discovery = res.ok ? { ok: true, error: null } : { ok: false, error: `The provider answered ${res.status}.` };
-        } catch (err) {
-          discovery = { ok: false, error: err instanceof Error ? err.message : "Couldn't reach the provider." };
+      // ---- Single sign-on -------------------------------------------------------------
+      // Saved here and applied to the next sign-in. OIDC_* variables set in the
+      // environment win and lock their fields. The client secret is sealed with
+      // the server secret and never sent back.
+      const ssoView = async (withDiscovery: boolean) => {
+        const eff = effectiveOidc(config, db, secret);
+        const c = eff.config;
+        const saved = readStoredOidc(db);
+        const locked = Object.fromEntries(OIDC_FIELDS.map((f) => [f, eff.source[f] === "env"])) as Record<OidcField, boolean>;
+        let discovery: { ok: boolean; error: string | null } | null = null;
+        if (withDiscovery && c) {
+          const t = await testDiscovery(c.issuer, fetchFn, 4000);
+          discovery = t.ok ? { ok: true, error: null } : { ok: false, error: t.error };
         }
         return {
-          configured: true,
-          name: oidc.displayName,
-          issuer: oidc.issuer,
-          clientId: oidc.clientId,
-          hasClientSecret: !!oidc.clientSecret,
-          scopes: oidc.scopes,
-          allowedGroups: oidc.allowedGroups,
-          adminGroups: oidc.adminGroups,
+          configured: !!c,
+          active: !!c && !!config.publicUrl,
+          name: c?.displayName ?? DEFAULT_OIDC_NAME,
+          issuer: c?.issuer ?? saved.issuer ?? "",
+          clientId: c?.clientId ?? saved.clientId ?? "",
+          hasClientSecret: !!c?.clientSecret || !!saved.clientSecretSealed,
+          secretUnreadable: eff.secretUnreadable,
+          scopes: c?.scopes ?? saved.scopes ?? DEFAULT_OIDC_SCOPES,
+          allowedGroups: c?.allowedGroups ?? saved.allowedGroups ?? [],
+          adminGroups: c?.adminGroups ?? saved.adminGroups ?? [],
+          source: eff.source,
+          locked,
           callbackUrl: config.publicUrl ? `${config.publicUrl}/api/auth/oidc/callback` : null,
           webCallbackUrl: config.publicUrl ? `${config.publicUrl}/app/auth/callback` : null,
           publicUrlSet: !!config.publicUrl,
           ssoAccounts: count(db, "SELECT COUNT(*) AS n FROM users WHERE oidc_subject IS NOT NULL"),
           discovery,
         };
+      };
+
+      app.get("/api/admin/sso", { preHandler: requireAdmin }, async () => ssoView(true));
+
+      app.put<{ Body: OidcInput }>("/api/admin/sso", { preHandler: requireAdmin }, async (req, reply) => {
+        const body = req.body;
+        if (!body || typeof body !== "object" || Array.isArray(body)) return reply.code(400).send({ error: "invalid_request" });
+        const eff = effectiveOidc(config, db, secret);
+        const locked = Object.fromEntries(OIDC_FIELDS.map((f) => [f, eff.source[f] === "env"]));
+        const result = applyOidcInput(body, readStoredOidc(db), locked, secret);
+        if ("error" in result) return reply.code(400).send({ error: result.error });
+        writeStoredOidc(db, result.stored);
+        const changed = OIDC_FIELDS.filter((f) => (body as Record<string, unknown>)[f] !== undefined && !locked[f]);
+        noteAudit(req, { action: "sso.update", detail: changed.length ? changed.join(", ") : "no changes" });
+        return ssoView(false);
+      });
+
+      app.delete("/api/admin/sso", { preHandler: requireAdmin }, async (req) => {
+        writeStoredOidc(db, null);
+        noteAudit(req, { action: "sso.clear", detail: "saved single sign-on settings removed" });
+        return ssoView(false);
+      });
+
+      app.post<{ Body: { issuer?: unknown } }>("/api/admin/sso/test", { preHandler: requireAdmin }, async (req) => {
+        const typed = typeof req.body?.issuer === "string" ? req.body.issuer.trim() : "";
+        const issuer = typed || effectiveOidc(config, db, secret).config?.issuer || "";
+        if (!issuer) return { ok: false, error: "Enter the issuer address first." };
+        return testDiscovery(issuer, fetchFn);
       });
 
       // ---- Audit log ---------------------------------------------------------
@@ -266,6 +312,11 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
           restartRequired: !!boot && (boot.enabled !== enabled || (enabled && boot.config !== configNow)),
           config: saved === undefined ? null : maskConfig(saved),
           configFields: (p.configFields ?? []) as PluginConfigField[],
+          // "form": the declared fields; "none": the plugin has nothing to set here; "json": undeclared, so a plain JSON editor.
+          settings: p.configFields === undefined ? "json" : p.configFields.length > 0 ? "form" : "none",
+          configNote: p.configNote ?? null,
+          adminRoutes: p.adminRoutes ?? [],
+          userRoutes: p.userRoutes ?? [],
         };
       };
 

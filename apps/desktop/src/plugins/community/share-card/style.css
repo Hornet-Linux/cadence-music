@@ -1,0 +1,30 @@
+.sc-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.sc-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.sc-skeleton {
+  background: var(--surface);
+}
+.sc-skeleton.portrait {
+  aspect-ratio: 4 / 5;
+}
+.sc-skeleton.square {
+  aspect-ratio: 1;
+}
+@media (max-width: 760px) {
+  .sc-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sc-preview {
+    max-width: 360px;
+  }
+}
