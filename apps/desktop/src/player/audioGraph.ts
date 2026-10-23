@@ -134,6 +134,38 @@ export class AudioGraph {
     }
   }
 
+  /**
+   * Run `change` inside a very short dip of the processed output (about 15 ms down, 25 ms back
+   * up). A playback-rate change makes the decoder jump to a new point in the waveform, which is
+   * heard as a click; hiding the jump under a tiny fade removes it. Without a running graph the
+   * change happens at once.
+   */
+  softly(change: () => void): void {
+    const ctx = this.ctx;
+    const bus = this.bus;
+    if (!ctx || !bus || ctx.state !== "running" || this.captured === 0) {
+      change();
+      return;
+    }
+    const g = bus.gain;
+    try {
+      g.cancelScheduledValues(ctx.currentTime);
+      g.setTargetAtTime(0, ctx.currentTime, 0.004);
+    } catch {
+      change();
+      return;
+    }
+    setTimeout(() => {
+      change();
+      try {
+        g.cancelScheduledValues(ctx.currentTime);
+        g.setTargetAtTime(1, ctx.currentTime + 0.01, 0.008);
+      } catch {
+        g.value = 1;
+      }
+    }, 18);
+  }
+
   /** Wake a suspended context. Safe to call at any time; call it from user gestures. */
   async resume(): Promise<void> {
     const ctx = this.ctx;

@@ -213,3 +213,12 @@ describe("canRouteUrl", () => {
     expect(await canRouteUrl("http://slow.test/a", { base, fetchFn: fetchFn as unknown as typeof fetch, timeoutMs: 20 })).toBe(false);
   });
 });
+
+describe("softly", () => {
+  it("applies the change at once when nothing is routed through the graph", () => {
+    const graph = new AudioGraph(() => null);
+    let done = false;
+    graph.softly(() => (done = true));
+    expect(done).toBe(true);
+  });
+});
