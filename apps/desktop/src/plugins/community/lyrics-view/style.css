@@ -65,6 +65,9 @@
   background: var(--surface-hover);
   color: var(--text);
 }
+.lv-btn.on {
+  border-color: var(--accent);
+}
 .lv-btn.big {
   min-width: 56px;
   min-height: 56px;

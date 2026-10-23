@@ -8,6 +8,12 @@ import {
 } from "../../../../../server/src/llm/core/lyricsTranslate";
 import { BadAnswer, type SendBatch } from "./translate";
 
+/** Raw network errors ("Failed to fetch") mean nothing to a listener: say what happened instead. */
+function plainReason(raw: string | undefined): string {
+  if (!raw || /failed to fetch|fetch failed|networkerror|load failed|econnrefused/i.test(raw)) return "it did not answer";
+  return raw;
+}
+
 const SETUP_HINT = "Set one up in Settings, AI DJ (a server provider, or one on this device such as Ollama).";
 
 export class NoProvider extends Error {}
@@ -31,10 +37,10 @@ export async function checkProvider(option: ProviderOption): Promise<void> {
   try {
     status = await providerStatus(option.ref);
   } catch (err) {
-    throw new NoProvider(`The AI provider ${option.name} could not be reached${err instanceof Error ? `: ${err.message}` : ""}. ${SETUP_HINT}`);
+    throw new NoProvider(`The AI provider ${option.name} could not be reached (${plainReason(err instanceof Error ? err.message : undefined)}). ${SETUP_HINT}`);
   }
   if (!status.available) {
-    throw new NoProvider(`The AI provider ${option.name} is not available${status.error ? ` (${status.error})` : ""}. ${SETUP_HINT}`);
+    throw new NoProvider(`The AI provider ${option.name} is not available (${plainReason(status.error)}). ${SETUP_HINT}`);
   }
 }
 
