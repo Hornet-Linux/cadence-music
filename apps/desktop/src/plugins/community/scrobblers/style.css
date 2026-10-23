@@ -30,6 +30,7 @@
   margin: 0;
 }
 .scrb-dot {
+  transition: background-color 0.3s ease;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -40,7 +41,7 @@
   background: var(--ok);
 }
 .scrb-dot.warn {
-  background: var(--text-muted);
+  background: var(--warn, var(--text-muted));
 }
 .scrb-dot.error {
   background: var(--danger);

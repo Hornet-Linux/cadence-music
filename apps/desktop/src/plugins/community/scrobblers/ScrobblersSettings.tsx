@@ -10,6 +10,7 @@ import {
   validListenBrainzToken,
   validServiceAddress,
   type ServiceStatus,
+  friendlyError,
 } from "./logic";
 import { useScrobblers } from "./scrobblersStore";
 
@@ -23,14 +24,30 @@ function Feedback({ id }: { id: ServiceStatus["id"] }) {
   const message = useScrobblers((s) => s.messages[id]);
   if (!message) return null;
   return (
-    <p className={message.kind === "error" ? "notice error" : "notice"} role={message.kind === "error" ? "alert" : "status"}>
+    <p
+      className={message.kind === "error" ? "notice error" : "notice"}
+      role={message.kind === "error" ? "alert" : "status"}
+    >
       {message.text}
     </p>
   );
 }
 
-function ConnectForm({ service, customHosts }: { service: ServiceStatus; customHosts: boolean }) {
-  const { busy, approvals, startApproval, finishApproval, connectListenBrainz, connectMaloja } = useScrobblers();
+function ConnectForm({
+  service,
+  customHosts,
+}: {
+  service: ServiceStatus;
+  customHosts: boolean;
+}) {
+  const {
+    busy,
+    approvals,
+    startApproval,
+    finishApproval,
+    connectListenBrainz,
+    connectMaloja,
+  } = useScrobblers();
   const [token, setToken] = useState("");
   const [host, setHost] = useState("");
   const [url, setUrl] = useState("");
@@ -42,18 +59,34 @@ function ConnectForm({ service, customHosts }: { service: ServiceStatus; customH
     if (approveUrl || service.awaitingApproval) {
       return (
         <div className="scrb-steps">
-          <p className="muted small">Two quick steps. {service.label} asks you to approve Cadence, then you come back and finish.</p>
+          <p className="muted small">
+            Two quick steps. {service.label} asks you to approve Cadence, then
+            you come back and finish.
+          </p>
           <div className="scrb-actions">
             {approveUrl ? (
-              <a className="btn" href={approveUrl} target="_blank" rel="noreferrer">
+              <a
+                className="btn"
+                href={approveUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 1. Open {service.label}
               </a>
             ) : (
-              <button className="btn" disabled={working} onClick={() => void startApproval(service.id)}>
+              <button
+                className="btn"
+                disabled={working}
+                onClick={() => void startApproval(service.id)}
+              >
                 1. Get a new link
               </button>
             )}
-            <button className="btn primary" disabled={working} onClick={() => void finishApproval(service.id)}>
+            <button
+              className="btn primary"
+              disabled={working}
+              onClick={() => void finishApproval(service.id)}
+            >
               {busy[service.id] === "finish" ? "Finishing…" : "2. Finish"}
             </button>
           </div>
@@ -62,21 +95,31 @@ function ConnectForm({ service, customHosts }: { service: ServiceStatus; customH
     }
     return (
       <div className="scrb-actions">
-        <button className="btn primary" disabled={working} onClick={() => void startApproval(service.id)}>
-          {busy[service.id] === "connect" ? "Contacting…" : `Connect ${service.label}`}
+        <button
+          className="btn primary"
+          disabled={working}
+          onClick={() => void startApproval(service.id)}
+        >
+          {busy[service.id] === "connect"
+            ? "Contacting…"
+            : `Connect ${service.label}`}
         </button>
       </div>
     );
   }
 
   if (service.id === "listenbrainz") {
-    const ready = validListenBrainzToken(token) && (!host.trim() || validServiceAddress(host));
+    const ready =
+      validListenBrainzToken(token) &&
+      (!host.trim() || validServiceAddress(host));
     return (
       <form
         className="stack"
         onSubmit={(e) => {
           e.preventDefault();
-          void connectListenBrainz(token, host).then((ok) => ok && setToken(""));
+          void connectListenBrainz(token, host).then(
+            (ok) => ok && setToken(""),
+          );
         }}
       >
         <div>
@@ -112,7 +155,11 @@ function ConnectForm({ service, customHosts }: { service: ServiceStatus; customH
           </div>
         )}
         <div>
-          <button className="btn primary" type="submit" disabled={!ready || working}>
+          <button
+            className="btn primary"
+            type="submit"
+            disabled={!ready || working}
+          >
             {working ? "Checking…" : "Connect ListenBrainz"}
           </button>
         </div>
@@ -160,7 +207,11 @@ function ConnectForm({ service, customHosts }: { service: ServiceStatus; customH
         />
       </div>
       <div>
-        <button className="btn primary" type="submit" disabled={!ready || working}>
+        <button
+          className="btn primary"
+          type="submit"
+          disabled={!ready || working}
+        >
           {working ? "Checking…" : "Connect Maloja"}
         </button>
       </div>
@@ -168,9 +219,20 @@ function ConnectForm({ service, customHosts }: { service: ServiceStatus; customH
   );
 }
 
-function ServiceCard({ service, now, isAdmin }: { service: ServiceStatus; now: number; isAdmin: boolean }) {
-  const { busy, setEnabled, test, disconnect, retryNow, clearQueue } = useScrobblers();
-  const customHosts = useScrobblers((s) => s.status?.customHostsAllowed ?? false);
+function ServiceCard({
+  service,
+  now,
+  isAdmin,
+}: {
+  service: ServiceStatus;
+  now: number;
+  isAdmin: boolean;
+}) {
+  const { busy, setEnabled, test, disconnect, retryNow, clearQueue } =
+    useScrobblers();
+  const customHosts = useScrobblers(
+    (s) => s.status?.customHostsAllowed ?? false,
+  );
   const summary = summarize(service);
   const working = !!busy[service.id];
   const pending = service.queue.pending;
@@ -185,7 +247,9 @@ function ServiceCard({ service, now, isAdmin }: { service: ServiceStatus; now: n
         <span className="scrb-state muted small">{summary.label}</span>
       </header>
 
-      {!service.connected && <p className="muted small">{SERVICE_BLURB[service.id]}</p>}
+      {!service.connected && (
+        <p className="muted small">{SERVICE_BLURB[service.id]}</p>
+      )}
 
       {service.connected ? (
         <div className="scrb-body">
@@ -204,7 +268,11 @@ function ServiceCard({ service, now, isAdmin }: { service: ServiceStatus; now: n
             )}
             <div>
               <dt>Last sent</dt>
-              <dd>{service.lastSuccessAt ? relativeTime(service.lastSuccessAt, now) : "Nothing yet"}</dd>
+              <dd>
+                {service.lastSuccessAt
+                  ? relativeTime(service.lastSuccessAt, now)
+                  : "Nothing yet"}
+              </dd>
             </div>
             <div>
               <dt>Queue</dt>
@@ -213,28 +281,56 @@ function ServiceCard({ service, now, isAdmin }: { service: ServiceStatus; now: n
           </dl>
           {service.lastError && (
             <p className={service.needsReauth ? "notice error" : "notice warn"}>
-              {service.lastError.message} <span className="muted">({relativeTime(service.lastError.at, now)})</span>
-              {service.needsReauth && " Disconnect and connect again to fix it."}
+              {friendlyError(
+                service.lastError.message,
+                service.label,
+                pending > 0,
+              )}{" "}
+              <span className="muted">
+                ({relativeTime(service.lastError.at, now)})
+              </span>
+              {service.needsReauth &&
+                " Disconnect and connect again to fix it."}
             </p>
           )}
           <div className="scrb-actions">
-            <button className="btn" disabled={working} onClick={() => void setEnabled(service.id, !service.enabled)}>
+            <button
+              className="btn"
+              disabled={working}
+              onClick={() => void setEnabled(service.id, !service.enabled)}
+            >
               {service.enabled ? "Pause" : "Resume"}
             </button>
-            <button className="btn" disabled={working} onClick={() => void test(service.id)}>
+            <button
+              className="btn"
+              disabled={working}
+              onClick={() => void test(service.id)}
+            >
               {busy[service.id] === "test" ? "Testing…" : "Test connection"}
             </button>
             {pending > 0 && (
-              <button className="btn" disabled={working} onClick={() => void retryNow(service.id)}>
+              <button
+                className="btn"
+                disabled={working}
+                onClick={() => void retryNow(service.id)}
+              >
                 Retry now
               </button>
             )}
             {pending > 0 && (
-              <button className="btn ghost" disabled={working} onClick={() => void clearQueue(service.id)}>
+              <button
+                className="btn ghost"
+                disabled={working}
+                onClick={() => void clearQueue(service.id)}
+              >
                 Clear queue
               </button>
             )}
-            <button className="btn ghost" disabled={working} onClick={() => void disconnect(service.id)}>
+            <button
+              className="btn ghost"
+              disabled={working}
+              onClick={() => void disconnect(service.id)}
+            >
               Disconnect
             </button>
           </div>
@@ -274,17 +370,24 @@ function OwnerSection() {
       <div className="stack">
         <p className="muted small">
           Last.fm needs an API account from you:{" "}
-          <a href="https://www.last.fm/api/account/create" target="_blank" rel="noreferrer">
+          <a
+            href="https://www.last.fm/api/account/create"
+            target="_blank"
+            rel="noreferrer"
+          >
             create one at last.fm/api
           </a>{" "}
-          and paste its key and shared secret. The secret is stored encrypted and never shown again.
+          and paste its key and shared secret. The secret is stored encrypted
+          and never shown again.
         </p>
         <form
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
             setSaved(false);
-            void saveAdmin({ lastfm: { apiKey, ...(apiSecret ? { apiSecret } : {}) } }).then((ok) => {
+            void saveAdmin({
+              lastfm: { apiKey, ...(apiSecret ? { apiSecret } : {}) },
+            }).then((ok) => {
               if (ok) {
                 setApiSecret("");
                 setSaved(true);
@@ -320,11 +423,19 @@ function OwnerSection() {
             />
           </div>
           <div className="scrb-actions">
-            <button className="btn primary" type="submit" disabled={!apiKey.trim() || (!hasKeys && !apiSecret.trim())}>
+            <button
+              className="btn primary"
+              type="submit"
+              disabled={!apiKey.trim() || (!hasKeys && !apiSecret.trim())}
+            >
               Save Last.fm keys
             </button>
             {hasKeys && (
-              <button className="btn ghost" type="button" onClick={() => void saveAdmin({ lastfm: null })}>
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={() => void saveAdmin({ lastfm: null })}
+              >
                 Remove
               </button>
             )}
@@ -332,13 +443,29 @@ function OwnerSection() {
           {saved && <p className="notice">Saved.</p>}
         </form>
         <label className="scrb-check">
-          <input type="checkbox" checked={admin.allowCustomHosts} onChange={(e) => void saveAdmin({ allowCustomHosts: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={admin.allowCustomHosts}
+            onChange={(e) =>
+              void saveAdmin({ allowCustomHosts: e.target.checked })
+            }
+          />
           <span>
-            Let people connect their own servers (Maloja, self-hosted ListenBrainz)
-            <span className="muted small"> This makes the server contact addresses people type in. Turn it on only if you trust your users.</span>
+            Let people connect their own servers (Maloja, self-hosted
+            ListenBrainz)
+            <span className="muted small">
+              {" "}
+              This makes the server contact addresses people type in. Turn it on
+              only if you trust your users.
+            </span>
           </span>
         </label>
-        {status && <p className="muted small">Failed plays are retried for {status.retryDays} days, then given up on.</p>}
+        {status && (
+          <p className="muted small">
+            Failed plays are retried for {status.retryDays} days, then given up
+            on.
+          </p>
+        )}
       </div>
     </details>
   );
@@ -364,7 +491,10 @@ export function ScrobblersSettings() {
   if (!user) {
     return (
       <div className="stack scrb">
-        <p className="muted small">Scrobbling runs on your Cadence server, so it works only once you&apos;re signed in to one.</p>
+        <p className="muted small">
+          Scrobbling runs on your Cadence server, so it works only once
+          you&apos;re signed in to one.
+        </p>
         <div>
           <button className="btn" onClick={() => openSettings("server")}>
             Open server settings
@@ -378,11 +508,16 @@ export function ScrobblersSettings() {
     return (
       <div className="stack scrb">
         <p className="notice">
-          This server doesn&apos;t have scrobbling turned on. The server owner can enable the Scrobblers plugin in the server settings
-          and restart it.
+          This server doesn&apos;t have scrobbling turned on. The server owner
+          can enable the Scrobblers plugin in the server settings and restart
+          it.
         </p>
         <div>
-          <button className="btn ghost" disabled={loading} onClick={() => void refresh()}>
+          <button
+            className="btn ghost"
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
             Check again
           </button>
         </div>
@@ -393,7 +528,9 @@ export function ScrobblersSettings() {
   if (!status) {
     return (
       <div className="stack scrb">
-        <p className="muted small">{loading ? "Checking your server…" : "Couldn't check scrobbling."}</p>
+        <p className="muted small">
+          {loading ? "Checking your server…" : "Couldn't check scrobbling."}
+        </p>
         {error && <p className="notice error">{error}</p>}
         {!loading && (
           <div>
@@ -409,11 +546,17 @@ export function ScrobblersSettings() {
   return (
     <div className="stack scrb">
       <p className="muted small">
-        Your server sends every finished play to the services you connect, from any device, and retries if a service is down.
+        Your server sends every finished play to the services you connect, from
+        any device, and retries if a service is down.
       </p>
       {error && <p className="notice error">{error}</p>}
       {status.services.map((service) => (
-        <ServiceCard key={service.id} service={service} now={now} isAdmin={status.isAdmin} />
+        <ServiceCard
+          key={service.id}
+          service={service}
+          now={now}
+          isAdmin={status.isAdmin}
+        />
       ))}
       {status.problems.length > 0 && (
         <div className="scrb-problems">
@@ -421,9 +564,11 @@ export function ScrobblersSettings() {
           <ul>
             {status.problems.map((p, i) => (
               <li key={`${p.service}-${p.playedAt}-${i}`} className="small">
-                <span className="strong">{p.title}</span> <span className="muted">· {p.artist}</span>
+                <span className="strong">{p.title}</span>{" "}
+                <span className="muted">· {p.artist}</span>
                 <div className="muted">
-                  {p.service} · {p.state === "dropped" ? "given up" : "retrying"}
+                  {p.service} ·{" "}
+                  {p.state === "dropped" ? "given up" : "retrying"}
                   {p.error ? ` · ${p.error}` : ""}
                 </div>
               </li>

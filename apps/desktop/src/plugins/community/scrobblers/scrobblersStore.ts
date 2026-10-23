@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { ApiError, useServer } from "../../builtins/server/serverStore";
-import { cleanError, type AdminConfig, type ServiceId, type StatusResponse } from "./logic";
+import {
+  cleanError,
+  type AdminConfig,
+  type ServiceId,
+  type StatusResponse,
+} from "./logic";
 
 export interface Message {
   kind: "ok" | "error";
@@ -44,15 +49,28 @@ interface ScrobblersState {
 }
 
 const BASE = "api/scrobblers";
-const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
+const json = (body: unknown): RequestInit => ({
+  method: "POST",
+  body: JSON.stringify(body),
+});
 
 export const useScrobblers = create<ScrobblersState>((set, get) => {
-  const api = <T>(route: string, init?: RequestInit) => useServer.getState().api<T>(`${BASE}/${route}`, init);
-  const note = (id: ServiceId, message: Message | undefined) => set((s) => ({ messages: { ...s.messages, [id]: message } }));
+  const api = <T>(route: string, init?: RequestInit) =>
+    useServer.getState().api<T>(`${BASE}/${route}`, init);
+  const note = (id: ServiceId, message: Message | undefined) =>
+    set((s) => ({ messages: { ...s.messages, [id]: message } }));
 
   /** Run one action for a service: mark it busy, report failures on its card, then reload the status. */
-  async function act<T>(id: ServiceId, name: string, run: () => Promise<T>, onOk?: (result: T) => Message | undefined): Promise<T | undefined> {
-    set((s) => ({ busy: { ...s.busy, [id]: name }, messages: { ...s.messages, [id]: undefined } }));
+  async function act<T>(
+    id: ServiceId,
+    name: string,
+    run: () => Promise<T>,
+    onOk?: (result: T) => Message | undefined,
+  ): Promise<T | undefined> {
+    set((s) => ({
+      busy: { ...s.busy, [id]: name },
+      messages: { ...s.messages, [id]: undefined },
+    }));
     try {
       const result = await run();
       note(id, onOk?.(result));
@@ -84,7 +102,8 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
         set({ status, support: "ok", error: null });
       } catch (err) {
         // A server without the plugin (or an older one) has no such route.
-        if (err instanceof ApiError && err.status === 404) set({ status: null, support: "missing", error: null });
+        if (err instanceof ApiError && err.status === 404)
+          set({ status: null, support: "missing", error: null });
         else set({ error: cleanError(err) });
       } finally {
         set({ loading: false });
@@ -92,8 +111,11 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
     },
 
     async startApproval(id) {
-      const out = await act(id, "connect", () => api<{ approveUrl: string }>(`${id}/connect`, json({})));
-      if (out) set((s) => ({ approvals: { ...s.approvals, [id]: out.approveUrl } }));
+      const out = await act(id, "connect", () =>
+        api<{ approveUrl: string }>(`${id}/connect`, json({})),
+      );
+      if (out)
+        set((s) => ({ approvals: { ...s.approvals, [id]: out.approveUrl } }));
     },
 
     async finishApproval(id) {
@@ -101,7 +123,10 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
         id,
         "finish",
         () => api<{ username: string }>(`${id}/finish`, json({})),
-        (r) => ({ kind: "ok", text: r.username ? `Connected as ${r.username}.` : "Connected." }),
+        (r) => ({
+          kind: "ok",
+          text: r.username ? `Connected as ${r.username}.` : "Connected.",
+        }),
       );
       if (out) set((s) => ({ approvals: { ...s.approvals, [id]: undefined } }));
       return !!out;
@@ -111,8 +136,18 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
       const out = await act(
         "listenbrainz",
         "connect",
-        () => api<{ username: string }>("listenbrainz/connect", json({ token: token.trim(), ...(host.trim() ? { host: host.trim() } : {}) })),
-        (r) => ({ kind: "ok", text: r.username ? `Connected as ${r.username}.` : "Connected." }),
+        () =>
+          api<{ username: string }>(
+            "listenbrainz/connect",
+            json({
+              token: token.trim(),
+              ...(host.trim() ? { host: host.trim() } : {}),
+            }),
+          ),
+        (r) => ({
+          kind: "ok",
+          text: r.username ? `Connected as ${r.username}.` : "Connected.",
+        }),
       );
       return !!out;
     },
@@ -121,8 +156,17 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
       const out = await act(
         "maloja",
         "connect",
-        () => api<{ keyChecked: boolean }>("maloja/connect", json({ url: url.trim(), apiKey: apiKey.trim() })),
-        (r) => ({ kind: "ok", text: r.keyChecked ? "Connected." : "Connected. This Maloja version can't confirm the key until the first play." }),
+        () =>
+          api<{ keyChecked: boolean }>(
+            "maloja/connect",
+            json({ url: url.trim(), apiKey: apiKey.trim() }),
+          ),
+        (r) => ({
+          kind: "ok",
+          text: r.keyChecked
+            ? "Connected."
+            : "Connected. This Maloja version can't confirm the key until the first play.",
+        }),
       );
       return !!out;
     },
@@ -133,7 +177,12 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
     },
 
     async setEnabled(id, enabled) {
-      await act(id, "toggle", () => api<{ enabled: boolean }>(id, { method: "PATCH", body: JSON.stringify({ enabled }) }));
+      await act(id, "toggle", () =>
+        api<{ enabled: boolean }>(id, {
+          method: "PATCH",
+          body: JSON.stringify({ enabled }),
+        }),
+      );
     },
 
     async test(id) {
@@ -146,14 +195,22 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
     },
 
     async retryNow(id) {
-      await act(id, "retry", () => api<unknown>("queue/retry", json({ service: id })));
+      await act(id, "retry", () =>
+        api<unknown>("queue/retry", json({ service: id })),
+      );
     },
 
     async clearQueue(id) {
-      await act(id, "clear", () => api<{ cleared: number }>(`queue?service=${id}`, { method: "DELETE" }), (r) => ({
-        kind: "ok",
-        text: `Cleared ${r.cleared} waiting ${r.cleared === 1 ? "play" : "plays"}.`,
-      }));
+      await act(
+        id,
+        "clear",
+        () =>
+          api<{ cleared: number }>(`queue?service=${id}`, { method: "DELETE" }),
+        (r) => ({
+          kind: "ok",
+          text: `Cleared ${r.cleared} waiting ${r.cleared === 1 ? "play" : "plays"}.`,
+        }),
+      );
     },
 
     async loadAdmin() {
@@ -166,7 +223,10 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
 
     async saveAdmin(patch) {
       try {
-        await api<void>("admin/config", { method: "PUT", body: JSON.stringify(patch) });
+        await api<void>("admin/config", {
+          method: "PUT",
+          body: JSON.stringify(patch),
+        });
         set({ error: null });
         await Promise.all([get().loadAdmin(), get().refresh()]);
         return true;
@@ -177,7 +237,16 @@ export const useScrobblers = create<ScrobblersState>((set, get) => {
     },
 
     reset() {
-      set({ status: null, support: "unknown", loading: false, busy: {}, messages: {}, approvals: {}, error: null, admin: null });
+      set({
+        status: null,
+        support: "unknown",
+        loading: false,
+        busy: {},
+        messages: {},
+        approvals: {},
+        error: null,
+        admin: null,
+      });
     },
   };
 });

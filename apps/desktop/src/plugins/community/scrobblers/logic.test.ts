@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanError,
+  friendlyError,
   queueLine,
   relativeTime,
   summarize,
@@ -24,11 +25,25 @@ const base: ServiceStatus = {
 
 describe("summarize", () => {
   it("describes each state in plain words", () => {
-    expect(summarize({ ...base, connected: false })).toEqual({ label: "Not connected", tone: "off" });
-    expect(summarize({ ...base, connected: false, available: false })).toEqual({ label: "Not set up on this server", tone: "off" });
-    expect(summarize({ ...base, connected: false, awaitingApproval: true })).toEqual({ label: "Waiting for your approval", tone: "warn" });
-    expect(summarize({ ...base, username: "rj" })).toEqual({ label: "Connected as rj", tone: "ok" });
-    expect(summarize({ ...base, enabled: false })).toEqual({ label: "Paused", tone: "off" });
+    expect(summarize({ ...base, connected: false })).toEqual({
+      label: "Not connected",
+      tone: "off",
+    });
+    expect(summarize({ ...base, connected: false, available: false })).toEqual({
+      label: "Not set up on this server",
+      tone: "off",
+    });
+    expect(
+      summarize({ ...base, connected: false, awaitingApproval: true }),
+    ).toEqual({ label: "Waiting for your approval", tone: "warn" });
+    expect(summarize({ ...base, username: "rj" })).toEqual({
+      label: "Connected as rj",
+      tone: "ok",
+    });
+    expect(summarize({ ...base, enabled: false })).toEqual({
+      label: "Paused",
+      tone: "off",
+    });
     expect(summarize({ ...base, needsReauth: true }).tone).toBe("error");
     const retrying = summarize({
       ...base,
@@ -54,16 +69,26 @@ describe("time wording", () => {
     expect(untilTime(now + 4 * 3600_000, now)).toBe("in 4 h");
   });
   it("summarises the queue", () => {
-    expect(queueLine({ pending: 0, sentToday: 0, dropped: 0, nextAttemptAt: null }, now)).toBe("Nothing waiting");
-    expect(queueLine({ pending: 2, sentToday: 5, dropped: 1, nextAttemptAt: now + 120_000 }, now)).toBe(
-      "2 waiting, next try in 2 min · 5 sent today · 1 given up on",
-    );
+    expect(
+      queueLine(
+        { pending: 0, sentToday: 0, dropped: 0, nextAttemptAt: null },
+        now,
+      ),
+    ).toBe("Nothing waiting");
+    expect(
+      queueLine(
+        { pending: 2, sentToday: 5, dropped: 1, nextAttemptAt: now + 120_000 },
+        now,
+      ),
+    ).toBe("2 waiting, next try in 2 min · 5 sent today · 1 given up on");
   });
 });
 
 describe("input checks", () => {
   it("accepts a ListenBrainz token shape", () => {
-    expect(validListenBrainzToken("a1b2c3d4-e5f6-7890-abcd-ef1234567890")).toBe(true);
+    expect(validListenBrainzToken("a1b2c3d4-e5f6-7890-abcd-ef1234567890")).toBe(
+      true,
+    );
     expect(validListenBrainzToken("  abcdefgh  ")).toBe(true);
     expect(validListenBrainzToken("short")).toBe(false);
     expect(validListenBrainzToken("has space inside here")).toBe(false);
@@ -81,8 +106,31 @@ describe("input checks", () => {
 
 describe("cleanError", () => {
   it("keeps only the server's message", () => {
-    expect(cleanError(new Error("Request failed (409): Last.fm isn't set up on this server."))).toBe("Last.fm isn't set up on this server.");
+    expect(
+      cleanError(
+        new Error("Request failed (409): Last.fm isn't set up on this server."),
+      ),
+    ).toBe("Last.fm isn't set up on this server.");
     expect(cleanError(new Error("Could not reach"))).toBe("Could not reach");
     expect(cleanError("plain")).toBe("plain");
+  });
+});
+
+describe("friendlyError", () => {
+  it("turns a 503 into a calm, reassuring line while plays wait", () => {
+    expect(
+      friendlyError(
+        "ListenBrainz had a problem (HTTP 503).",
+        "ListenBrainz",
+        true,
+      ),
+    ).toBe(
+      "ListenBrainz isn't answering right now. Your plays are saved and will be sent automatically.",
+    );
+  });
+  it("keeps messages that tell the person what to do", () => {
+    expect(friendlyError("Maloja refused the API key.", "Maloja", true)).toBe(
+      "Maloja refused the API key.",
+    );
   });
 });
