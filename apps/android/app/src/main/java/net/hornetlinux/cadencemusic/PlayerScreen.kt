@@ -132,8 +132,12 @@ fun PlayerScreen(playerUrl: String, onChangeServer: () -> Unit) {
                 popup = null
                 current.destroy()
             }
-            failure == null && player.web.canGoBack() -> player.web.goBack()
-            else -> activity?.moveTaskToBack(true)
+            failure != null -> activity?.moveTaskToBack(true)
+            // An open sheet or dialog (More, Settings, queue) closes first, like on any Android app.
+            else -> player.web.evaluateJavascript(WebScripts.CLOSE_OVERLAY) { closed ->
+                if (closed == "true") return@evaluateJavascript
+                if (player.web.canGoBack()) player.web.goBack() else activity?.moveTaskToBack(true)
+            }
         }
     }
 

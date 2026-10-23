@@ -21,7 +21,7 @@ function SourceShelf({ source }: { source: LibrarySource }) {
   const tracks = source.useTracks();
   if (tracks.length === 0) return null;
   return (
-    <Shelf icon={<DiscIcon size={18} />} title={`From ${source.label}`}>
+    <Shelf icon={<DiscIcon size={18} />} title={`From ${source.label.replace(/^Your /, "your ")}`}>
       {tracks.slice(0, CARDS).map((t) => (
         <MediaCard key={t.id} track={t} queue={tracks} />
       ))}
