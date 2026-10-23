@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { useNav, type Route } from "@/app/navStore";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { usePluginHost } from "@/plugins/host";
@@ -41,6 +41,17 @@ function RailButton({
   );
 }
 
+/** Above this many plugin pages the More sheet gets a find box. */
+export const MORE_SEARCH_AT = 9;
+
+/** Alphabetical (so pages are easy to find among many plugins), filtered by label. */
+export function filterMoreItems(items: SidebarContribution[], query: string): SidebarContribution[] {
+  const q = query.trim().toLowerCase();
+  return items
+    .filter((i) => !q || i.label.toLowerCase().includes(q))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+}
+
 /**
  * Bottom sheet on phones, small popover beside the rail on desktop: the
  * pages plugins add, and Settings. Every plugin page stays reachable here.
@@ -61,6 +72,8 @@ export function MoreSheet({
   onClose: () => void;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const shown = useMemo(() => filterMoreItems(items, query), [items, query]);
 
   // Move focus in, and give it back to whatever opened the sheet.
   useEffect(() => {
@@ -75,7 +88,7 @@ export function MoreSheet({
       onClose();
     } else if (e.key === "Tab" && sheetRef.current) {
       // Keep Tab inside the sheet while it is open.
-      const focusable = [...sheetRef.current.querySelectorAll<HTMLElement>("button:not(:disabled)")];
+      const focusable = [...sheetRef.current.querySelectorAll<HTMLElement>("button:not(:disabled), input")];
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (e.shiftKey && document.activeElement === first) {
@@ -100,8 +113,19 @@ export function MoreSheet({
       >
         <div className="more-grab" aria-hidden />
         <div className="more-title">More</div>
+        {items.length > MORE_SEARCH_AT && (
+          <input
+            className="more-search"
+            type="search"
+            placeholder={`Find a page (${items.length})`}
+            aria-label="Find a page"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        )}
         <div className="more-list">
-          {items.map((item) => {
+          {shown.length === 0 && <p className="more-empty muted small">No pages match.</p>}
+          {shown.map((item) => {
             const active = route.kind === "plugin" && route.itemId === item.id;
             return (
               <button

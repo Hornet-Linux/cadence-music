@@ -2493,3 +2493,80 @@ code {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* ---------- Plugin list (QA: many plugins) ---------- */
+.plugin-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface, var(--bg));
+}
+.plugin-search {
+  flex: 1 1 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.plugin-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+}
+.plugin-group-title {
+  margin: 20px 0 0;
+  font-size: var(--fs-sm, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.plugin-card .switch {
+  flex-shrink: 0;
+  align-self: center;
+}
+.plugin-card .caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+/* Tap targets: shelf arrows and the hero Play button are 44px. */
+.shelf-arrows .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+.btn.big {
+  min-height: 44px;
+}
+.home-widgets .show-more {
+  min-height: 44px;
+}
+.more-search {
+  flex: none;
+  min-height: 44px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  font: inherit;
+}
+@media (min-width: 761px) {
+  /* With many plugin pages the popover must never run off the bottom of the window. */
+  .more-sheet {
+    top: clamp(12px, var(--pop-y, 80px), calc(100vh - min(70vh, 520px) - 12px));
+  }
+}

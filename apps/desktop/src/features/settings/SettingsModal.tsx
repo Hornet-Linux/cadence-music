@@ -7,6 +7,7 @@ import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
 import { CloseIcon, InfoIcon, PaletteIcon, PlugIcon, SearchIcon, SlidersIcon, SparkleIcon } from "@/ui/icons";
 import { Segmented, SettingRow, Toggle } from "./controls";
+import { groupPlugins, type PluginFilter } from "./pluginGroups";
 import { useSettingsModal } from "./settingsStore";
 
 interface Section {
@@ -96,36 +97,68 @@ function AppearanceSection() {
 function PluginsSection() {
   const plugins = usePluginHost((s) => s.plugins);
   const setEnabled = usePluginHost((s) => s.setEnabled);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<PluginFilter>("all");
+  const rows = useMemo(() => plugins.map(({ plugin, enabled }) => ({ manifest: plugin.manifest, enabled })), [plugins]);
+  const groups = useMemo(() => groupPlugins(rows, query, filter), [rows, query, filter]);
+  const onCount = rows.filter((r) => r.enabled).length;
   return (
     <>
-      {plugins.map(({ plugin, enabled }) => {
-        const m = plugin.manifest;
-        return (
-          <div className="plugin-card" key={m.id}>
-            <div className="pic">
-              <PlugIcon size={20} />
-            </div>
-            <div className="pbody">
-              <div className="pname">
-                {m.name}
-                <span className="muted small">v{m.version}</span>
-                {m.builtin && <span className="badge builtin">Built-in</span>}
+      <div className="plugin-tools">
+        <label className="plugin-search">
+          <SearchIcon size={16} />
+          <input
+            type="search"
+            placeholder={`Search ${rows.length} plugins`}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search plugins"
+          />
+        </label>
+        <Segmented
+          label="Show plugins"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "on", label: `On (${onCount})` },
+            { value: "off", label: "Off" },
+          ]}
+        />
+      </div>
+      {groups.length === 0 && <p className="muted small section-note">No plugins match.</p>}
+      {groups.map(({ group, rows: list }) => (
+        <div className="plugin-group" key={group}>
+          <h4 className="plugin-group-title">
+            {group} <span className="muted small">{list.length}</span>
+          </h4>
+          {list.map(({ manifest: m, enabled }) => (
+            <div className={`plugin-card${enabled ? " on" : ""}`} key={m.id}>
+              <div className="pic">
+                <PlugIcon size={20} />
               </div>
-              {m.description && <p className="muted small">{m.description}</p>}
-              {m.capabilities.length > 0 && (
-                <div className="caps">
-                  {m.capabilities.map((c) => (
-                    <span className="cap" key={c}>
-                      {c}
-                    </span>
-                  ))}
+              <div className="pbody">
+                <div className="pname">
+                  {m.name}
+                  <span className="muted small">v{m.version}</span>
+                  {m.builtin && <span className="badge builtin">Built-in</span>}
                 </div>
-              )}
+                {m.description && <p className="muted small">{m.description}</p>}
+                {m.capabilities.length > 0 && (
+                  <div className="caps">
+                    {m.capabilities.map((c) => (
+                      <span className="cap" key={c}>
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Toggle label={`Enable ${m.name}`} on={enabled} onChange={(v) => void setEnabled(m.id, v)} />
             </div>
-            <Toggle label={`Enable ${m.name}`} on={enabled} onChange={(v) => void setEnabled(m.id, v)} />
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      ))}
       <p className="muted small section-note">
         Enabling a plugin grants it the capabilities listed. See docs/PLUGINS.md to write your own.
       </p>
