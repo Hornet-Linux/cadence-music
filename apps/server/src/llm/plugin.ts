@@ -24,6 +24,7 @@ import {
   type LlmStatus,
   type ProviderKind,
 } from "./core/index.js";
+import { ensureBundledProvider, pullModelInBackground } from "./bundled.js";
 import { MAX_DEVICES_PER_USER, RelayHub } from "./relay.js";
 import { ProviderStore } from "./store.js";
 
@@ -163,6 +164,20 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
       const cache = new Map<string, { updatedAt: number; provider: LlmProvider }>();
       const recent = new Map<number, number[]>();
       const busy = new Set<number>();
+
+      // The server's own Ollama (OLLAMA_URL): register it and fetch its model,
+      // so the DJ runs on the server and no app needs Ollama of its own.
+      if (ctx.config.ollama) {
+        const ollama = ctx.config.ollama;
+        const id = ensureBundledProvider(store, ollama);
+        const stop = new AbortController();
+        app.addHook("onClose", async () => stop.abort());
+        app.addHook("onReady", async () => {
+          // Pull whatever model the provider uses now (an admin may have changed it).
+          const model = store.get(id)?.model ?? ollama.model;
+          void pullModelInBackground(ollama.url, model, ctx.log, stop.signal, options.fetchFn);
+        });
+      }
 
       function serverProvider(id: string): LlmProvider | null {
         const cfg = store.config(id);

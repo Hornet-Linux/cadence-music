@@ -42,7 +42,7 @@ export interface ProviderOption {
   isDefault?: boolean;
 }
 
-const DEFAULT_LOCAL: LocalProvider = {
+const LEGACY_LOCAL: LocalProvider = {
   id: "ollama",
   name: "Ollama",
   kind: DEFAULT_LLM_CONFIG.kind,
@@ -68,12 +68,18 @@ function write(key: string, value: unknown): void {
   }
 }
 
+/**
+ * Providers on this device are only ones the listener added. There is no
+ * built-in "Ollama on this computer": the DJ's model runs on the server
+ * (docs/AI_DJ.md), so a fresh app never calls anything on the device itself.
+ */
 function loadLocal(): LocalProvider[] {
   const saved = read<LocalProvider[]>(PROVIDERS_KEY);
-  if (saved?.length) return saved;
-  // Carry over the single Ollama setting from before providers existed.
+  if (saved) return saved;
+  // Carry over an Ollama setting someone saved before providers existed.
   const legacy = read<{ baseUrl?: string; model?: string }>(LEGACY_CONFIG_KEY);
-  return [{ ...DEFAULT_LOCAL, baseUrl: legacy?.baseUrl ?? DEFAULT_LOCAL.baseUrl, model: legacy?.model ?? DEFAULT_LOCAL.model }];
+  if (!legacy) return [];
+  return [{ ...LEGACY_LOCAL, baseUrl: legacy.baseUrl ?? LEGACY_LOCAL.baseUrl, model: legacy.model ?? LEGACY_LOCAL.model }];
 }
 
 /** A stable random id for this install, so the server can tell its devices apart. */
@@ -123,7 +129,7 @@ export function keyStorageNote(): string {
 
 /** Forget every provider configured on this device (the web player does this on sign-out). */
 export function resetLocalProviders(): void {
-  useProviders.setState({ local: [{ ...DEFAULT_LOCAL }], selected: "", remote: [], native: null });
+  useProviders.setState({ local: [], selected: "", remote: [], native: null });
 }
 
 /** The config to call a local provider with, key included. */

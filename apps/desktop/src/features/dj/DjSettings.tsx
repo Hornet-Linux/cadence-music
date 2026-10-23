@@ -243,8 +243,10 @@ function ProviderHealth({ option }: { option: ProviderOption }) {
       {setup?.kind === "unreachable" && (
         <div className="notice warn">
           <p>
-            <strong>{option.name} can't be reached.</strong> Check the address and API key
-            {option.scope === "device" ? ", and that the app on that computer is open" : ""}.
+            <strong>{option.name} can't be reached.</strong>{" "}
+            {setup.onServer
+              ? "It runs on your server, so ask the server owner to check it."
+              : `Check the address and API key${option.scope === "device" ? ", and that the app on that computer is open" : ""}.`}
           </p>
           {setup.detail && <p className="muted small">Details: {setup.detail}</p>}
         </div>
@@ -254,7 +256,9 @@ function ProviderHealth({ option }: { option: ProviderOption }) {
         <div className="notice warn">
           <p>
             <strong>{setup.model} isn't available.</strong>{" "}
-            {setup.command ? (
+            {setup.onServer ? (
+              "The server downloads it when the AI DJ is first set up, which can take a few minutes. Press “Check again” shortly."
+            ) : setup.command ? (
               <>
                 In a terminal, run <code>{setup.command}</code>, then press “Check again”.
               </>

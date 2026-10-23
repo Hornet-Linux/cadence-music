@@ -33,6 +33,16 @@ describe("djSetup", () => {
     expect(setupMessage(missing)).toContain('"qwen2.5"');
   });
 
+  it("never tells a listener to install the server's Ollama", () => {
+    const server = { kind: "ollama" as const, model: "llama3.1", scope: "server" as const };
+    const down = djSetup(server, { available: false, models: [], error: "x" });
+    expect(down).toEqual({ kind: "unreachable", detail: "x", onServer: true });
+    expect(setupMessage(down)).toContain("server owner");
+    const missing = djSetup(server, { available: true, models: ["qwen3:8b"] });
+    expect(missing).toMatchObject({ kind: "no-model", command: undefined, onServer: true });
+    expect(setupMessage(missing)).toContain("downloading");
+  });
+
   it("can't call a model missing when the server doesn't list any", () => {
     expect(djSetup({ kind: "openai-compatible", model: "x" }, { available: true, models: [] })).toEqual({ kind: "ready" });
   });

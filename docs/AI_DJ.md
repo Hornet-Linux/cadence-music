@@ -11,7 +11,8 @@ stay on the device.
 | Where | Who calls it | Who holds the API key |
 | --- | --- | --- |
 | **Server provider** (set up by the server owner) | The server | The server, encrypted in the database. Never sent to any app. |
-| **A provider on one of your computers** (Ollama on `localhost`, LM Studio, a key you typed into the desktop app) | That computer, via the server relay | That computer only |
+| **Server provider** using the bundled Ollama container (see below) | The server | No key needed |
+| **A provider on one of your computers** (Ollama on `localhost`, LM Studio, a key you typed into the desktop app), only if you add one | That computer, via the server relay | That computer only |
 | **Calling a provider straight from the app** | The app itself | The app's own storage |
 
 Keys saved on the server cannot be read back through the API, so a lost or
@@ -32,6 +33,37 @@ Three wire protocols cover nearly everything:
 
 `GET /api/llm/presets` lists one-click starting points (URL, whether a key is
 needed, whether it only runs locally).
+
+## Running the model on the server (bundled Ollama)
+
+The simplest setup runs the model on the server itself, so nobody needs Ollama
+or an API key on their phone or computer. The compose file includes an
+optional Ollama container; `setup.sh` asks about it ("Run the AI DJ on this
+server?"), or add it by hand in `deploy/.env`:
+
+```
+COMPOSE_PROFILES=https,ollama-gpu   # or "ollama" without an NVIDIA GPU
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.1:8b            # default llama3.2:3b; small models suit a CPU
+```
+
+then `docker compose up -d`. On start the server adds **Ollama (this
+server)** as an AI provider (the default, unless you already chose one) and
+downloads the model in the background; `docker compose logs -f server` shows
+when it is ready. From then on the admin panel owns that provider: you can
+change its model or turn it off there.
+
+- Ollama is only on the Docker network: no port is published, so only the
+  Cadence server can reach it.
+- `ollama-gpu` needs an NVIDIA GPU and the
+  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+  on the host. Models live in the `ollama-models` volume.
+- To download another model by hand: `docker compose exec ollama ollama pull <model>`
+  (`ollama-gpu` for the GPU variant).
+
+Apps no longer come with an "Ollama on this computer" provider: a fresh app
+uses the server's provider, and only someone who adds a provider in
+Settings → AI DJ calls a model from their own device.
 
 ## Setting up a server provider
 

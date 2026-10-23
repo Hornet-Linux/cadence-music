@@ -141,7 +141,11 @@ export const useDj = create<DjState>((set, get) => {
       await useProviders.getState().refreshRemote();
       const option = currentOption();
       if (!option) {
-        set({ status: "idle", error: "Add an AI provider in Settings → AI DJ first.", needsSetup: true });
+        set({
+          status: "idle",
+          error: "This server has no AI DJ set up yet. Ask the server owner to turn it on (or add a provider in Settings → AI DJ).",
+          needsSetup: true,
+        });
         return;
       }
       // A provider on this device is checked through the app's bridge, which a test build may lack.

@@ -261,4 +261,6 @@ Database migrations run automatically on start.
 | `JELLYFIN_URL` | — | Address of your Jellyfin server, as the Cadence server reaches it (e.g. `http://jellyfin:8096`). Only the owner sets it. See [Jellyfin](JELLYFIN.md). |
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |
+| `OLLAMA_URL` | — | An Ollama the server calls for the AI DJ, normally the bundled one: `http://ollama:11434` with `ollama` or `ollama-gpu` in `COMPOSE_PROFILES`. Added as the default AI provider. See [AI DJ](AI_DJ.md). |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model the server downloads into that Ollama on first start. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
