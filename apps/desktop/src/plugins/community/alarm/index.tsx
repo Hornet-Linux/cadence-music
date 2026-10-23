@@ -55,6 +55,15 @@ export function tracksFor(alarm: Alarm): Track[] {
   }
 }
 
+/** Liked songs, else whatever is queued, else the current track. */
+export function fallbackTracks(): Track[] {
+  const liked = [...useCollection.getState().likes].sort((a, b) => b.likedAt - a.likedAt).map((l) => l.track);
+  if (liked.length > 0) return liked;
+  const state = player?.getState();
+  if (state && state.queue.length > 0) return state.queue;
+  return state?.current ? [state.current] : [];
+}
+
 const REASONS: Record<Extract<RingResult, { ok: false }>["reason"], string> = {
   empty: "there was nothing to play. Check the playlist or liked songs.",
   blocked: "the browser did not allow playback to start. Open Cadence and press play once, then keep it open.",
@@ -64,9 +73,10 @@ const REASONS: Record<Extract<RingResult, { ok: false }>["reason"], string> = {
 export async function handleRing(alarm: Alarm) {
   if (!player) return;
   useAlarmStatus.setState({ message: `Ringing: ${label(alarm)}` });
-  const result = await ringAlarm(alarm, { player, tracksFor });
+  const result = await ringAlarm(alarm, { player, tracksFor, fallback: fallbackTracks });
   useAlarmStatus.setState({
-    message: result.ok ? `Alarm "${label(alarm)}" is playing.` : `Alarm "${label(alarm)}" could not start: ${REASONS[result.reason]}`,
+    message: result.ok
+      ? `Alarm "${label(alarm)}" is playing${result.usedFallback ? " (its playlist was empty, so it plays your music instead)" : ""}.` : `Alarm "${label(alarm)}" could not start: ${REASONS[result.reason]}`,
   });
 }
 

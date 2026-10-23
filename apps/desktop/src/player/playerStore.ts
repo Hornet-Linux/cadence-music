@@ -677,7 +677,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     seek(seconds) {
       if (!Number.isFinite(seconds)) return;
-      completeFade();
+      // The seek bar still shows the outgoing track during a blend, so a seek means "stay on
+      // this song": drop the incoming track and bring this one back to full volume.
+      if (fade) {
+        cancelFade();
+        applyOutput(audio);
+      }
       if (backend.kind === "html") audio.currentTime = seconds;
       else if (backend.kind === "external") void backend.handle.seek(seconds).catch(ignore);
       set({ position: seconds });
