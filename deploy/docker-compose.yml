@@ -6,8 +6,26 @@
 # The server listens on 127.0.0.1 only. For HTTPS, either enable the bundled
 # Caddy (COMPOSE_PROFILES=https in .env plus a ./Caddyfile; setup.sh does
 # both) or put your own reverse proxy in front. See docs/SELF_HOSTING.md.
+#
+# The AI DJ can run on this server with a bundled Ollama: add "ollama" (CPU)
+# or "ollama-gpu" (NVIDIA GPU) to COMPOSE_PROFILES and set
+# OLLAMA_URL=http://ollama:11434. Ollama is only reachable by the server, never
+# published on a port. See docs/AI_DJ.md.
 
 name: cadence
+
+# Shared by the CPU and GPU variants of the bundled Ollama.
+x-ollama: &ollama
+  image: ollama/ollama:0.40.8
+  restart: unless-stopped
+  environment:
+    # Keep the model loaded between DJ sets so the next one starts quickly.
+    OLLAMA_KEEP_ALIVE: 30m
+  volumes:
+    - ollama-models:/root/.ollama
+  networks:
+    default:
+      aliases: [ollama]
 
 services:
   server:
@@ -28,6 +46,24 @@ services:
       - music-data:/data
       - ${MUSIC_PATH:-./music}:/music:ro
 
+  # Optional AI DJ model server, enabled with COMPOSE_PROFILES=ollama ...
+  ollama:
+    <<: *ollama
+    profiles: [ollama]
+
+  # ... or with COMPOSE_PROFILES=ollama-gpu on a machine with an NVIDIA GPU
+  # (needs the NVIDIA Container Toolkit).
+  ollama-gpu:
+    <<: *ollama
+    profiles: [ollama-gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
   # Optional HTTPS front door, enabled with COMPOSE_PROFILES=https.
   caddy:
     image: caddy:2.8.4
@@ -45,5 +81,6 @@ services:
 
 volumes:
   music-data:
+  ollama-models:
   caddy-data:
   caddy-config:

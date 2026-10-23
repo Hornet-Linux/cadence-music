@@ -77,12 +77,32 @@ envq() {
 printf '%sCadence — server setup%s\n' "$BOLD" "$RESET"
 info "This writes deploy/.env. Press Enter to accept a [default]."
 
-# Use sudo for Docker when this user isn't in the docker group.
+# Use sudo for Docker when this user can't reach the Docker socket (not in
+# the docker group, which is normal right after installing Docker). sudo asks
+# for the password when it's needed; DOCKER_CMD is what we tell people to type.
 DOCKER=(docker)
+DOCKER_CMD="docker"
+docker_needs_sudo() {
+  # The daemon answering means no sudo is needed. Otherwise only a socket
+  # permission problem is fixed by sudo; a stopped daemon is reported later.
+  local out
+  out=$(docker info 2>&1 >/dev/null) && return 1
+  case $out in *"permission denied"*|*"Permission denied"*) return 0 ;; esac
+  # Couldn't tell why: use sudo if this user can't write to the socket.
+  [ -S /var/run/docker.sock ] && [ ! -w /var/run/docker.sock ]
+}
 if ! command -v docker >/dev/null 2>&1; then
   warn "Docker isn't installed. The one-line installer can set it up: see the README."
-elif ! docker info >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-  DOCKER=(sudo docker)
+elif [ "$(id -u)" -ne 0 ] && docker_needs_sudo; then
+  if command -v sudo >/dev/null 2>&1; then
+    DOCKER=(sudo docker)
+    DOCKER_CMD="sudo docker"
+    info "Your user can't use Docker directly, so this will run it with sudo"
+    info "(you may be asked for your password when the server starts)."
+  else
+    warn "Your user can't use Docker and sudo isn't installed. Run this as root,"
+    warn "or add yourself to the docker group: usermod -aG docker $USER"
+  fi
 fi
 
 if [ -f "$ENV_FILE" ]; then
@@ -222,6 +242,23 @@ if confirm "Set up Apple Music now?" n; then
 fi
 
 # ---------------------------------------------------------------------------
+section "AI DJ (optional)"
+info "The AI DJ can run its language model on this server (with Ollama in"
+info "Docker), so phones and computers don't need Ollama or an API key."
+OLLAMA_PROFILE="" OLLAMA_MODEL=""
+if confirm "Run the AI DJ on this server?" n; then
+  OLLAMA_PROFILE="ollama" model_default="llama3.2:3b"
+  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
+    info "Found an NVIDIA GPU. Using it needs the NVIDIA Container Toolkit."
+    if confirm "Use the GPU?" y; then OLLAMA_PROFILE="ollama-gpu" model_default="llama3.1:8b"; fi
+  else
+    info "No NVIDIA GPU found, so it runs on the CPU: a small model works best."
+  fi
+  ask_valid OLLAMA_MODEL "Model (from ollama.com/library)" '^[A-Za-z0-9_.:/-]{1,200}$'     "Enter a model name such as llama3.2:3b." "$model_default"
+  info "The server downloads it on first start; that can take a few minutes."
+fi
+
+# ---------------------------------------------------------------------------
 section "Writing $ENV_FILE"
 umask 077
 {
@@ -229,7 +266,9 @@ umask 077
   echo "MUSIC_PATH=$(envq "$MUSIC_PATH")"
   echo "HOST_PORT=$(envq "$HOST_PORT")"
   echo "PUBLIC_URL=$(envq "$PUBLIC_URL")"
-  if [ -n "$BUNDLED_HTTPS" ]; then echo "COMPOSE_PROFILES='https'"; fi
+  profiles="${BUNDLED_HTTPS:+https}"
+  if [ -n "$OLLAMA_PROFILE" ]; then profiles="${profiles:+$profiles,}$OLLAMA_PROFILE"; fi
+  if [ -n "$profiles" ]; then echo "COMPOSE_PROFILES=$(envq "$profiles")"; fi
   echo "SCAN_INTERVAL_MINUTES='60'"
   echo "LOG_LEVEL='info'"
   echo "SIGNUP_MODE=$(envq "$SIGNUP_MODE")"
@@ -248,6 +287,10 @@ umask 077
   fi
   if [ -n "$SPOTIFY_CLIENT_ID" ]; then
     echo "SPOTIFY_CLIENT_ID=$(envq "$SPOTIFY_CLIENT_ID")"
+  fi
+  if [ -n "$OLLAMA_PROFILE" ]; then
+    echo "OLLAMA_URL='http://ollama:11434'"
+    echo "OLLAMA_MODEL=$(envq "$OLLAMA_MODEL")"
   fi
   if [ -n "$APPLE_MUSIC_TEAM_ID" ]; then
     echo "APPLE_MUSIC_TEAM_ID=$(envq "$APPLE_MUSIC_TEAM_ID")"
@@ -274,7 +317,12 @@ fi
 # ---------------------------------------------------------------------------
 if command -v docker >/dev/null 2>&1 && confirm "Build and start the server now?" y; then
   section "Starting"
-  "${DOCKER[@]}" compose up -d --build
+  if [ "${DOCKER[0]}" = sudo ] && ! sudo -n true 2>/dev/null; then
+    info "sudo needs your password to run Docker:"
+    sudo -v || fail "sudo didn't accept the password. Start the server later with: $DOCKER_CMD compose up -d --build"
+  fi
+  "${DOCKER[@]}" compose up -d --build ||
+    fail "Docker couldn't start the server. Fix the error above, then run: $DOCKER_CMD compose up -d --build"
   info "Waiting for the server to answer..."
   for _ in $(seq 1 60); do
     if curl -fsS "http://127.0.0.1:$HOST_PORT/api/health" >/dev/null 2>&1; then break; fi
@@ -288,12 +336,12 @@ if command -v docker >/dev/null 2>&1 && confirm "Build and start the server now?
       info "Open https://$DOMAIN/app (or the desktop app) and enter that code to create your admin account."
     fi
   else
-    warn "The server didn't answer yet. Check: docker compose logs server"
+    warn "The server didn't answer yet. Check: $DOCKER_CMD compose logs server"
   fi
 else
   section "Next steps"
-  info "Start the server:   docker compose up -d --build"
-  info "Find the setup code: docker compose logs server | grep \"setup code\""
+  info "Start the server:   $DOCKER_CMD compose up -d --build"
+  info "Find the setup code: $DOCKER_CMD compose logs server | grep \"setup code\""
 fi
 
 printf '\n%sDone.%s\n' "$BOLD" "$RESET"

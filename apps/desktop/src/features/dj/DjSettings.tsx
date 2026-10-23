@@ -6,7 +6,7 @@ import { useDj } from "./djStore";
 import { EMPTY_FORM, ProviderForm, type ProviderFormValue } from "./ProviderForm";
 import {
   effectiveOption,
-  getApiKey,
+  hasApiKey,
   keyStorageNote,
   providerOptions,
   providerStatus,
@@ -61,12 +61,13 @@ export function DjSettings() {
   async function testLocal(v: ProviderFormValue): Promise<LlmStatus> {
     const llm = window.host?.llm;
     if (!llm) return { available: false, models: [], error: "Not available in this build" };
-    const apiKey = v.apiKey || (editing && editing !== "new" && !v.clearKey ? await getApiKey(editing.id) : undefined);
-    return llm.status({ kind: v.kind, baseUrl: v.baseUrl.trim(), model: v.model.trim(), ...(apiKey ? { apiKey } : {}) });
+    // A newly typed key is tried as given; otherwise the saved provider's own key (the host adds it).
+    const saved = editing && editing !== "new" && !v.clearKey ? { providerId: editing.id } : {};
+    return llm.status({ kind: v.kind, baseUrl: v.baseUrl.trim(), model: v.model.trim(), ...(v.apiKey ? { apiKey: v.apiKey } : saved) });
   }
 
   async function edit(p: LocalProvider) {
-    setEditingHasKey(!!(await getApiKey(p.id)));
+    setEditingHasKey(await hasApiKey(p.id));
     setEditing(p);
   }
 
@@ -243,8 +244,10 @@ function ProviderHealth({ option }: { option: ProviderOption }) {
       {setup?.kind === "unreachable" && (
         <div className="notice warn">
           <p>
-            <strong>{option.name} can't be reached.</strong> Check the address and API key
-            {option.scope === "device" ? ", and that the app on that computer is open" : ""}.
+            <strong>{option.name} can't be reached.</strong>{" "}
+            {setup.onServer
+              ? "It runs on your server, so ask the server owner to check it."
+              : `Check the address and API key${option.scope === "device" ? ", and that the app on that computer is open" : ""}.`}
           </p>
           {setup.detail && <p className="muted small">Details: {setup.detail}</p>}
         </div>
@@ -254,7 +257,9 @@ function ProviderHealth({ option }: { option: ProviderOption }) {
         <div className="notice warn">
           <p>
             <strong>{setup.model} isn't available.</strong>{" "}
-            {setup.command ? (
+            {setup.onServer ? (
+              "The server downloads it when the AI DJ is first set up, which can take a few minutes. Press “Check again” shortly."
+            ) : setup.command ? (
               <>
                 In a terminal, run <code>{setup.command}</code>, then press “Check again”.
               </>
