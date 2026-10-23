@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import type { ServerPluginContext } from "../../plugins/types.js";
 import { contentTypeFor } from "../../library/scanner.js";
 import { parseAddress } from "./net.js";
-import { signedTrackUrl, streamBaseUrl, parseTrackId } from "./streamUrls.js";
+import { signedTrackUrl, streamAddressWarning, streamBaseUrl, parseTrackId } from "./streamUrls.js";
 
 /** A speaker or TV the server can send audio to (UPnP renderer, Chromecast...). */
 export interface RendererDevice {
@@ -115,7 +115,8 @@ export function registerRendererRoutes(app: FastifyInstance, ctx: ServerPluginCo
 
   app.get<{ Querystring: { refresh?: string } }>(`${base}/devices`, { preHandler: ctx.requireUser }, async (req) => {
     if (req.query.refresh === "1") await backend.refresh().catch((err) => ctx.log.warn({ err }, "device scan failed"));
-    return { devices: backend.list(), ...backend.info() };
+    const base = streamBaseUrl(req, config().streamBaseUrl, ctx.config.publicUrl);
+    return { devices: backend.list(), ...backend.info(), streamWarning: streamAddressWarning(base) };
   });
 
   app.post<{ Body: { address?: string } }>(`${base}/devices/manual`, { preHandler: ctx.requireAdmin }, async (req, reply) => {
@@ -172,7 +173,7 @@ export function registerRendererRoutes(app: FastifyInstance, ctx: ServerPluginCo
       secret: ctx.secret,
       trackId,
       userId: req.user!.id,
-      base: streamBaseUrl(req, config().streamBaseUrl),
+      base: streamBaseUrl(req, config().streamBaseUrl, ctx.config.publicUrl),
     });
     if (!url) return reply.code(422).send({ error: "unsupported_track" });
 

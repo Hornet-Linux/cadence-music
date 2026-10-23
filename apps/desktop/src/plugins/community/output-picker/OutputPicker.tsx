@@ -48,7 +48,7 @@ function emptyHint(targetId: string): string {
 
 export function OutputPicker() {
   const targets = usePluginHost((s) => s.contributions.outputTargets);
-  const { active, error, busy } = useOutput();
+  const { active, error, busy, warnings } = useOutput();
   const [listings, setListings] = useState<Record<string, Listing>>({});
 
   const look = useCallback(async (target: OutputTarget) => {
@@ -101,6 +101,7 @@ export function OutputPicker() {
               </button>
             </div>
             {listing?.status === "error" && <p className="notice warn">{listing.message}</p>}
+            {listing?.status === "ok" && listing.devices.length > 0 && warnings[target.id] && <p className="notice warn">{warnings[target.id]}</p>}
             {listing?.status === "ok" && listing.devices.length === 0 && <p className="muted small">{emptyHint(target.id)}</p>}
             {listing?.status === "ok" && listing.devices.length > 0 && (
               <div role="radiogroup" aria-label={target.label} className="po-list">

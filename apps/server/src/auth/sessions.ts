@@ -78,39 +78,46 @@ export interface SessionInfo {
 
 /** A readable device name from a User-Agent string ("Chrome on Windows"). */
 export function deviceLabel(userAgent: string | null | undefined): string {
-  const ua = userAgent ?? "";
+  const ua = (userAgent ?? "").trim();
   if (!ua) return "Unknown device";
   if (/Cadence/i.test(ua) && /Electron/i.test(ua)) return "Cadence desktop app";
+  // The Android app is a WebView (marked "; wv)") or native calls through okhttp.
+  if (/Android/i.test(ua) && (/; wv\)/i.test(ua) || /Cadence/i.test(ua))) return "Cadence for Android";
+  if (/okhttp/i.test(ua)) return "Cadence for Android";
+  // An iOS app's WKWebView has no "Safari/" token; native calls come through CFNetwork.
+  if (/iPhone|iPad|iPod/i.test(ua) && (/Cadence/i.test(ua) || !/Safari\//i.test(ua))) return `Cadence for ${/iPad/i.test(ua) ? "iPad" : "iPhone"}`;
+  if (/CFNetwork|Darwin/i.test(ua)) return "Cadence for iPhone";
+  if (/^(curl|Wget|node|undici|python|Go-http-client|axios|PostmanRuntime|HTTPie|okhttp)/i.test(ua)) return "Script or command-line tool";
   const os = /Android/i.test(ua)
     ? "Android"
-    : /iPhone|iPad|iPod/i.test(ua)
-      ? "iOS"
-      : /Windows/i.test(ua)
-        ? "Windows"
-        : /Mac OS X|Macintosh/i.test(ua)
-          ? "macOS"
-          : /CrOS/i.test(ua)
-            ? "ChromeOS"
-            : /Linux/i.test(ua)
-              ? "Linux"
-              : null;
-  const browser = /Edg\//i.test(ua)
+    : /iPad/i.test(ua)
+      ? "iPad"
+      : /iPhone|iPod/i.test(ua)
+        ? "iPhone"
+        : /Windows/i.test(ua)
+          ? "Windows"
+          : /Mac OS X|Macintosh/i.test(ua)
+            ? "macOS"
+            : /CrOS/i.test(ua)
+              ? "ChromeOS"
+              : /Linux/i.test(ua)
+                ? "Linux"
+                : null;
+  const browser = /Edg(e|A|iOS)?\//i.test(ua)
     ? "Edge"
     : /OPR\/|Opera/i.test(ua)
       ? "Opera"
-      : /Firefox\//i.test(ua)
+      : /Firefox\/|FxiOS\//i.test(ua)
         ? "Firefox"
-        : /Electron\//i.test(ua)
-          ? "Desktop app"
-          : /Chrome\//i.test(ua)
-            ? "Chrome"
-            : /Safari\//i.test(ua)
-              ? "Safari"
-              : /okhttp/i.test(ua)
-                ? "Android app"
-                : /CFNetwork|Darwin/i.test(ua)
-                  ? "iOS app"
-                  : null;
+        : /SamsungBrowser\//i.test(ua)
+          ? "Samsung Internet"
+          : /Electron\//i.test(ua)
+            ? "Desktop app"
+            : /Chrome\/|CriOS\//i.test(ua)
+              ? "Chrome"
+              : /Safari\//i.test(ua)
+                ? "Safari"
+                : null;
   if (browser && os) return `${browser} on ${os}`;
   return browser ?? os ?? "Unknown device";
 }
