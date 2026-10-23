@@ -33,6 +33,25 @@ export function recordAudit(
   db.prepare("DELETE FROM admin_audit WHERE id <= (SELECT MAX(id) FROM admin_audit) - ?").run(KEEP);
 }
 
+/**
+ * Something that happened without an admin doing it, such as a sign-in
+ * lockout, for the same activity log. Never holds passwords.
+ */
+export function recordSecurityEvent(db: Db, action: string, target: string, detail: string, now = Date.now()): void {
+  try {
+    db.prepare("INSERT INTO admin_audit (at, actor_id, actor, action, target, detail) VALUES (?, NULL, ?, ?, ?, ?)").run(
+      now,
+      "(sign-in)",
+      action,
+      target.slice(0, 120),
+      detail.slice(0, 300),
+    );
+    db.prepare("DELETE FROM admin_audit WHERE id <= (SELECT MAX(id) FROM admin_audit) - ?").run(KEEP);
+  } catch {
+    // The activity log is best effort; sign-in must keep working without it.
+  }
+}
+
 export function listAudit(db: Db, limit: number, before?: number): { items: AuditEntry[]; next: number | null } {
   const rows = db
     .prepare(

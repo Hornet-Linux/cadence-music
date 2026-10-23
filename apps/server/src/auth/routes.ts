@@ -28,6 +28,7 @@ import { RateLimiter } from "./rateLimit.js";
 import { registerAccountRoutes } from "./account.js";
 import { createSession, deleteSession, userForToken } from "./sessions.js";
 import { clearSessionCookie, sessionCredential } from "./webSession.js";
+import { recordSecurityEvent } from "../admin/audit.js";
 import {
   countPasswordUsers,
   countUsers,
@@ -67,7 +68,17 @@ const USER_MAX_FAILURES = 30;
 const USERNAME_RE = /^[\w.@-]{1,48}$/;
 const MIN_PASSWORD = 10;
 const MAX_SIGNUPS_PER_HOUR = 5;
+/** Every sign-up attempt counts, so usernames can't be probed (username_taken) without limit. */
+const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 20;
 const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * A device that signed in to an account recently (same address, a session used
+ * in this window) isn't held back by that account's lockout, so a stranger
+ * hammering a known username can't lock its owner out.
+ */
+const KNOWN_DEVICE_MS = 30 * 24 * 60 * 60 * 1000;
+/** Invite codes an admin sets: long enough not to be guessed within the rate limits. */
+export const MIN_INVITE_CODE = 12;
 
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const STATE_RE = /^[A-Za-z0-9._~-]{8,256}$/;
@@ -119,6 +130,19 @@ export function registerAuthRoutes(
   // Failed sign-ins per (lower-cased) username, whatever the address.
   const userFailures = new RateLimiter({ max: USER_MAX_FAILURES, windowMs: LOGIN_WINDOW_MS });
   const signups = new RateLimiter({ max: MAX_SIGNUPS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
+  const signupAttempts = new RateLimiter({ max: MAX_SIGNUP_ATTEMPTS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
+
+  const invite = settings.signup();
+  if (invite?.mode === "invite" && invite.inviteCode.length < MIN_INVITE_CODE) {
+    app.log.warn(`The sign-up invite code is shorter than ${MIN_INVITE_CODE} characters; set a longer one in the admin panel`);
+  }
+
+  /** Has this address used a session of this account recently? */
+  function knownDevice(userId: number, ip: string): boolean {
+    return !!db
+      .prepare("SELECT 1 FROM sessions WHERE user_id = ? AND ip = ? AND last_used_at > ? LIMIT 1")
+      .get(userId, ip.slice(0, 64), Date.now() - KNOWN_DEVICE_MS);
+  }
 
   function respond(userId: number, req: FastifyRequest): AuthResponse {
     const token = createSession(db, userId, { userAgent: req.headers["user-agent"], ip: req.ip });
@@ -161,9 +185,10 @@ export function registerAuthRoutes(
     const signup = settings.signup();
     if (!signup || setupRequired()) return reply.code(403).send({ error: "signup_closed" });
 
-    if (signups.isLimited(req.ip)) {
+    if (signups.isLimited(req.ip) || signupAttempts.isLimited(req.ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
+    signupAttempts.hit(req.ip);
 
     const body = (req.body ?? {}) as Partial<RegisterRequest>;
     if (signup.mode === "invite") {
@@ -253,16 +278,25 @@ export function registerAuthRoutes(
 
     // Bounded key: real usernames are at most 48 characters.
     const userKey = username.toLowerCase().slice(0, 128);
-    if (userFailures.isLimited(userKey)) {
+    const user = findUserByUsername(db, username);
+    if (userFailures.isLimited(userKey) && !(user && knownDevice(user.id, ip))) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
 
-    const user = findUserByUsername(db, username);
     // Always does the full hash work, even for unknown names and SSO-only accounts.
     const ok = await checkPassword(password, user?.password_hash);
     if (!ok || !user) {
+      const ipWasLimited = failures.isLimited(ip);
+      const userWasLimited = userFailures.isLimited(userKey);
       failures.hit(ip);
       userFailures.hit(userKey);
+      // Lockouts go to the admin's activity log (once each, when they start).
+      if (!ipWasLimited && failures.isLimited(ip)) {
+        recordSecurityEvent(db, "signin.ip_locked", ip, `${LOGIN_MAX_FAILURES} failed sign-ins from this address`);
+      }
+      if (user && !userWasLimited && userFailures.isLimited(userKey)) {
+        recordSecurityEvent(db, "signin.locked", user.username, `${USER_MAX_FAILURES} failed sign-ins; last from ${ip}`);
+      }
       return reply.code(401).send({ error: "invalid_credentials" });
     }
     failures.reset(ip);
@@ -396,6 +430,11 @@ export function registerAuthRoutes(
         if (user.disabled_at) return fail("account_disabled");
 
         purge(handoffs);
+        // Hard cap like `pending`: drop the oldest rather than grow without bound.
+        for (const key of handoffs.keys()) {
+          if (handoffs.size < MAX_PENDING) break;
+          handoffs.delete(key);
+        }
         const handoffCode = randomToken(32);
         handoffs.set(handoffCode, {
           userId: user.id,

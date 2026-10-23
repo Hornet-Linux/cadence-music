@@ -194,9 +194,9 @@ SIGNUP_MODE="closed" SIGNUP_INVITE_CODE=""
 if confirm "Let people create their own accounts (a sign-up page at https://$DOMAIN)?" n; then
   if confirm "Require an invite code? (recommended for a server on the internet)" y; then
     SIGNUP_MODE="invite"
-    default_code=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom 2>/dev/null | head -c 10 || true)
-    ask_valid SIGNUP_INVITE_CODE "Invite code to share with friends" '^[A-Za-z0-9_-]{6,64}$' \
-      "Use 6-64 letters, numbers, dashes or underscores." "${default_code:-change-me-123}"
+    default_code=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom 2>/dev/null | head -c 16 || true)
+    ask_valid SIGNUP_INVITE_CODE "Invite code to share with friends" '^[A-Za-z0-9_-]{12,64}$' \
+      "Use 12-64 letters, numbers, dashes or underscores." "${default_code:-change-me-to-something}"
   else
     SIGNUP_MODE="open"
   fi

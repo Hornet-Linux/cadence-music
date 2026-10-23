@@ -29,7 +29,7 @@ import { UpdateChecker } from "./updates.js";
 
 const USERNAME_RE = /^[\w.@-]{1,48}$/;
 const MIN_PASSWORD = 10;
-const INVITE_RE = /^[A-Za-z0-9_-]{6,64}$/;
+const INVITE_RE = /^[A-Za-z0-9_-]{12,64}$/;
 const PLUGIN_ID_RE = /^[\w.-]{1,100}$/;
 
 export interface AdminUser {
@@ -183,7 +183,8 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
           tracks: count(db, "SELECT COUNT(*) AS n FROM tracks"),
           plays: count(db, "SELECT COUNT(*) AS n FROM plays"),
           activeSessions: count(db, "SELECT COUNT(*) AS n FROM sessions WHERE last_used_at > ?", Date.now() - 7 * 86_400_000),
-          signup: signup ? { mode: signup.mode, inviteCode: signup.mode === "invite" ? signup.inviteCode : null } : { mode: "closed", inviteCode: null },
+          // The code itself is only on the Sign-up page (GET /api/admin/signup), not in every overview.
+          signup: { mode: signup?.mode ?? "closed", inviteCodeSet: signup?.mode === "invite" },
           oidc: ((o) => (o ? { name: o.displayName, issuer: o.issuer } : null))(effectiveOidc(config, db, secret).config),
           publicUrl: config.publicUrl ?? null,
           storage: {
@@ -456,13 +457,18 @@ export function makeAdminPlugin(options: AdminPluginOptions = {}): ServerPlugin 
       });
 
       // ---- Sign-up -----------------------------------------------------------
+      app.get("/api/admin/signup", { preHandler: requireAdmin }, async () => {
+        const signup = settings.signup();
+        return { mode: signup?.mode ?? "closed", inviteCode: signup?.mode === "invite" ? signup.inviteCode : null };
+      });
+
       app.put<{ Body: { mode?: string; inviteCode?: string; regenerate?: boolean } }>("/api/admin/signup", { preHandler: requireAdmin }, async (req, reply) => {
         const mode = req.body?.mode;
         if (mode === "closed" || mode === "open") {
           settings.setSignup({ mode });
         } else if (mode === "invite") {
           const typed = (req.body?.inviteCode ?? "").trim();
-          const code = req.body?.regenerate === true || !typed ? randomBytes(6).toString("base64url") : typed;
+          const code = req.body?.regenerate === true || !typed ? randomBytes(12).toString("base64url") : typed;
           if (!INVITE_RE.test(code)) return reply.code(400).send({ error: "invalid_invite_code" });
           settings.setSignup({ mode, inviteCode: code });
         } else {

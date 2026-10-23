@@ -258,6 +258,7 @@ const ACTION_TEXT = {
   "user.create": "Added an account", "user.delete": "Deleted an account", "user.sign-out": "Signed someone out", "user.promote": "Made someone an admin",
   "user.demote": "Removed admin rights", "user.disable": "Switched an account off", "user.enable": "Switched an account on", "user.reset-password": "Reset a password",
   "user.rename": "Renamed an account", "signup.update": "Changed sign-up", "jellyfin.update": "Changed the Jellyfin address", "ai.provider.add": "Added an AI provider",
+  "signin.locked": "Sign-in locked after failed attempts", "signin.ip_locked": "Address blocked after failed sign-ins",
   "ai.provider.update": "Changed an AI provider", "ai.provider.remove": "Removed an AI provider", "library.scan": "Started a library scan", "plugin.update": "Changed a plugin",
 };
 function actionText(a) {
@@ -279,7 +280,7 @@ async function renderActivity() {
     more.hidden = next == null;
   }
   draw();
-  render(pageHead("Activity", "What admins changed on this server. Passwords and keys are never recorded."), list, more);
+  render(pageHead("Activity", "What admins changed on this server, and sign-in lockouts. Passwords and keys are never recorded."), list, more);
 }
 
 const views = { overview: renderOverview, users: renderUsers, signup: renderSignup, library: renderLibrary, jellyfin: renderJellyfin, ai: renderAi,

@@ -431,7 +431,7 @@ Database migrations run automatically on start.
 | `OIDC_ALLOWED_GROUPS` | — | Restrict sign-in to these groups. |
 | `OIDC_ADMIN_GROUPS` | — | Grant admin to these groups. |
 | `SIGNUP_MODE` | `closed` | `open` or `invite` to allow self-service sign-up (page at `/` and in the app). |
-| `SIGNUP_INVITE_CODE` | — | Code people must enter when `SIGNUP_MODE=invite`. |
+| `SIGNUP_INVITE_CODE` | — | Code people must enter when `SIGNUP_MODE=invite`. Use at least 12 characters. |
 | `APP_DOWNLOAD_URL` | GitHub releases | Download link shown on the sign-up page. |
 | `SPOTIFY_CLIENT_ID` | — | Spotify app ID shared with signed-in apps. |
 | `JELLYFIN_URL` | — | Address of your Jellyfin server, as the Cadence server reaches it (e.g. `http://jellyfin:8096`). Only the owner sets it. See [Jellyfin](JELLYFIN.md). |
