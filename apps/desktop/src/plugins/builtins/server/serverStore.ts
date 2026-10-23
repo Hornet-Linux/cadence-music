@@ -11,6 +11,7 @@ import type {
 } from "@uma/shared";
 import type { Track } from "@/shared/types";
 import { isWeb } from "@/platform/webHost";
+import { friendlyBlock, usePlaybackBlock } from "@/player/playbackBlock";
 
 const URL_KEY = "server:url";
 const TOKEN_KEY = "server.token";
@@ -370,9 +371,14 @@ export const useServer = create<ServerState>((set, get) => {
 
     async streamUrl(serverTrackId) {
       if (!get().token) return null;
-      const signed = await request<StreamUrlResponse>(
-        `api/tracks/${encodeURIComponent(serverTrackId)}/stream-url`,
-      );
+      let signed: StreamUrlResponse;
+      try {
+        signed = await request<StreamUrlResponse>(`api/tracks/${encodeURIComponent(serverTrackId)}/stream-url`);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 429) usePlaybackBlock.getState().set(friendlyBlock(err.code, err.message.replace(/^Request failed (d+): ?/, "")));
+        throw err;
+      }
+      usePlaybackBlock.getState().set(null);
       return apiUrl(get().url, signed.path);
     },
 
