@@ -2,13 +2,13 @@
 export const ADMIN_B = String.raw`
 // ---- Sign-up -------------------------------------------------------------
 async function renderSignup() {
-  const o = await api("/api/admin/overview");
+  const o = { signup: await api("/api/admin/signup") };
   let mode = o.signup.mode;
   const code = h("input", { id: "code", value: o.signup.inviteCode || "", placeholder: "Leave empty to make one", autocomplete: "off", spellcheck: "false", oninput: drawShare });
   const codeRow = h("div", { hidden: mode !== "invite" },
-    field("Invite code", code, "6-64 letters, numbers, dashes or underscores. Anyone who has it can sign up while the mode is invite-only."),
+    field("Invite code", code, "12-64 letters, numbers, dashes or underscores. Anyone who has it can sign up while the mode is invite-only."),
     h("div", { class: "form-actions", style: "margin-top:10px" },
-      button("Make a new code", async () => { code.value = randomPassword().slice(0, 10); drawShare(); }),
+      button("Make a new code", async () => { code.value = randomPassword(); drawShare(); }),
       button("Copy code", () => copy(code.value))));
   const modes = [["closed", "Closed"], ["invite", "Invite-only"], ["open", "Open"]];
   const seg = h("div", { class: "seg", role: "radiogroup", "aria-label": "Who can sign up" },
