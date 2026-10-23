@@ -64,3 +64,27 @@ export function groupPlugins(
       .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name)),
   })).filter((g) => g.rows.length > 0);
 }
+
+/** Plain-language names for capabilities, shown under "What it can access". */
+export const CAPABILITY_LABELS: Record<Capability, string> = {
+  "player.read": "Sees what's playing",
+  "player.control": "Plays, pauses and skips",
+  "player.queue": "Reads and changes the queue",
+  "source.audio": "Plays audio",
+  "source.library": "Adds music to your library",
+  "provider.lyrics": "Shows lyrics",
+  "provider.metadata": "Adds artwork and track info",
+  "ui.sidebar": "Adds a page",
+  "ui.home.widget": "Adds to Home",
+  "ui.settings": "Adds settings",
+  storage: "Saves its own data",
+  "network.outbound": "Uses the internet",
+  "audio.dsp": "Changes how audio sounds",
+  "output.device": "Plays to other devices",
+  commands: "Adds commands and shortcuts",
+  "track.actions": "Adds to the track menu",
+};
+
+export function capabilityLabel(cap: Capability): string {
+  return CAPABILITY_LABELS[cap] ?? cap;
+}

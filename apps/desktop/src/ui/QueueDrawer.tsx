@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useUi } from "@/app/uiStore";
 import { usePlayer } from "@/player/playerStore";
 import { primaryArtist, type Track } from "@/shared/types";
@@ -44,6 +45,14 @@ export function QueueDrawer() {
   const { queue, index, jumpTo, removeFromQueue } = usePlayer();
   const current = index >= 0 ? queue[index] : undefined;
   const upNext = queue.slice(index + 1);
+
+  // Escape (and Android Back, which sends Escape) closes the queue.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
 
   return (
     <aside className={`queue-drawer${open ? " open" : ""}`} aria-hidden={!open} aria-label="Queue">

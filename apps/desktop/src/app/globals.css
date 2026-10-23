@@ -331,7 +331,7 @@ code {
 .view {
   padding: 0 var(--sp-6) var(--sp-7);
   max-width: 1500px;
-  animation: view-in 0.3s ease-out;
+  animation: view-in 0.2s ease-out;
 }
 @keyframes view-in {
   from {
@@ -2569,4 +2569,193 @@ code {
   .more-sheet {
     top: clamp(12px, var(--pop-y, 80px), calc(100vh - min(70vh, 520px) - 12px));
   }
+}
+
+/* ---------- Compact plugin rows ---------- */
+.plugin-card {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.plugin-card .pic {
+  width: 36px;
+  height: 36px;
+  color: var(--text-muted);
+}
+.plugin-card.on .pic {
+  color: var(--accent-from);
+}
+.plugin-card .pname {
+  gap: 8px;
+  min-width: 0;
+}
+.plugin-card .ptitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plugin-card .pdesc {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 0;
+  text-align: left;
+  line-height: 1.45;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.plugin-card .pdesc-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.plugin-card.expanded .pdesc-text {
+  display: block;
+}
+.plugin-card .pmore {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.paccess summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--fs-sm, 0.85rem);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.paccess ul {
+  margin: 2px 0 0;
+  padding-left: 18px;
+  font-size: var(--fs-sm, 0.85rem);
+  line-height: 1.6;
+}
+.paccess code {
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+/* ---------- Settings: list → section on phones ---------- */
+.settings-list-head,
+.settings-back,
+.settings-chevron {
+  display: none;
+}
+.settings-link-text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-head-text {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .web .settings.phone-list .settings-pane,
+  .web .settings.phone-pane .settings-nav {
+    display: none;
+  }
+  .web .settings.phone-list .settings-nav {
+    display: flex;
+    min-height: 0;
+    padding: 8px 16px 12px;
+    border-bottom: 0;
+    animation: fade-in 0.16s ease-out;
+  }
+  .web .settings.phone-pane .settings-pane {
+    animation: slide-in-pane 0.2s ease-out;
+  }
+  .web .settings-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 10px;
+  }
+  .web .settings-list-head h1 {
+    font-size: var(--fs-xl);
+    font-weight: 700;
+  }
+  .web .settings-search {
+    display: flex;
+    min-height: 44px;
+  }
+  .web .settings-group-label {
+    display: block;
+    padding: 18px 4px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .web .account {
+    display: flex;
+  }
+  .web .settings-groups {
+    display: block;
+    margin-top: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .web .settings-group {
+    display: block;
+  }
+  .web .settings-link {
+    width: 100%;
+    min-height: 52px;
+    padding: 10px 8px;
+    white-space: normal;
+    color: var(--text);
+  }
+  .web .settings-link svg {
+    color: var(--text-muted);
+  }
+  .web .settings-link.active {
+    background: none;
+  }
+  .web .settings-chevron {
+    display: inline-flex;
+    color: var(--text-faint);
+  }
+  .web .settings-back {
+    display: inline-grid;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+  }
+  .web .settings-head {
+    align-items: center;
+    gap: 6px;
+  }
+  .web .settings-head .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+@keyframes slide-in-pane {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+/* Queue: 44px targets on phones. */
+@media (max-width: 760px) {
+  .web .queue-drawer .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .web .queue-drawer .queue-main {
+    min-height: 52px;
+  }
+}
+/* Smooth scrolling: the blurred hero art gets its own layer, and plugin widgets
+   below the fold are not laid out or painted until they scroll near the screen. */
+.hero-bg {
+  transform: translateZ(0);
+  contain: paint;
+}
+.home-widgets .section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
 }

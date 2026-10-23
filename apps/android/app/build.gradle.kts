@@ -37,6 +37,16 @@ android {
     }
 
     signingConfigs {
+        // DEBUG ONLY: a fixed, committed debug key so debug APKs built anywhere (Docker, CI,
+        // another PC) update in place instead of needing an uninstall. Its password is the
+        // well-known "android". Never use it for anything you publish; release signing below
+        // is unchanged.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (hasReleaseKey) {
             create("release") {
                 storeFile = file(keystorePath!!)

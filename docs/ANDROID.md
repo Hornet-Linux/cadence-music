@@ -199,6 +199,10 @@ cd apps/android
 ./gradlew testDebugUnitTest assembleRelease     # APK: app/build/outputs/apk/release/
 ```
 
+Debug builds are signed with `apps/android/app/debug.keystore`, a **debug-only** key committed on
+purpose (password `android`) so a debug APK built anywhere, including in Docker, installs over the
+previous one without an uninstall. Never sign anything you publish with it.
+
 Without a release key (see above) the release build is signed with the debug key. To sign
 with your own, put the keystore path and passwords in `apps/android/keystore.properties`
 (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; git-ignored) or in the

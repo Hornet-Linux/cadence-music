@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PluginManifest } from "@/plugins/types";
-import { groupPlugins, pluginGroup } from "./pluginGroups";
+import { capabilityLabel, groupPlugins, pluginGroup } from "./pluginGroups";
 
 const m = (id: string, name: string, capabilities: PluginManifest["capabilities"], description = ""): PluginManifest => ({
   id,
@@ -27,5 +27,12 @@ describe("plugin groups", () => {
     expect(all[1].rows.map((r) => r.manifest.name)).toEqual(["Alpha", "Zeta"]);
     expect(groupPlugins(rows, "", "on").flatMap((g) => g.rows).length).toBe(2);
     expect(groupPlugins(rows, "WEATHER", "all").flatMap((g) => g.rows)[0].manifest.id).toBe("a");
+  });
+});
+
+describe("capabilityLabel", () => {
+  it("uses plain language", () => {
+    expect(capabilityLabel("network.outbound")).toBe("Uses the internet");
+    expect(capabilityLabel("ui.sidebar")).toBe("Adds a page");
   });
 });

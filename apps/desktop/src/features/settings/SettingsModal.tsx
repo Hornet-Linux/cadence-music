@@ -5,9 +5,26 @@ import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { ACCENTS, usePrefs } from "@/features/preferences/prefsStore";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
-import { CloseIcon, InfoIcon, PaletteIcon, PlugIcon, SearchIcon, SlidersIcon, SparkleIcon } from "@/ui/icons";
+import {
+  BackIcon,
+  CloseIcon,
+  DiscIcon,
+  ForwardIcon,
+  HomeIcon,
+  InfoIcon,
+  NoteIcon,
+  PaletteIcon,
+  PlugIcon,
+  QueueIcon,
+  SearchIcon,
+  ServerIcon,
+  SlidersIcon,
+  SparkleIcon,
+  WavesIcon,
+} from "@/ui/icons";
 import { Segmented, SettingRow, Toggle } from "./controls";
-import { groupPlugins, type PluginFilter } from "./pluginGroups";
+import type { PluginManifest } from "@/plugins/types";
+import { capabilityLabel, groupPlugins, type PluginFilter, type PluginGroup } from "./pluginGroups";
 import { useSettingsModal } from "./settingsStore";
 
 interface Section {
@@ -94,6 +111,70 @@ function AppearanceSection() {
   );
 }
 
+const GROUP_ICONS: Record<PluginGroup, ReactNode> = {
+  Sources: <DiscIcon size={20} />,
+  Sound: <WavesIcon size={20} />,
+  "Lyrics & info": <NoteIcon size={20} />,
+  "Playback & queue": <QueueIcon size={20} />,
+  "Devices & remotes": <ServerIcon size={20} />,
+  "Home & pages": <HomeIcon size={20} />,
+  Other: <PlugIcon size={20} />,
+};
+
+/** Compact row: icon, name, one-line description (tap to read more), switch. */
+function PluginCard({
+  manifest: m,
+  enabled,
+  icon,
+  onToggle,
+}: {
+  manifest: PluginManifest;
+  enabled: boolean;
+  icon: ReactNode;
+  onToggle: (on: boolean) => void;
+}) {
+  const [more, setMore] = useState(false);
+  return (
+    <div className={`plugin-card${enabled ? " on" : ""}${more ? " expanded" : ""}`}>
+      <div className="pic" aria-hidden>
+        {icon}
+      </div>
+      <div className="pbody">
+        <div className="pname">
+          <span className="ptitle">{m.name}</span>
+          {m.builtin && <span className="badge builtin">Built-in</span>}
+        </div>
+        {m.description && (
+          <button className="pdesc muted small" aria-expanded={more} onClick={() => setMore(!more)}>
+            <span className="pdesc-text">{m.description}</span>
+          </button>
+        )}
+        {more && (
+          <div className="pmore">
+            <span className="muted small">
+              Version {m.version}
+              {m.author ? ` · ${m.author}` : ""}
+            </span>
+            {m.capabilities.length > 0 && (
+              <details className="paccess">
+                <summary>What it can access</summary>
+                <ul>
+                  {m.capabilities.map((c) => (
+                    <li key={c} title={c}>
+                      {capabilityLabel(c)} <code className="muted">{c}</code>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
+      <Toggle label={`Enable ${m.name}`} on={enabled} onChange={onToggle} />
+    </div>
+  );
+}
+
 function PluginsSection() {
   const plugins = usePluginHost((s) => s.plugins);
   const setEnabled = usePluginHost((s) => s.setEnabled);
@@ -133,34 +214,18 @@ function PluginsSection() {
             {group} <span className="muted small">{list.length}</span>
           </h4>
           {list.map(({ manifest: m, enabled }) => (
-            <div className={`plugin-card${enabled ? " on" : ""}`} key={m.id}>
-              <div className="pic">
-                <PlugIcon size={20} />
-              </div>
-              <div className="pbody">
-                <div className="pname">
-                  {m.name}
-                  <span className="muted small">v{m.version}</span>
-                  {m.builtin && <span className="badge builtin">Built-in</span>}
-                </div>
-                {m.description && <p className="muted small">{m.description}</p>}
-                {m.capabilities.length > 0 && (
-                  <div className="caps">
-                    {m.capabilities.map((c) => (
-                      <span className="cap" key={c}>
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Toggle label={`Enable ${m.name}`} on={enabled} onChange={(v) => void setEnabled(m.id, v)} />
-            </div>
+            <PluginCard
+              key={m.id}
+              manifest={m}
+              enabled={enabled}
+              icon={GROUP_ICONS[group]}
+              onToggle={(v) => void setEnabled(m.id, v)}
+            />
           ))}
         </div>
       ))}
       <p className="muted small section-note">
-        Enabling a plugin grants it the capabilities listed. See docs/PLUGINS.md to write your own.
+        Turning a plugin on lets it do what is listed under "What it can access". See docs/PLUGINS.md to write your own.
       </p>
     </>
   );
@@ -242,17 +307,42 @@ function AccountFooter({ onOpenServer }: { onOpenServer: () => void }) {
   );
 }
 
+const PHONE_QUERY = "(max-width: 760px)";
+
+/** True at phone width (the same breakpoint the stylesheet uses). */
+function usePhoneLayout(): boolean {
+  const [phone, setPhone] = useState(() => typeof matchMedia === "function" && matchMedia(PHONE_QUERY).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const mq = matchMedia(PHONE_QUERY);
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return phone;
+}
+
 export function SettingsModal() {
-  const { open, section, close, select } = useSettingsModal();
+  const { open, section, deep, close, select } = useSettingsModal();
   const panels = usePluginHost((s) => s.contributions.settings);
   const [query, setQuery] = useState("");
+  const phone = usePhoneLayout();
+  // Phones show the list of sections first and open one section full-screen.
+  const [paneOpen, setPaneOpen] = useState(deep);
+  useEffect(() => {
+    if (open) setPaneOpen(deep);
+  }, [open, deep]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (phone && paneOpen) setPaneOpen(false);
+      else close();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  }, [open, close, phone, paneOpen]);
 
   const sections: Section[] = useMemo(
     () => [
@@ -327,8 +417,14 @@ export function SettingsModal() {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div className={`settings ${paneOpen ? "phone-pane" : "phone-list"}`} role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <aside className="settings-nav">
+          <header className="settings-list-head">
+            <h1>Settings</h1>
+            <button className="icon-btn" onClick={close} aria-label="Close settings">
+              <CloseIcon />
+            </button>
+          </header>
           <label className="settings-search">
             <SearchIcon size={16} />
             <input
@@ -346,21 +442,35 @@ export function SettingsModal() {
                   <button
                     key={s.id}
                     className={`settings-link${s.id === active.id ? " active" : ""}`}
-                    onClick={() => select(s.id)}
+                    onClick={() => {
+                      select(s.id);
+                      setPaneOpen(true);
+                    }}
                   >
                     {s.icon}
-                    {s.title}
+                    <span className="settings-link-text">{s.title}</span>
+                    <span className="settings-chevron" aria-hidden>
+                      <ForwardIcon size={16} />
+                    </span>
                   </button>
                 ))}
               </div>
             ))}
             {groups.length === 0 && <p className="empty">No settings match “{query}”.</p>}
           </div>
-          <AccountFooter onOpenServer={() => select("server")} />
+          <AccountFooter
+            onOpenServer={() => {
+              select("server");
+              setPaneOpen(true);
+            }}
+          />
         </aside>
         <section className="settings-pane">
           <header className="settings-head">
-            <div>
+            <button className="icon-btn settings-back" onClick={() => setPaneOpen(false)} aria-label="All settings">
+              <BackIcon />
+            </button>
+            <div className="settings-head-text">
               <h1 id="settings-title">{active.title}</h1>
               {active.description && <p className="muted">{active.description}</p>}
             </div>
