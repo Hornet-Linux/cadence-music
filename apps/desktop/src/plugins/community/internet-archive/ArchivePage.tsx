@@ -3,7 +3,7 @@ import { usePlayer } from "@/player/playerStore";
 import { BackIcon, PauseIcon, PlayIcon, SearchIcon } from "@/ui/icons";
 import { serverUrl, useDebounced, useLoad } from "../_sourcekit/api";
 import { clock, spoken } from "../_sourcekit/format";
-import { Art, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts } from "../_sourcekit/ui";
+import { Art, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts, LoadingRows } from "../_sourcekit/ui";
 import { detailToTracks, fetchArchiveItem, fetchBands, searchArchive, yearOf, type ArchiveDetail, type ArchiveItem } from "./archiveStore";
 
 type Tab = "live" | "audio";
@@ -51,7 +51,7 @@ function Results({ load, keyOf, onOpen, empty, showCreator }: { load: (page: num
           <ItemRow key={i.id} item={i} onOpen={onOpen} showCreator={showCreator} />
         ))}
       </div>
-      {first.loading && <p className="empty">Loading…</p>}
+      {first.loading && <LoadingRows label="Loading…" />}
       {!first.loading && !first.error && items.length === 0 && <p className="empty">{empty}</p>}
       {hasMore && (
         <button className="btn ghost show-more" disabled={busy} onClick={() => void next()}>
@@ -140,7 +140,7 @@ function ShowView({ item, onBack }: { item: ArchiveItem; onBack: () => void }) {
         <BackIcon size={16} /> Back
       </button>
       <Problem message={show.error} onRetry={show.reload} />
-      {show.loading && !d && <p className="empty">Loading…</p>}
+      {show.loading && !d && <LoadingRows label="Loading…" />}
       {d && <ShowBody d={d} format={format} onFormat={setFormat} />}
     </>
   );

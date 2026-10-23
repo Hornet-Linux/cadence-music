@@ -140,7 +140,6 @@ export function createS3Plugin(options: S3PluginOptions = {}): ServerPlugin {
         const folders = b.folders === undefined ? [] : cleanFolders(b.folders);
         if (folders === null) return bad("Those folders aren't valid");
         if (b.pathStyle !== undefined && typeof b.pathStyle !== "boolean") return bad("pathStyle must be true or false");
-        limiter.hit(key);
         try {
           let endpoint: string | undefined;
           if (endpointText) {
@@ -159,6 +158,8 @@ export function createS3Plugin(options: S3PluginOptions = {}): ServerPlugin {
           void runtime.index(userId).catch(() => undefined);
           return { connected: true, endpoint: endpoint ?? null, region, bucket, accessKeyId, folders };
         } catch (e) {
+          // Only failed attempts count, so choosing folders or reconnecting never locks anyone out.
+          limiter.hit(key);
           const hint = regionHint(e);
           if (hint !== null) {
             return reply.code(400).send({

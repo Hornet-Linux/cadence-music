@@ -5,7 +5,7 @@ import { Toggle } from "@/features/settings/controls";
 import { describeError, useLoad } from "../_sourcekit/api";
 import { clock, dayLabel, SPEEDS, speedLabel, spoken } from "../_sourcekit/format";
 import { Back15Icon, CheckIcon, Fwd30Icon } from "../_sourcekit/icons";
-import { Art, Bar, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts } from "../_sourcekit/ui";
+import { Art, Bar, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts, LoadingRows } from "../_sourcekit/ui";
 import { episodeIdOf, episodeToTrack, fetchEpisodes, previewShow, searchDirectory, stateOf, usePodcasts, type DirectoryHit, type Episode, type Show } from "./podcastStore";
 
 type Tab = "new" | "shows" | "find";
@@ -193,7 +193,7 @@ function ShowDetail({ show: initial, onBack }: { show: Show; onBack: () => void 
           <EpisodeRow key={e.id} episode={e} showShow={false} />
         ))}
       </div>
-      {first.loading && <p className="empty">Loading episodes…</p>}
+      {first.loading && <LoadingRows label="Loading episodes…" />}
       {!first.loading && !first.error && items.length === 0 && <p className="empty">No episodes yet.</p>}
       {items.length > 0 && items.length < total && (
         <button className="btn ghost show-more" disabled={busy} onClick={() => void showMore()}>
@@ -237,7 +237,7 @@ function NewView({ onOpen }: { onOpen: (s: Show) => void }) {
           <EpisodeRow key={e.id} episode={e} />
         ))}
       </div>
-      {!loaded && <p className="empty">Loading…</p>}
+      {!loaded && <LoadingRows label="Loading…" />}
       {loaded && fresh.length === 0 && showsLoaded && (
         <p className="empty">{shows.length === 0 ? "Subscribe to a show and its new episodes will show up here." : "Nothing new. You've heard it all."}</p>
       )}
@@ -264,7 +264,7 @@ function ShowsView({ onOpen }: { onOpen: (s: Show) => void }) {
           </button>
         ))}
       </div>
-      {!loaded && <p className="empty">Loading your shows…</p>}
+      {!loaded && <LoadingRows label="Loading your shows…" />}
       {loaded && shows.length === 0 && <p className="empty">You aren't subscribed to anything yet. Use Find to search, or paste a feed address.</p>}
     </>
   );
@@ -346,7 +346,7 @@ function FindView({ onOpen }: { onOpen: (s: Show) => void }) {
           </div>
         ))}
       </div>
-      {state.loading && <p className="empty">Searching…</p>}
+      {state.loading && <LoadingRows label="Searching…" />}
       {state.searched && !state.loading && !state.error && state.items.length === 0 && <p className="empty">No podcasts found.</p>}
       {state.source && <p className="sk-sub">Results from {state.source === "podcastindex" ? "Podcast Index" : "Apple's iTunes Search"}.</p>}
       <p className="sk-section">Add by address</p>

@@ -79,6 +79,17 @@ async function errorCode(res: Response): Promise<string | undefined> {
   }
 }
 
+/**
+ * Every route follows the same rule: a plugin that answers 401 with its own error code
+ * (a wrong Audiobookshelf password, an expired service session) is talking about that
+ * service, so it must not sign the person out of Cadence.
+ */
+export async function endsCadenceSession(route: string, res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  const code = await errorCode(res);
+  return isJellyfinRoute(route) ? code === "unauthorized" : code === undefined || code === "unauthorized";
+}
+
 export function normalizeServerUrl(input: string): string {
   const trimmed = input.trim();
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -140,7 +151,7 @@ export const useServer = create<ServerState>((set, get) => {
     if (token) headers.set("authorization", `Bearer ${token}`);
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     const res = await fetch(apiUrl(url, route), { ...init, headers });
-    if (res.status === 401 && token && !(isJellyfinRoute(route) && (await errorCode(res)) !== "unauthorized")) {
+    if (token && (await endsCadenceSession(route, res))) {
       set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       void saveToken(null);
       throw new Error("Your session expired. Sign in again.");

@@ -75,3 +75,17 @@ export const UploadIcon = (p: P) => (
     <path d="M12 16.5v-12M7 9.5l5-5 5 5M5 20.5h14" />
   </Svg>
 );
+/** A storage bucket, for S3-compatible storage. */
+export const BucketIcon = (p: P) => (
+  <Svg {...p}>
+    <ellipse cx="12" cy="6" rx="8" ry="2.5" />
+    <path d="M4 6l1.6 12.2C5.8 19.8 8.6 21 12 21s6.2-1.2 6.4-2.8L20 6" />
+  </Svg>
+);
+
+/** A cloud, for Google Drive and OneDrive. */
+export const CloudIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.1 4.75 4.75 0 0 0 7 18.5Z" />
+  </Svg>
+);

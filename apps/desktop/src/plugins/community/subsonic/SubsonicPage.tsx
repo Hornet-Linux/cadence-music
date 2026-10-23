@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { useServer } from "../../builtins/server/serverStore";
+import { LoadingRows, Problem } from "../_sourcekit/ui";
 import { ConnectCard, SourceBrowser } from "../sourcesCommon/SourceBrowser";
 import type { BrowseApi } from "../sourcesCommon/types";
 import { useIsFavourite, useSubsonic } from "./subsonicStore";
@@ -44,7 +45,11 @@ export function SubsonicPage() {
       {!serverUser ? (
         <ConnectCard title="Sign in to your server first" text="Subsonic connects through your Cadence server." action={{ label: "Open server settings", onClick: () => openSettings("server") }} />
       ) : !status ? (
-        <p className="empty">{checking ? "Checking Subsonic…" : (error ?? "Couldn't check Subsonic.")}</p>
+        checking ? (
+          <LoadingRows label="Checking Subsonic…" rows={3} />
+        ) : (
+          <Problem message={error ?? "Couldn't reach Subsonic."} onRetry={() => void useSubsonic.getState().refresh()} />
+        )
       ) : !status.configured ? (
         <ConnectCard
           title="Subsonic isn't set up on this server"

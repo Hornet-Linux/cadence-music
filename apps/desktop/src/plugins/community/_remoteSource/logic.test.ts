@@ -65,6 +65,10 @@ describe("indexer summary", () => {
     expect(failed("auth_failed").problem).toMatch(/refused/);
     expect(failed("never-heard-of-it").problem).toMatch(/Indexing failed/);
     expect(failed("timeout").text).toBe("10 tracks, updated just now");
+    // A run that finished but skipped files says so, instead of a silent "0 tracks".
+    expect(summarizeIndexing(0, { ...base, status: "done", found: 3, failed: 3, finishedAt: now }, now).problem).toBe("3 files couldn't be read, so they aren't in your library. Refresh to try again.");
+    expect(summarizeIndexing(4, { ...base, status: "done", found: 5, failed: 1, finishedAt: now }, now).problem).toMatch(/^1 file couldn't be read, so it isn't/);
+    expect(summarizeIndexing(4, { ...base, status: "done", found: 4, finishedAt: now }, now).problem).toBeNull();
   });
 });
 

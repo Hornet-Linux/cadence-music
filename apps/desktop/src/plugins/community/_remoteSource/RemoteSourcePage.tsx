@@ -7,6 +7,7 @@ import type { Track } from "@/shared/types";
 import { BackIcon, PlayIcon, SearchIcon, ShuffleIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
 import { useServer } from "../../builtins/server/serverStore";
+import { LoadingRows, Problem } from "../_sourcekit/ui";
 import { plainError, summarizeIndexing, type RemoteStatus } from "./logic";
 import type { AlbumCard, RemoteSourceState } from "./store";
 import "./style.css";
@@ -104,7 +105,7 @@ function Footer({ paged, noun }: { paged: Paged<unknown>; noun: string }) {
           {error}
         </p>
       )}
-      {loading && <p className="empty">Loading {noun}…</p>}
+      {loading && <LoadingRows label={`Loading ${noun}…`} rows={items.length ? 2 : 6} />}
       {!loading && items.length < total && (
         <button className="btn ghost show-more" onClick={more}>
           Show more ({total - items.length} left)
@@ -217,10 +218,14 @@ export function RemoteSourcePage<S extends RemoteStatus>({
       ) : unavailable ? (
         <div className="card pad stack">
           <p className="strong">{label} isn&apos;t turned on at your server</p>
-          <p className="muted">The server owner can enable it under Settings, Plugins, and restart the server.</p>
+          <p className="muted">The server owner turns it on in the server's admin page under Plugins, then restarts the server.</p>
         </div>
       ) : !status ? (
-        <p className="empty">{checking ? `Checking ${label}…` : (error ?? `Couldn't check ${label}.`)}</p>
+        checking ? (
+        <LoadingRows label={`Checking ${label}…`} rows={3} />
+      ) : (
+        <Problem message={error ?? `Couldn't reach ${label}.`} onRetry={() => void refresh()} />
+      )
       ) : !connected ? (
         <div className="card pad stack">
           <p className="strong">Connect {label}</p>
