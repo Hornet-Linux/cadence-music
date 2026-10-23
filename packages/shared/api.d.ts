@@ -222,6 +222,8 @@ export interface AdminLlmProvider {
   baseUrl: string;
   model: string;
   hasKey: boolean;
+  /** A key is saved but can't be decrypted (the server secret changed): enter it again. */
+  keyUnreadable?: boolean;
   enabled: boolean;
   isDefault: boolean;
 }

@@ -1,7 +1,9 @@
-import electron, { app, BrowserWindow, ipcMain, shell } from "electron";
+import electron, { app, BrowserWindow, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createLlmProvider, parseJsonRequest, parseLlmConfig } from "./llm";
+import { isTrustedSender } from "./ipcGuard";
+import { createLlmProvider, parseJsonRequest } from "./llm";
+import { DJ_KEY_PREFIX, hasKey, resolveConfig, saveKey } from "./llmKeys";
 import { applyStartupSwitches, registerIntegrations } from "./integrations";
 import { oidcLogin } from "./oidc";
 import { deleteSecret, getSecret, setSecret } from "./secrets";
@@ -110,45 +112,70 @@ function createWindow() {
   }
 }
 
+// ---- IPC: only the app's own page may call the main process -----------------
+// A link, a sign-in redirect or an iframe in the window must not be able to
+// read secrets or make the main process (which has no CORS) fetch for it.
+const GUARD = { devServerUrl: VITE_DEV_SERVER_URL, rendererDir: RENDERER_DIST };
+function trusted(e: IpcMainEvent | IpcMainInvokeEvent): boolean {
+  return !!win && isTrustedSender(e.senderFrame, win.webContents.mainFrame, GUARD);
+}
+function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: unknown[]) => unknown) {
+  ipcMain.handle(channel, (e, ...args: unknown[]) => {
+    if (!trusted(e)) throw new Error("Not allowed");
+    return fn(e, ...args);
+  });
+}
+function on(channel: string, fn: (e: IpcMainEvent, ...args: unknown[]) => void) {
+  ipcMain.on(channel, (e, ...args: unknown[]) => {
+    if (trusted(e)) fn(e, ...args);
+  });
+}
+
+/** Saved AI provider keys: written and used here, never readable by the page. */
+const djKeys = { get: getSecret, set: setSecret, delete: deleteSecret };
+const pageSecret = (key: unknown): key is string => typeof key === "string" && !key.startsWith(DJ_KEY_PREFIX);
+
 // ---- Window controls -------------------------------------------------------
-ipcMain.on("window:minimize", () => win?.minimize());
-ipcMain.on("window:toggle-maximize", () => {
+on("window:minimize", () => win?.minimize());
+on("window:toggle-maximize", () => {
   if (!win) return;
   if (win.isMaximized()) win.unmaximize();
   else win.maximize();
 });
-ipcMain.on("window:close", () => win?.close());
+on("window:close", () => win?.close());
 
 // ---- Secrets ---------------------------------------------------------------
-ipcMain.handle("secrets:get", (_e, key: unknown) => (typeof key === "string" ? getSecret(key) : null));
-ipcMain.handle("secrets:set", (_e, key: unknown, value: unknown) => {
-  if (typeof key !== "string" || typeof value !== "string") throw new Error("Invalid secret");
+handle("secrets:get", (_e, key: unknown) => (pageSecret(key) ? getSecret(key) : null));
+handle("secrets:set", (_e, key: unknown, value: unknown) => {
+  if (!pageSecret(key) || typeof value !== "string") throw new Error("Invalid secret");
   setSecret(key, value);
 });
-ipcMain.handle("secrets:delete", (_e, key: unknown) => {
-  if (typeof key === "string") deleteSecret(key);
+handle("secrets:delete", (_e, key: unknown) => {
+  if (pageSecret(key)) deleteSecret(key);
 });
 
 // ---- Server sign-in (OIDC) -------------------------------------------------
-ipcMain.handle("auth:oidc-login", (_e, serverUrl: unknown) => {
+handle("auth:oidc-login", (_e, serverUrl: unknown) => {
   if (typeof serverUrl !== "string") throw new Error("Invalid server URL");
   return oidcLogin(serverUrl);
 });
 
 // ---- Spotify ---------------------------------------------------------------
-ipcMain.handle("spotify:status", () => spotifyStatus());
-ipcMain.handle("spotify:login", (_e, clientId: unknown) => {
+handle("spotify:status", () => spotifyStatus());
+handle("spotify:login", (_e, clientId: unknown) => {
   if (typeof clientId !== "string") throw new Error("Invalid client ID");
   return spotifyLogin(clientId.trim());
 });
-ipcMain.handle("spotify:token", () => spotifyAccessToken());
-ipcMain.handle("spotify:logout", () => spotifyLogout());
+handle("spotify:token", () => spotifyAccessToken());
+handle("spotify:logout", () => spotifyLogout());
 
 // ---- LLM (AI DJ) -----------------------------------------------------------
-ipcMain.handle("llm:status", (_e, config: unknown) => createLlmProvider(parseLlmConfig(config)).status());
-ipcMain.handle("llm:chat-json", (_e, config: unknown, req: unknown) => {
-  return createLlmProvider(parseLlmConfig(config)).chatJson(parseJsonRequest(req));
+handle("llm:status", async (_e, config: unknown) => createLlmProvider(await resolveConfig(djKeys, config)).status());
+handle("llm:chat-json", async (_e, config: unknown, req: unknown) => {
+  return createLlmProvider(await resolveConfig(djKeys, config)).chatJson(parseJsonRequest(req));
 });
+handle("llm:save-key", (_e, providerId: unknown, baseUrl: unknown, key: unknown) => saveKey(djKeys, providerId, baseUrl, key));
+handle("llm:has-key", (_e, providerId: unknown) => hasKey(djKeys, providerId));
 
 // ---- Desktop integrations (Discord, shortcuts, control API, Slack) ----------
 registerIntegrations(() => win);

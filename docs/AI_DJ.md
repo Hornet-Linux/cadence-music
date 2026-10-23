@@ -17,7 +17,9 @@ stay on the device.
 
 Keys saved on the server cannot be read back through the API, so a lost or
 compromised phone cannot leak them. Keys you enter on a device stay on that
-device.
+device: the desktop app keeps them in its main process (the page can't read
+them back) and only sends a key to the address it was saved for, so changing
+a provider's address means entering its key again.
 
 ## Supported providers
 
@@ -82,7 +84,15 @@ POST /api/admin/llm/providers
 `hasKey`). `POST /api/admin/llm/test` tries settings before you save them.
 The first provider becomes the default; set `isDefault` to change it.
 Admin-defined URLs may point anywhere the server can reach, including other
-machines on your network. The server rejects base URLs that contain a
+machines on your network. The server never follows a redirect from a
+provider, so it only talks to the address an admin typed.
+
+Saved keys are encrypted with a key derived from the server secret and bound
+to their provider, so a key copied onto another provider's row in the
+database won't decrypt. To rotate `SERVER_SECRET`, set the old value as
+`PREVIOUS_SERVER_SECRET` for one start: keys are re-encrypted with the new
+secret, and the old one can then be removed. A key that can't be decrypted is
+logged on start and shown as "saved key can't be read" in the admin panel. The server rejects base URLs that contain a
 username/password, a query string or a fragment, and limits the name to 60
 characters, the model to 200 and the API key to 512.
 
@@ -146,7 +156,10 @@ sign-in redirect) can't use Apple Intelligence or change the server.
 
 `POST /api/dj/picks` builds its own prompt, so a signed-in account can't use
 the server's API credits for arbitrary prompts through it. It is limited to 20
-requests per person per 10 minutes and one at a time.
+requests per person per 10 minutes and one at a time; the count is kept in the database,
+so a restart doesn't reset it. `POST /api/llm/status` (which also calls the provider)
+allows 30 checks per person per 10 minutes; admins aren't limited. A computer sharing
+its providers runs at most 2 relay jobs at once.
 
 The AI plugins below (song chat, playlist builder, taste summary) need
 free-form questions, so they use `POST /api/llm/chat`, which relays a prompt the

@@ -15,6 +15,19 @@ final class BridgeOriginTests: XCTestCase {
         XCTAssertTrue(trusted("HTTPS", "Music.Example.com", nil), "scheme and host are case-insensitive")
     }
 
+    func testInternationalHostsMatchTheirPunycodeOrigin() {
+        let idn = URL(string: "https://xn--bcher-kva.example/app/")!
+        XCTAssertTrue(trusted("https", "xn--bcher-kva.example", nil, server: idn))
+        XCTAssertEqual(Punycode.asciiHost("Bücher.example"), "xn--bcher-kva.example")
+        XCTAssertEqual(Punycode.asciiHost("b%C3%BCcher.example"), "xn--bcher-kva.example")
+        XCTAssertEqual(Punycode.asciiHost("münchen.de"), "xn--mnchen-3ya.de")
+        XCTAssertEqual(Punycode.asciiHost("例え.テスト"), "xn--r8jz45g.xn--zckzah")
+        XCTAssertEqual(Punycode.asciiHost("10.0.0.5"), "10.0.0.5")
+        XCTAssertTrue(BridgeOrigin.origin(scheme: "https", host: "bücher.example", port: nil)
+            == BridgeOrigin.origin(scheme: "https", host: "xn--bcher-kva.example", port: 443))
+        XCTAssertFalse(trusted("https", "xn--bcher-kva.example", nil), "still a different host from the server")
+    }
+
     func testDifferentHostIsRejected() {
         XCTAssertFalse(trusted("https", "evil.example", nil))
         XCTAssertFalse(trusted("https", "example.com", nil))

@@ -61,6 +61,12 @@ export interface Config {
    * provider and downloads the model, so apps never need Ollama themselves.
    */
   ollama?: { url: string; model: string };
+  /**
+   * Earlier server secrets (PREVIOUS_SERVER_SECRET, comma-separated). Saved
+   * API keys sealed with one of them still open, and are re-sealed with the
+   * current secret on start, so SERVER_SECRET can be rotated.
+   */
+  previousSecrets?: string[];
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
   /**
@@ -235,6 +241,7 @@ export function loadConfig(env: Env = process.env): Config {
 
   return {
     ollama: parseOllama(env),
+    previousSecrets: list(env.PREVIOUS_SERVER_SECRET),
     host: env.HOST?.trim() || "0.0.0.0",
     port,
     dataDir: path.resolve(env.DATA_DIR?.trim() || "./data"),

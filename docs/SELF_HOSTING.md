@@ -422,6 +422,7 @@ Database migrations run automatically on start.
 | `PUBLIC_URL` | — | Public base URL; required for OIDC. |
 | `SCAN_INTERVAL_MINUTES` | `60` | Periodic rescan; `0` disables. |
 | `TRUST_PROXY` | private-network proxies | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is proxies on this machine or a private network. |
+| `PREVIOUS_SERVER_SECRET` | — | When rotating `SERVER_SECRET`: the old value(s), comma-separated, so saved AI provider keys are re-encrypted instead of lost. Remove after one start. |
 | `SERVER_SECRET` | generated | Signs stream URLs; generated into `DATA_DIR` if unset. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | — | Bootstrap admin account. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | — | Enable OIDC. |
