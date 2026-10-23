@@ -82,4 +82,20 @@ export const builtinPlugins: Plugin[] = [
   nowPlayingLogPlugin,
 ];
 export const samplePlugins: Plugin[] = [trackingBridgePlugin];
-export const allRegisterablePlugins: Plugin[] = [...builtinPlugins, ...samplePlugins];
+
+/**
+ * Plugins dropped into `../community/<name>/index.ts(x)` are found automatically; no
+ * list to edit. Each file's default export is one Plugin or an array of them. A plugin
+ * whose manifest is not `builtin` starts disabled until the user turns it on.
+ */
+const discovered = import.meta.glob<{ default: Plugin | Plugin[] }>("../community/*/index.{ts,tsx}", {
+  eager: true,
+});
+export const communityPlugins: Plugin[] = Object.keys(discovered)
+  .sort()
+  .flatMap((path) => {
+    const exported = discovered[path]!.default;
+    return Array.isArray(exported) ? exported : [exported];
+  });
+
+export const allRegisterablePlugins: Plugin[] = [...builtinPlugins, ...samplePlugins, ...communityPlugins];

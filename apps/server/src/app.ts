@@ -1,7 +1,8 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import type { Config } from "./config.js";
 import type { Db } from "./db.js";
-import { OidcClient, type FetchFn } from "./auth/oidc.js";
+import type { FetchFn } from "./auth/oidc.js";
+import { oidcResolver } from "./auth/oidcSettings.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { startSessionPurge, userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
@@ -14,6 +15,8 @@ import { libraryPlugin } from "./library/plugin.js";
 import { jellyfinPlugin } from "./jellyfin/plugin.js";
 import { llmPlugin } from "./llm/plugin.js";
 import type { ServerPlugin } from "./plugins/types.js";
+import { loadCommunityPlugins } from "./plugins/community.js";
+import { Jobs, ServerEvents } from "./plugins/runtime.js";
 
 export const builtinPlugins: ServerPlugin[] = [
   libraryPlugin,
@@ -82,16 +85,24 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (!req.user?.is_admin) return reply.code(403).send({ error: "forbidden" });
   }
 
-  const oidc =
-    config.oidc && config.publicUrl
-      ? new OidcClient(config.oidc, `${config.publicUrl}/api/auth/oidc/callback`, deps.fetchFn)
-      : null;
+  // Resolved per request, so changes on the admin panel's Single sign-on page apply at once.
+  const oidc = oidcResolver(config, db, secret, deps.fetchFn);
 
   const settings = new Settings(db, config);
   registerAuthRoutes(app, { db, config, oidc, requireUser, settings, onSetupCode: deps.onSetupCode });
-  registerWebApp(app, config.webDir);
+  registerWebApp(app, config.webDir, (id) => settings.pluginEnabled(id));
 
-  for (const plugin of deps.plugins ?? builtinPlugins) {
+  const events = new ServerEvents(app.log);
+  const jobs = new Jobs(app.log);
+  app.addHook("onClose", async () => jobs.stop());
+
+  // Built-ins always run. Community plugins (found in dist/community) run only once the admin turns them on.
+  let plugins = deps.plugins;
+  if (!plugins) {
+    const community = (await loadCommunityPlugins(app.log)).filter((p) => settings.pluginEnabled(p.id));
+    plugins = [...builtinPlugins, ...community];
+  }
+  for (const plugin of plugins) {
     await plugin.register(app, {
       db,
       config,
@@ -100,6 +111,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       requireUser,
       requireAdmin,
       settings,
+      events,
+      jobs,
     });
   }
 

@@ -307,7 +307,7 @@ export async function requestPicks(ref: string, profile: TasteProfile, opts: Pic
   }
   const res = await useServer.getState().api<DjPicksResponse>("api/dj/picks", {
     method: "POST",
-    body: JSON.stringify({ provider: ref, profile, mood: opts.mood, switchUp: opts.switchUp, avoid: opts.avoid, count: opts.count }),
+    body: JSON.stringify({ provider: ref, profile, mood: opts.mood, switchUp: opts.switchUp, avoid: opts.avoid, count: opts.count, style: opts.style, notes: opts.notes }),
   });
   return res.picks;
 }

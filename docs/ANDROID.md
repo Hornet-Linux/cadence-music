@@ -22,11 +22,16 @@ account is needed.
    Play Protect may warn that the app is unrecognised: choose **Install anyway**.
 3. Open Cadence and enter your server's address, e.g. `music.example.com`. A bare
    address means `https://`; for a server on your network without a certificate, type
-   the scheme, e.g. `http://192.168.1.20:8787`.
-4. Allow notifications when asked (Android 13+). Without that permission playback still
-   works, but the notification and lock-screen controls don't appear.
+   the scheme, e.g. `http://192.168.1.20:8787`. The app checks the address (it asks the
+   server's `/api/health`) before saving it, and tells you if the server can't be reached or
+   isn't a Cadence server. The last address is remembered. A bare local address (an IP,
+   `localhost`, `.local`) that has no certificate is retried over `http://` automatically.
+4. The first time music plays (Android 13+), Cadence explains why it wants to show playback
+   controls and then asks for the notification permission. Without it playback still works,
+   but the notification and lock-screen controls don't appear. Nothing is asked when the app
+   opens.
 
-To switch servers later: **Settings → Server → Change server** in the player (this needs
+To switch servers later: long-press the Cadence launcher icon and choose **Change server**, or use **Settings → Server → Change server** in the player (this needs
 the web player's Android support, added in the AI DJ stack right before this PR; see [the native bridge](#the-native-bridge)); the failure
 screen also offers **Change server**.
 
@@ -110,7 +115,11 @@ build signed with it.
   Back out via the system) stops playback.
 - Cleartext also applies to cover art in the notification, which is fetched over the same
   scheme as your server.
-- There's no Google Play listing or in-app updater: install new releases by hand.
+- There's no Google Play listing and no silent updater (a sideloaded app can't update itself):
+  install new releases by hand. Once a day at most, while online, the app looks at the
+  [latest release](https://github.com/Hornet-Linux/cadence-music/releases/latest) on GitHub and,
+  if it's newer than the installed `versionName`, shows a one-time "A newer version is available" note linking to the release page.
+  Dev/nightly builds (non-numeric version) skip it.
 
 ### On-device AI (Gemini Nano)
 
@@ -168,6 +177,18 @@ When you use those controls, the app calls the handlers the page registered with
 `navigator.mediaSession.setActionHandler` (`play`, `pause`, `nexttrack`, `previoustrack`,
 `seekto`). So the web player's existing Media Session integration
 (`src/player/integrations.ts`) is all that's needed; no extra web code.
+
+On a plain-`http://` server (not a secure context) Chrome does not provide `navigator.mediaSession` at all, so the injected script supplies a small stand-in (and `MediaMetadata`) with the same surface; without it the notification would never appear for LAN servers.
+
+## If something goes wrong
+
+- **Can't reach your server** card: it names the cause (offline, name not found, refused,
+  timed out, certificate) and retries by itself when the network comes back; **Change server**
+  is on the card.
+- **The player's renderer crashes** (the WebView runs out of memory): the app builds a fresh
+  player instead of closing.
+- **Debugging the player**: debug builds enable WebView remote debugging, so with the phone
+  connected over USB open `chrome://inspect` on a computer. Release builds do not.
 
 ## Building it yourself
 

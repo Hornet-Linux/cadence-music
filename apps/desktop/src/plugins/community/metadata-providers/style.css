@@ -1,0 +1,45 @@
+.metadata-settings .metadata-free {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.metadata-settings .metadata-free li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+}
+.metadata-key {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.metadata-key-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.metadata-key-row .btn,
+.metadata-settings .btn {
+  min-height: 44px;
+}
+.metadata-key-row .text-input {
+  min-height: 44px;
+}
+.metadata-key a:not(.btn),
+.metadata-settings a:not(.btn) {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.metadata-settings .status-dot.unset {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+.metadata-settings .status-dot.online {
+  box-shadow: none;
+}

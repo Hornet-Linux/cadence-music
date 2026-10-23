@@ -1,0 +1,74 @@
+# Cadence with automatic HTTPS (Caddy gets and renews the certificate).
+#
+# Before you start:
+#   - Point your domain's DNS (an A record) at this machine.
+#   - Open ports 80 and 443 in the firewall.
+#
+#   1. Save this file as docker-compose.yml in a new folder.
+#   2. Replace music.example.com (two places below) and set your music folder.
+#   3. Run:  docker compose up -d
+#   4. Open https://music.example.com/app and enter the setup code from:
+#            docker compose logs cadence | grep "setup code"
+#
+# No .env file is needed. Updating later: docker compose pull && docker compose up -d
+# Full guide: https://github.com/Hornet-Linux/cadence-music/blob/main/docs/SELF_HOSTING.md
+
+name: cadence
+
+services:
+  cadence:
+    # :latest is the newest stable release; pin a version tag such as :1.4 to stay on one line.
+    image: ${CADENCE_IMAGE:-ghcr.io/hornet-linux/cadence-music:latest}
+    restart: unless-stopped
+    # No ports here: only Caddy talks to Cadence, over the internal network.
+    volumes:
+      - cadence-data:/data
+      # Your music folder on this machine (left side), mounted read-only.
+      - ./music:/music:ro
+    environment:
+      # Your domain, with https://. (1 of 2)
+      PUBLIC_URL: "https://music.example.com"
+      SIGNUP_MODE: "closed"   # closed | invite | open
+      # SIGNUP_INVITE_CODE: "pick-a-code"
+      SCAN_INTERVAL_MINUTES: "60"
+      LOG_LEVEL: "info"
+      # Optional extras (single sign-on can also be set up in /admin):
+      # OIDC_ISSUER: "https://auth.example.com/realms/home"
+      # OIDC_CLIENT_ID: "cadence"
+      # OIDC_CLIENT_SECRET: "..."
+      # OIDC_NAME: "Keycloak"
+      # SPOTIFY_CLIENT_ID: "0123456789abcdef0123456789abcdef"
+      # JELLYFIN_URL: "http://jellyfin:8096"
+
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    depends_on:
+      cadence:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # Your domain, without https://. (2 of 2)
+      DOMAIN: "music.example.com"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+configs:
+  caddyfile:
+    content: |
+      {$$DOMAIN} {
+        encode zstd gzip
+        reverse_proxy cadence:8787
+      }
+
+volumes:
+  cadence-data:
+  caddy-data:
+  caddy-config:
