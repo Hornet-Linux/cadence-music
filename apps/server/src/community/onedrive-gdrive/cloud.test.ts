@@ -352,7 +352,9 @@ test("state values bind user and provider, expire, and derive a stable PKCE veri
   assert.ok(s.verifier.length >= 43 && s.verifier.length <= 128, "RFC 7636 length");
   assert.equal(readState(SECRET, s.state, now + 601), null);
   assert.equal(readState("x".repeat(64), s.state, now), null);
-  assert.equal(readState(SECRET, s.state.replace(/.$/, "A"), now), null);
+  // Change the last signature character to a different one (a fixed "A" was a no-op whenever it already was "A": 1 run in 64).
+  const last = s.state.slice(-1);
+  assert.equal(readState(SECRET, s.state.slice(0, -1) + (last === "A" ? "B" : "A"), now), null);
   assert.notEqual(makeState(SECRET, "microsoft", 7, now).state, s.state);
 });
 

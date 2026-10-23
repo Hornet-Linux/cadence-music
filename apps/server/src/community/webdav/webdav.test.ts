@@ -65,6 +65,23 @@ async function indexNow(app: FastifyInstance, headers: { authorization: string }
   return res.json() as { indexing: { status: string; found: number; indexed: number; removed: number; failed: number }; trackCount: number };
 }
 
+/**
+ * Wait until the index that a folder change starts in the background has finished, so the next
+ * explicit index is a fresh run. (A fixed 50 ms sleep was not enough on a busy machine: the explicit
+ * index then joined the background run and reported its removals.)
+ */
+async function lastFinished(app: FastifyInstance, headers: { authorization: string }) {
+  return ((await app.inject({ method: "GET", url: "/api/webdav/status", headers })).json() as { indexing: { running: boolean; finishedAt: number | null } }).indexing;
+}
+async function settle(app: FastifyInstance, headers: { authorization: string }, before: number | null) {
+  for (let i = 0; i < 400; i++) {
+    const st = await lastFinished(app, headers);
+    if (!st.running && st.finishedAt !== before) return;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  assert.fail("the background index did not finish");
+}
+
 async function tracks(app: FastifyInstance, headers: { authorization: string }, query = "") {
   const res = await app.inject({ method: "GET", url: `/api/webdav/tracks${query}`, headers });
   assert.equal(res.statusCode, 200);
@@ -313,16 +330,18 @@ test("chosen folders limit the index, and dropping a folder removes its tracks; 
     assert.deepEqual(music.folders.map((f) => f.path), ["/Music/Night Owls", "/Music/Solo"]);
     assert.equal((await app.inject({ method: "GET", url: "/api/webdav/folders?path=/a/../../x", headers: alice })).statusCode, 400);
 
+    let before = (await lastFinished(app, alice)).finishedAt;
     const put = await app.inject({ method: "PUT", url: "/api/webdav/folders", headers: alice, payload: { folders: ["/Music/Night Owls", "/Other"] } });
     assert.equal(put.statusCode, 200);
-    await new Promise((r) => setTimeout(r, 50));
+    await settle(app, alice, before);
     const second = await indexNow(app, alice);
     assert.equal(second.trackCount, 3);
     assert.deepEqual((await tracks(app, alice)).items.map((t) => t.title).sort(), ["Blue Hour", "Elsewhere", "Moth"]);
     assert.equal(second.indexing.removed, 0);
 
+    before = (await lastFinished(app, alice)).finishedAt;
     await app.inject({ method: "PUT", url: "/api/webdav/folders", headers: alice, payload: { folders: ["/Other"] } });
-    await new Promise((r) => setTimeout(r, 50));
+    await settle(app, alice, before);
     const third = await indexNow(app, alice);
     assert.equal(third.trackCount, 1);
 
