@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { buildApp } from "../app.js";
 import { openDb } from "../db.js";
-import { WEB_APP_CSP } from "./webApp.js";
+import { buildWebAppCsp, WEB_APP_CSP } from "./webApp.js";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uma-web-"));
 const webDir = path.join(dir, "web");
@@ -16,8 +16,11 @@ fs.writeFileSync(path.join(dir, "secret.txt"), "do not serve");
 
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-async function appWith(web: string | undefined) {
+async function appWith(web: string | undefined, enabledPlugins: string[] = []) {
   const db = openDb(":memory:");
+  for (const id of enabledPlugins) {
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(`plugin:${id}:enabled`, "true", Date.now());
+  }
   const app = await buildApp({
     config: {
       host: "127.0.0.1",
@@ -100,4 +103,65 @@ test("explains when the web player isn't built", async () => {
   assert.equal(res.statusCode, 404);
   assert.match(res.body, /web player/);
   await close();
+});
+
+// The default policy, word for word: the one from before the streaming plugins, plus the always-on
+// Bandcamp embedded-player frame (a plain iframe with no script; there is no server plugin to gate it).
+const ORIGINAL_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co https://js-cdn.music.apple.com",
+  "style-src 'self' 'unsafe-inline' https://js-cdn.music.apple.com",
+  "img-src 'self' https: data: blob:",
+  "media-src 'self' https: blob:",
+  "font-src 'self' https: data:",
+  "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:*",
+  "frame-src https://sdk.scdn.co https://*.apple.com https://bandcamp.com",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join("; ");
+
+async function cspWith(enabled: string[]): Promise<string> {
+  const { app, close } = await appWith(webDir, enabled);
+  const res = await app.inject({ method: "GET", url: "/app/" });
+  await close();
+  return String(res.headers["content-security-policy"]);
+}
+
+test("the default CSP is unchanged when no streaming plugin is enabled", async () => {
+  assert.equal(WEB_APP_CSP, ORIGINAL_CSP);
+  assert.doesNotMatch(WEB_APP_CSP, /script-src [^;]*bandcamp/, "Bandcamp never gets a script source");
+  assert.equal(buildWebAppCsp(), ORIGINAL_CSP);
+  assert.equal(await cspWith([]), ORIGINAL_CSP);
+  // Plugins that need no extra sources, and unknown ids, change nothing either.
+  assert.equal(await cspWith(["cadence.tidal", "someone.else"]), ORIGINAL_CSP);
+});
+
+test("enabling the YouTube plugin adds only the YouTube script and frame sources", async () => {
+  const csp = await cspWith(["cadence.youtube-music"]);
+  assert.match(csp, /script-src [^;]*https:\/\/www\.youtube\.com/);
+  assert.match(csp, /frame-src [^;]*https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com/);
+  assert.doesNotMatch(csp, /soundcloud|deezer/);
+  assert.equal(csp.replaceAll(" https://www.youtube.com", "").replaceAll(" https://www.youtube-nocookie.com", ""), ORIGINAL_CSP);
+});
+
+test("enabling SoundCloud adds its script and frame; enabling Deezer adds a frame only", async () => {
+  const sc = await cspWith(["cadence.soundcloud"]);
+  assert.match(sc, /script-src [^;]*https:\/\/w\.soundcloud\.com/);
+  assert.match(sc, /frame-src [^;]*https:\/\/w\.soundcloud\.com/);
+  assert.doesNotMatch(sc, /youtube|deezer/);
+
+  const dz = await cspWith(["cadence.deezer"]);
+  assert.match(dz, /frame-src [^;]*https:\/\/widget\.deezer\.com/);
+  const script = dz.split("; ").find((d) => d.startsWith("script-src "))!;
+  assert.doesNotMatch(script, /deezer/, "Deezer's widget needs no script source");
+});
+
+test("all sources together never allow wildcards or inline script", async () => {
+  const csp = await cspWith(["cadence.youtube-music", "cadence.soundcloud", "cadence.deezer"]);
+  const script = csp.split("; ").find((d) => d.startsWith("script-src "))!;
+  assert.doesNotMatch(script, /'unsafe-inline'|'unsafe-eval'|\*|https:(\s|$)|http:/);
+  assert.equal(csp, buildWebAppCsp(["cadence.youtube-music", "cadence.soundcloud", "cadence.deezer"]));
 });

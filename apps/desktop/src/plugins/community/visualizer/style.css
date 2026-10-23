@@ -1,0 +1,38 @@
+.viz-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 860px;
+}
+.viz-stage {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.viz-canvas {
+  display: block;
+  width: 100%;
+  height: 280px;
+}
+.viz-hint {
+  position: absolute;
+  inset: auto 12px 12px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .viz-canvas {
+    height: 220px;
+  }
+  .viz-controls .segmented button {
+    min-height: 44px;
+  }
+}

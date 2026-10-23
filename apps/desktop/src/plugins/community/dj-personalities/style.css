@@ -1,0 +1,51 @@
+.dj-persona {
+  max-width: 640px;
+}
+.persona-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.persona-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.persona-card:hover {
+  background: var(--surface-hover);
+}
+.persona-card.on {
+  border-color: var(--accent-from);
+  background: var(--surface-hover);
+}
+.persona-name {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+.persona-blurb {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.persona-hear {
+  flex-wrap: wrap;
+}
+.persona-hear .btn {
+  min-height: 44px;
+}
+.dj-persona .btn.primary {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .persona-list {
+    grid-template-columns: 1fr;
+  }
+}

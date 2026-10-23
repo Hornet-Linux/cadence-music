@@ -1,0 +1,53 @@
+/* Shared by the Subsonic and Plex pages. Uses the app's own tokens and classes; only layout glue lives here. */
+.src-tabs {
+  margin-bottom: 16px;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.src-tabs::-webkit-scrollbar {
+  display: none;
+}
+.src-tabs .segmented {
+  min-width: max-content;
+}
+.src-tabs .segmented button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.src-search {
+  margin-bottom: 20px;
+}
+.src-search input {
+  min-height: 24px;
+  min-width: 0;
+}
+.src-code {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  padding: 14px 18px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong);
+  background: rgba(0, 0, 0, 0.25);
+  user-select: all;
+}
+.src-form .btn,
+.src-actions .btn {
+  min-height: 44px;
+}
+.src-form .text-input {
+  min-height: 44px;
+}
+.src-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.src-address {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
