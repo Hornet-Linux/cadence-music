@@ -1,0 +1,122 @@
+.imp-drop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.imp-paste {
+  padding-bottom: 6px;
+}
+.imp-help {
+  margin: 0 0 8px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.imp-summary,
+.imp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.imp-filters .btn.on {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.imp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.imp-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.imp-row.review {
+  border-color: color-mix(in srgb, #d9b36c 45%, transparent);
+}
+.imp-row.missing {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+.imp-row-main,
+.imp-row-match {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.imp-row-match {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.imp-editor {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.imp-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.imp-choice input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--text-muted);
+}
+.imp-choice > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.imp-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+}
+.imp-result.on {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.imp-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .imp-create {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .imp-row-main {
+    align-items: flex-start;
+  }
+}

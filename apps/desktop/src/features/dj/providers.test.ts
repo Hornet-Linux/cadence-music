@@ -7,7 +7,18 @@ vi.mock("@/plugins/builtins/server/serverStore", () => ({
 }));
 
 const secrets = new Map<string, string>();
-const llm = { status: vi.fn(), chatJson: vi.fn() };
+const keyStore = {
+  get: (k: string) => secrets.get(k) ?? null,
+  set: (k: string, v: string) => void secrets.set(k, v),
+  delete: (k: string) => void secrets.delete(k),
+};
+const { hasKey, saveKey } = await import("../../../electron/llmKeys");
+const llm = {
+  status: vi.fn(),
+  chatJson: vi.fn(),
+  saveKey: (id: string, baseUrl: string, key: string | null) => saveKey(keyStore, id, baseUrl, key),
+  hasKey: (id: string) => hasKey(keyStore, id),
+};
 (globalThis as { window: unknown }).window = Object.assign(globalThis.window ?? {}, {
   host: {
     llm,
@@ -64,13 +75,12 @@ describe("requestPicks", () => {
     useProviders.setState({ local: [{ id: "lm", name: "LM Studio", kind: "openai-compatible", baseUrl: "http://localhost:1234/v1", model: "qwen", share: false }], selected: "", remote: [] });
   });
 
-  it("calls a provider on this device directly, with its key from secure storage", async () => {
-    secrets.set("dj.key.lm", "sk-local");
+  it("calls a provider on this device by id, so the host adds the key", async () => {
     llm.chatJson.mockResolvedValue({ picks: [{ artist: " Justice ", title: "D.A.N.C.E.", intro: "Hi" }, { artist: "", title: "x" }] });
     const picks = await requestPicks("local:lm", profile, { count: 5, mood: "rainy" });
     expect(picks).toEqual([{ artist: "Justice", title: "D.A.N.C.E.", intro: "Hi" }]);
     const [config, req] = llm.chatJson.mock.calls[0];
-    expect(config).toEqual({ kind: "openai-compatible", baseUrl: "http://localhost:1234/v1", model: "qwen", apiKey: "sk-local" });
+    expect(config).toEqual({ kind: "openai-compatible", baseUrl: "http://localhost:1234/v1", model: "qwen", providerId: "lm" });
     expect(req.messages.map((m: { content: string }) => m.content).join("\n")).toMatch(/rainy/);
     expect(api).not.toHaveBeenCalled();
   });
@@ -109,8 +119,9 @@ describe("local provider storage", () => {
       { name: "OpenAI", kind: "openai-compatible", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", share: true },
       "sk-secret",
     );
-    expect(secrets.get(`dj.key.${id}`)).toBe("sk-secret");
+    expect(JSON.parse(secrets.get(`dj.key.${id}`)!)).toEqual({ origin: "https://api.openai.com", key: "sk-secret" });
     expect(JSON.stringify({ ...localStorage })).not.toContain("sk-secret");
+    expect(await llm.hasKey(id)).toBe(true);
 
     await useProviders.getState().removeLocal(id);
     expect(secrets.has(`dj.key.${id}`)).toBe(false);

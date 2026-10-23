@@ -14,7 +14,7 @@ import { _electron as electron } from "playwright-core";
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const app = await electron.launch({
-  args: ["--no-sandbox", appDir],
+  args: ["--no-sandbox", ...(process.env.E2E_USER_DATA ? [`--user-data-dir=${process.env.E2E_USER_DATA}`] : []), appDir],
   cwd: appDir,
   timeout: 90_000,
 });
@@ -63,10 +63,24 @@ try {
   await wizard.getByRole("button", { name: "Start listening", exact: true }).click();
   await page.locator(".wizard-backdrop").waitFor({ state: "detached", timeout: 10_000 });
 
-  for (const label of ["Home", "Server", "Spotify", "Apple Music", "Local Files", "Settings"]) {
-    await page.getByRole("button", { name: label, exact: true }).first().waitFor({ timeout: 15_000 });
+  // Wide window: the sidebar lists every page, grouped, with no "More" button.
+  const rail = page.locator("nav.rail");
+  for (const label of ["Home", "Search", "Library", "Favourites", "Settings"]) {
+    await rail.getByRole("button", { name: label, exact: true }).waitFor({ timeout: 15_000 });
   }
-
+  for (const label of ["Server", "Spotify", "Apple Music", "Local Files"]) {
+    await rail.getByRole("button", { name: label, exact: true }).waitFor({ timeout: 10_000 });
+  }
+  console.log(`Jellyfin page in sidebar: ${(await rail.getByRole("button", { name: "Jellyfin", exact: true }).count()) > 0}`);
+  // Groups fold, and the whole sidebar folds to icons.
+  const sources = rail.getByRole("button", { name: "Sources pages", exact: true });
+  await sources.click();
+  await rail.getByRole("button", { name: "Spotify", exact: true }).waitFor({ state: "detached", timeout: 5_000 });
+  await sources.click();
+  await rail.getByRole("button", { name: "Spotify", exact: true }).waitFor({ timeout: 5_000 });
+  await rail.getByRole("button", { name: "Collapse sidebar" }).click();
+  await rail.getByRole("button", { name: "Expand sidebar" }).waitFor({ timeout: 5_000 });
+  await rail.getByRole("button", { name: "Expand sidebar" }).click();
 
   // ---- Settings window -----------------------------------------------------
   await page.getByRole("button", { name: "Settings", exact: true }).click();

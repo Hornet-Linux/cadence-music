@@ -1,0 +1,391 @@
+/* Lyrics page and karaoke mode. Calm, muted, 44px targets. */
+
+.lv-page {
+  --lv-scale: 1;
+  padding-bottom: 96px;
+}
+.lv-head h1 {
+  margin-bottom: 2px;
+}
+.lv-now {
+  font-size: 1rem;
+  margin-top: 4px;
+}
+.lv-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.lv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+.lv-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lv-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.lv-btn:disabled {
+  opacity: 0.4;
+}
+.lv-btn.icon {
+  padding: 0;
+}
+.lv-btn.on,
+.lv-btn.strong {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.lv-btn.on {
+  border-color: var(--accent);
+}
+.lv-btn.big {
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50%;
+  color: var(--text);
+}
+.lv-btn:focus-visible,
+.lv-select:focus-visible,
+.lv-line-btn:focus-visible,
+.lv-link:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 2px;
+}
+.lv-select-wrap {
+  display: inline-flex;
+}
+.lv-select {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0.88rem;
+  max-width: 100%;
+}
+.lv-select option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+.lv-link {
+  display: inline;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lv-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.lv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 180px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.lv-field .text-input {
+  min-height: 44px;
+}
+
+.lv-note {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 62ch;
+}
+.lv-note.warn {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+.lv-credit {
+  margin: 4px 0 10px;
+  font-size: 0.86rem;
+  color: var(--text-faint);
+}
+
+/* ---- The lines ---------------------------------------------------------- */
+.lv-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lv-line {
+  margin: 0;
+}
+.lv-line-btn,
+.lv-line-static {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 4px;
+  text-align: left;
+  color: inherit;
+  border-radius: 10px;
+}
+/* Only real pointers get a hover wash; on touch it would stick to the last tapped line. */
+@media (hover: hover) {
+  .lv-line-btn:hover {
+    background: var(--surface);
+  }
+}
+.lv-text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.lv-translation {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78em;
+  font-weight: 500;
+  color: inherit;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+.lv-line.gap .lv-line-static {
+  min-height: 24px;
+  padding: 0 4px;
+}
+.lv-gap {
+  display: block;
+  min-height: 1em;
+  color: var(--text-faint);
+}
+
+.lv-page .lv-lines {
+  font-size: calc(1.25rem * var(--lv-scale));
+  line-height: 1.4;
+  font-weight: 600;
+  padding-bottom: 38vh;
+  max-width: 46rem;
+}
+.lv-line[data-state="next"],
+.lv-line[data-state="past"] {
+  color: var(--text-faint);
+}
+.lv-line[data-state="past"] {
+  opacity: 0.8;
+}
+.lv-line[data-state="active"] {
+  color: var(--text);
+}
+.lv-line[data-state="plain"] {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.lv-line {
+  transition: color 0.3s ease;
+}
+
+/* ---- Karaoke ------------------------------------------------------------ */
+.lv-karaoke {
+  --lv-scale: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--ambient, #55556a) 9%, var(--bg-deep));
+  color: var(--text);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.lv-k-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 6px;
+}
+.lv-k-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+.lv-k-title strong,
+.lv-k-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lv-k-title span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.lv-k-tools {
+  display: flex;
+  justify-content: center;
+  padding: 0 14px 6px;
+}
+.lv-karaoke > .lv-note {
+  align-self: center;
+  max-width: min(36rem, calc(100% - 28px));
+  margin: 0 14px 6px;
+}
+.lv-k-scroll {
+  /* Lines fade out under the title bar and controls instead of being cut off. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.lv-k-empty {
+  margin: 30vh auto 0;
+  max-width: 24rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+.lv-karaoke .lv-lines {
+  font-size: calc(clamp(1.6rem, 6.4vw, 3rem) * var(--lv-scale));
+  line-height: 1.25;
+  font-weight: 700;
+  text-align: center;
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: 30vh 0 42vh;
+}
+.lv-karaoke .lv-line-btn,
+.lv-karaoke .lv-line-static {
+  text-align: center;
+  padding: 0.3em 4px;
+}
+.lv-karaoke .lv-line[data-state="next"] {
+  color: color-mix(in srgb, var(--text) 40%, transparent);
+}
+.lv-karaoke .lv-line[data-state="past"] {
+  color: color-mix(in srgb, var(--text) 24%, transparent);
+}
+.lv-karaoke .lv-line[data-state="plain"] {
+  color: var(--text);
+  font-weight: 600;
+}
+.lv-karaoke .lv-translation {
+  font-size: 0.55em;
+}
+.lv-k-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 8px 14px 14px;
+}
+
+@media (max-width: 760px) {
+  .lv-page {
+    padding-bottom: 72px;
+  }
+  .lv-toolbar {
+    gap: 6px 8px;
+  }
+  .lv-group {
+    gap: 6px;
+  }
+  .lv-btn {
+    padding: 0 12px;
+    font-size: 0.84rem;
+  }
+  .lv-btn.icon {
+    padding: 0;
+  }
+  .lv-select {
+    max-width: 9.5rem;
+    padding: 0 8px;
+    font-size: 0.84rem;
+  }
+  .lv-select.lang {
+    max-width: 6.6rem;
+  }
+  .lv-page .lv-lines {
+    font-size: calc(1.15rem * var(--lv-scale));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-line {
+    transition: none;
+  }
+}
+.reduce-motion .lv-line {
+  transition: none;
+}
+
+/* ---- Feel ---------------------------------------------------------------- */
+.lv-karaoke {
+  animation: lv-k-in 240ms ease-out;
+}
+@keyframes lv-k-in {
+  from {
+    opacity: 0;
+  }
+}
+.lv-karaoke .lv-line {
+  transition: color 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv-karaoke {
+    animation: none;
+  }
+  .lv-line,
+  .lv-karaoke .lv-line {
+    transition: none;
+  }
+}
+.lv-empty {
+  margin-top: 8px;
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm, 12px);
+}

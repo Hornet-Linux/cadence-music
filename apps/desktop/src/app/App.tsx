@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { usePluginHost } from "@/plugins/host";
 import { allRegisterablePlugins } from "@/plugins/builtins";
+import { connectPlayerToPlugins } from "@/player/pluginBridge";
 import { startHistoryTracking } from "@/features/history/historyStore";
 import { HomeView } from "@/features/home/HomeView";
 import { SetupWizard } from "@/features/onboarding/SetupWizard";
@@ -11,10 +12,12 @@ import { SettingsModal } from "@/features/settings/SettingsModal";
 import { startPlayerIntegrations } from "@/player/integrations";
 import { Sidebar } from "@/ui/Sidebar";
 import { TitleBar } from "@/ui/TitleBar";
+import { UpdateNotice } from "@/ui/UpdateNotice";
 import { PlayerBar } from "@/ui/PlayerBar";
 import { QueueDrawer } from "@/ui/QueueDrawer";
 import { startNavShortcuts, useNav, type Route } from "./navStore";
 import { useTheme } from "./theme";
+import { startUiScale } from "./uiScale";
 
 function MainView({ route }: { route: Route }) {
   const sidebarItems = usePluginHost((s) => s.contributions.sidebar);
@@ -51,9 +54,12 @@ export function App() {
 
   useEffect(() => {
     for (const plugin of allRegisterablePlugins) register(plugin);
+    const disconnectPlayer = connectPlayerToPlugins();
     startPlayerIntegrations();
     startHistoryTracking();
     startNavShortcuts();
+    startUiScale();
+    return disconnectPlayer;
   }, [register]);
 
   // Each page starts at the top.
@@ -67,6 +73,7 @@ export function App() {
       <div className="stage">
         <div className="ambient" aria-hidden />
         <TitleBar />
+        <UpdateNotice />
         <main className="main" ref={mainRef}>
           {/* Keyed by page so every navigation replays the enter animation. */}
           <div className="page" key={JSON.stringify(route)}>

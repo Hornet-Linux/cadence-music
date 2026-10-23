@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type {
   AuthResponse,
   ExchangeRequest,
@@ -21,11 +21,14 @@ import {
   isLoopbackRedirect,
   validateIdTokenClaims,
   type Claims,
-  type OidcClient,
 } from "./oidc.js";
+import type { ActiveOidc } from "./oidcSettings.js";
 import { MAX_PASSWORD, checkPassword } from "./passwords.js";
 import { RateLimiter } from "./rateLimit.js";
-import { createSession, deleteSession } from "./sessions.js";
+import { registerAccountRoutes } from "./account.js";
+import { createSession, deleteSession, userForToken } from "./sessions.js";
+import { clearSessionCookie, sessionCredential } from "./webSession.js";
+import { recordSecurityEvent } from "../admin/audit.js";
 import {
   countPasswordUsers,
   countUsers,
@@ -44,6 +47,8 @@ interface PendingLogin {
   nonce: string;
   verifier: string;
   expiresAt: number;
+  /** The provider that started this sign-in (settings may change meanwhile). */
+  provider: ActiveOidc;
 }
 
 interface Handoff {
@@ -63,7 +68,17 @@ const USER_MAX_FAILURES = 30;
 const USERNAME_RE = /^[\w.@-]{1,48}$/;
 const MIN_PASSWORD = 10;
 const MAX_SIGNUPS_PER_HOUR = 5;
+/** Every sign-up attempt counts, so usernames can't be probed (username_taken) without limit. */
+const MAX_SIGNUP_ATTEMPTS_PER_HOUR = 20;
 const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * A device that signed in to an account recently (same address, a session used
+ * in this window) isn't held back by that account's lockout, so a stranger
+ * hammering a known username can't lock its owner out.
+ */
+const KNOWN_DEVICE_MS = 30 * 24 * 60 * 60 * 1000;
+/** Invite codes an admin sets: long enough not to be guessed within the rate limits. */
+export const MIN_INVITE_CODE = 12;
 
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 const STATE_RE = /^[A-Za-z0-9._~-]{8,256}$/;
@@ -96,13 +111,18 @@ export function registerAuthRoutes(
     db: Db;
     config: Config;
     settings: Settings;
-    oidc: OidcClient | null;
+    /** The single sign-on provider in effect right now (env or admin panel), if any. */
+    oidc: () => ActiveOidc | null;
     requireUser: PreHandler;
     /** Receives the first-run setup code; defaults to logging it. */
     onSetupCode?: (code: string) => void;
   },
 ): void {
   const { db, config, oidc, requireUser, settings } = deps;
+  const oidcName = () => {
+    const p = oidc();
+    return p ? { name: p.config.displayName } : null;
+  };
   const pending = new Map<string, PendingLogin>();
   const handoffs = new Map<string, Handoff>();
   // Failed sign-in / setup / invite-code attempts per client address.
@@ -110,9 +130,22 @@ export function registerAuthRoutes(
   // Failed sign-ins per (lower-cased) username, whatever the address.
   const userFailures = new RateLimiter({ max: USER_MAX_FAILURES, windowMs: LOGIN_WINDOW_MS });
   const signups = new RateLimiter({ max: MAX_SIGNUPS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
+  const signupAttempts = new RateLimiter({ max: MAX_SIGNUP_ATTEMPTS_PER_HOUR, windowMs: SIGNUP_WINDOW_MS });
 
-  function respond(userId: number): AuthResponse {
-    const token = createSession(db, userId);
+  const invite = settings.signup();
+  if (invite?.mode === "invite" && invite.inviteCode.length < MIN_INVITE_CODE) {
+    app.log.warn(`The sign-up invite code is shorter than ${MIN_INVITE_CODE} characters; set a longer one in the admin panel`);
+  }
+
+  /** Has this address used a session of this account recently? */
+  function knownDevice(userId: number, ip: string): boolean {
+    return !!db
+      .prepare("SELECT 1 FROM sessions WHERE user_id = ? AND ip = ? AND last_used_at > ? LIMIT 1")
+      .get(userId, ip.slice(0, 64), Date.now() - KNOWN_DEVICE_MS);
+  }
+
+  function respond(userId: number, req: FastifyRequest): AuthResponse {
+    const token = createSession(db, userId, { userAgent: req.headers["user-agent"], ip: req.ip });
     return { token, user: toPublicUser(findUserById(db, userId)!) };
   }
 
@@ -140,7 +173,7 @@ export function registerAuthRoutes(
     setupRequired: setupRequired(),
     auth: {
       password: countPasswordUsers(db) > 0,
-      oidc: oidc ? { name: oidc.displayName } : null,
+      oidc: oidcName(),
       signup: setupRequired() ? "closed" : (settings.signup()?.mode ?? "closed"),
     },
   }));
@@ -152,9 +185,10 @@ export function registerAuthRoutes(
     const signup = settings.signup();
     if (!signup || setupRequired()) return reply.code(403).send({ error: "signup_closed" });
 
-    if (signups.isLimited(req.ip)) {
+    if (signups.isLimited(req.ip) || signupAttempts.isLimited(req.ip)) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
+    signupAttempts.hit(req.ip);
 
     const body = (req.body ?? {}) as Partial<RegisterRequest>;
     if (signup.mode === "invite") {
@@ -191,7 +225,7 @@ export function registerAuthRoutes(
       throw err;
     }
     signups.hit(req.ip);
-    return respond(user.id);
+    return respond(user.id, req);
   });
 
   registerSignupPage(app, {
@@ -222,7 +256,7 @@ export function registerAuthRoutes(
     setupCode = null;
     try {
       const user = await createLocalUser(db, { username: username.trim(), password, isAdmin: true });
-      return respond(user.id);
+      return respond(user.id, req);
     } catch (err) {
       setupCode = claimed;
       throw err;
@@ -244,21 +278,32 @@ export function registerAuthRoutes(
 
     // Bounded key: real usernames are at most 48 characters.
     const userKey = username.toLowerCase().slice(0, 128);
-    if (userFailures.isLimited(userKey)) {
+    const user = findUserByUsername(db, username);
+    if (userFailures.isLimited(userKey) && !(user && knownDevice(user.id, ip))) {
       return reply.code(429).send({ error: "too_many_attempts", message: "Try again later." });
     }
 
-    const user = findUserByUsername(db, username);
     // Always does the full hash work, even for unknown names and SSO-only accounts.
     const ok = await checkPassword(password, user?.password_hash);
     if (!ok || !user) {
+      const ipWasLimited = failures.isLimited(ip);
+      const userWasLimited = userFailures.isLimited(userKey);
       failures.hit(ip);
       userFailures.hit(userKey);
+      // Lockouts go to the admin's activity log (once each, when they start).
+      if (!ipWasLimited && failures.isLimited(ip)) {
+        recordSecurityEvent(db, "signin.ip_locked", ip, `${LOGIN_MAX_FAILURES} failed sign-ins from this address`);
+      }
+      if (user && !userWasLimited && userFailures.isLimited(userKey)) {
+        recordSecurityEvent(db, "signin.locked", user.username, `${USER_MAX_FAILURES} failed sign-ins; last from ${ip}`);
+      }
       return reply.code(401).send({ error: "invalid_credentials" });
     }
     failures.reset(ip);
     userFailures.reset(userKey);
-    return respond(user.id);
+    // Said only after the password was right, so it doesn't reveal which names exist.
+    if (user.disabled_at) return reply.code(403).send({ error: "account_disabled" });
+    return respond(user.id, req);
   });
 
   // ---- OIDC sign-in (desktop loopback / web player + PKCE) ---------------
@@ -268,7 +313,8 @@ export function registerAuthRoutes(
   app.get<{ Querystring: Record<string, string | undefined> }>(
     "/api/auth/oidc/start",
     async (req, reply) => {
-      if (!oidc) return reply.code(404).send({ error: "oidc_not_configured" });
+      const provider = oidc();
+      if (!provider) return reply.code(404).send({ error: "oidc_not_configured" });
       const { redirect_uri: redirectUri, state, code_challenge: challenge } = req.query;
       if (!redirectUri || !(isLoopbackRedirect(redirectUri) || redirectUri === webCallback)) {
         return reply.code(400).send({ error: "invalid_redirect_uri" });
@@ -291,10 +337,11 @@ export function registerAuthRoutes(
         nonce,
         verifier,
         expiresAt: Date.now() + PENDING_TTL_MS,
+        provider,
       });
 
       try {
-        const url = await oidc.authorizationUrl({
+        const url = await provider.client.authorizationUrl({
           state: serverState,
           nonce,
           codeChallenge: pkceChallenge(verifier),
@@ -311,7 +358,6 @@ export function registerAuthRoutes(
   app.get<{ Querystring: Record<string, string | undefined> }>(
     "/api/auth/oidc/callback",
     async (req, reply) => {
-      if (!oidc) return reply.code(404).send({ error: "oidc_not_configured" });
       const { code, state, error } = req.query;
       const login = state ? pending.get(state) : undefined;
       if (state) pending.delete(state);
@@ -327,15 +373,24 @@ export function registerAuthRoutes(
         reply.redirect(withParams(login.redirectUri, { error: reason, state: login.appState }));
 
       if (error || !code) return fail(error ?? "missing_code");
+      const { client, config: oidcConfig } = login.provider;
+
+      let tokens;
+      try {
+        tokens = await client.exchangeCode(code, login.verifier);
+      } catch (err) {
+        // Usually a wrong client secret or redirect URI at the provider.
+        req.log.error({ err }, "OIDC token exchange failed");
+        return fail("token_exchange_failed");
+      }
 
       try {
-        const tokens = await oidc.exchangeCode(code, login.verifier);
         if (!tokens.id_token) return fail("missing_id_token");
         const claims = decodeJwtPayload(tokens.id_token);
-        const doc = await oidc.discover();
+        const doc = await client.discover();
         const problem = validateIdTokenClaims(claims, {
           issuer: doc.issuer,
-          clientId: config.oidc!.clientId,
+          clientId: oidcConfig.clientId,
           nonce: login.nonce,
           nowSec: Math.floor(Date.now() / 1000),
         });
@@ -347,20 +402,20 @@ export function registerAuthRoutes(
         let profile: Claims = claims;
         let groups = groupsFromClaims(claims);
         const needGroups =
-          config.oidc!.allowedGroups.length > 0 || config.oidc!.adminGroups.length > 0;
+          oidcConfig.allowedGroups.length > 0 || oidcConfig.adminGroups.length > 0;
         if ((needGroups && groups === null) || !claims.email) {
-          const info = tokens.access_token ? await oidc.userinfo(tokens.access_token) : null;
+          const info = tokens.access_token ? await client.userinfo(tokens.access_token) : null;
           if (info && info.sub === claims.sub) {
             profile = { ...info, ...claims };
             groups = groups ?? groupsFromClaims(info);
           }
         }
 
-        const allowed = config.oidc!.allowedGroups;
+        const allowed = oidcConfig.allowedGroups;
         if (allowed.length > 0 && !(groups ?? []).some((g) => allowed.includes(g))) {
           return fail("access_denied");
         }
-        const adminGroups = config.oidc!.adminGroups;
+        const adminGroups = oidcConfig.adminGroups;
         const user = upsertOidcUser(db, {
           issuer: doc.issuer,
           subject: claims.sub as string,
@@ -372,7 +427,14 @@ export function registerAuthRoutes(
             adminGroups.length > 0 ? (groups ?? []).some((g) => adminGroups.includes(g)) : undefined,
         });
 
+        if (user.disabled_at) return fail("account_disabled");
+
         purge(handoffs);
+        // Hard cap like `pending`: drop the oldest rather than grow without bound.
+        for (const key of handoffs.keys()) {
+          if (handoffs.size < MAX_PENDING) break;
+          handoffs.delete(key);
+        }
         const handoffCode = randomToken(32);
         handoffs.set(handoffCode, {
           userId: user.id,
@@ -402,17 +464,39 @@ export function registerAuthRoutes(
     if (!safeEqual(pkceChallenge(verifier), handoff.appChallenge)) {
       return reply.code(400).send({ error: "invalid_code_verifier" });
     }
-    return respond(handoff.userId);
+    const holder = findUserById(db, handoff.userId);
+    if (!holder || holder.disabled_at) return reply.code(403).send({ error: "account_disabled" });
+    return respond(handoff.userId, req);
   });
 
   // ---- Session ----------------------------------------------------------
   app.post("/api/auth/logout", { preHandler: requireUser }, async (req, reply) => {
-    const token = req.headers.authorization!.slice("Bearer ".length).trim();
-    deleteSession(db, token);
+    const credential = sessionCredential(req)!;
+    deleteSession(db, credential.token);
+    if (credential.via === "cookie") clearSessionCookie(req, reply);
     return reply.code(204).send();
+  });
+
+  // Who is signed in, if anyone. Always 200, so the web player can check its
+  // cookie on start without a 401 in the console for a signed-out visitor.
+  app.get("/api/auth/session", async (req): Promise<{ user: PublicUser | null }> => {
+    const credential = sessionCredential(req);
+    const user = credential ? userForToken(db, credential.token) : null;
+    return { user: user && !user.disabled_at ? toPublicUser(user) : null };
+  });
+
+  // The web player moves a session it used to keep in localStorage into the
+  // HttpOnly cookie (sent with X-Cadence-Session: cookie, which the cookie hook
+  // turns into Set-Cookie). Same session, so nothing else changes.
+  app.post("/api/auth/web-session", { preHandler: requireUser }, async (req, reply) => {
+    const credential = sessionCredential(req)!;
+    if (credential.via !== "bearer") return reply.code(400).send({ error: "already_cookie" });
+    return { token: credential.token, user: toPublicUser(req.user!) } satisfies AuthResponse;
   });
 
   app.get("/api/me", { preHandler: requireUser }, async (req): Promise<PublicUser> =>
     toPublicUser(req.user!),
   );
+
+  registerAccountRoutes(app, { db, config, requireUser });
 }

@@ -7,7 +7,10 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.{ts,tsx}"],
+    clearMocks: false,
+    mockReset: false,
+    restoreMocks: false,
+    include: ["src/**/*.test.{ts,tsx}", "electron/**/*.test.ts"],
     coverage: {
       provider: "v8",
       reportsDirectory: "coverage",

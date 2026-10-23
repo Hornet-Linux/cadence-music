@@ -14,18 +14,24 @@ import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 
 /** What the player WebView needs the surrounding screen to do. */
 interface PlayerCallbacks {
     fun onFailure(message: String?)
     fun onPopup(popup: WebView?)
     fun onChangeServer()
+
+    /** The WebView's renderer process died (out of memory or a crash); the screen should build a fresh player. */
+    fun onRenderGone(crashed: Boolean)
 }
 
 /**
@@ -78,6 +84,8 @@ class PlayerWebView(
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun configure(view: WebView) {
+        // chrome://inspect can attach to debug builds only; release builds keep the WebView closed.
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         view.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -106,16 +114,35 @@ class PlayerWebView(
         }
     }
 
-    /** Web pages stay in the WebView (sign-in redirects need that); other schemes (mailto:, ...) go to their app. */
-    private fun shouldStay(request: WebResourceRequest): Boolean {
-        val scheme = request.url.scheme?.lowercase()
-        if (scheme == "http" || scheme == "https" || scheme == "about" || scheme == "blob" || scheme == "data") return true
-        openExternally(request.url)
-        return false
+    /**
+     * The server's pages and sign-in redirects stay in the WebView; links the listener taps
+     * that leave the server open in the browser, as do other schemes (mailto:, ...). Plain
+     * http only reaches the server and local-network addresses (see [WebPolicy]).
+     */
+    private fun shouldStay(request: WebResourceRequest, popup: Boolean = false): Boolean {
+        val url = request.url.toString()
+        val tapped = request.hasGesture() && !request.isRedirect && !popup
+        return when (WebPolicy.navigation(url, playerUrl, tapped, request.isForMainFrame)) {
+            WebPolicy.Decision.STAY -> true
+            WebPolicy.Decision.OPEN_EXTERNALLY -> {
+                openExternally(request.url)
+                false
+            }
+            WebPolicy.Decision.BLOCK -> false
+        }
+    }
+
+    /** Sub-resources (images, scripts, frames) over plain http to anywhere but the server or the LAN are refused. */
+    private fun blockedLoad(request: WebResourceRequest): WebResourceResponse? {
+        if (WebPolicy.allowsLoad(request.url.toString(), playerUrl)) return null
+        return WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
     }
 
     private inner class MainClient : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = !shouldStay(request)
+
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+            blockedLoad(request)
 
         override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
             if (url != "about:blank") loadFailed = false
@@ -132,9 +159,22 @@ class PlayerWebView(
             val description = error.description?.toString().orEmpty()
             if (description.contains("ERR_ABORTED")) return
             loadFailed = true
-            callbacks.onFailure(description.ifBlank { "The page didn't load." })
+            callbacks.onFailure(ErrorText.friendly(description))
             // Hide the browser's own error page behind our card.
             view.post { view.loadUrl("about:blank") }
+        }
+
+        // A proxy answering 502/503/504 while the server restarts: say so instead of showing its error page.
+        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+            if (!request.isForMainFrame || errorResponse.statusCode !in 500..599) return
+            loadFailed = true
+            callbacks.onFailure(ErrorText.httpStatus(errorResponse.statusCode))
+        }
+
+        // Without this, a renderer crash takes the whole app down. Tell the screen to build a new WebView.
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            callbacks.onRenderGone(detail.didCrash())
+            return true
         }
     }
 
@@ -146,7 +186,15 @@ class PlayerWebView(
             configure(child)
             child.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                    !shouldStay(request)
+                    !shouldStay(request, popup = true)
+
+                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                    blockedLoad(request)
+
+                override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                    callbacks.onPopup(null)
+                    return true
+                }
             }
             child.webChromeClient = object : WebChromeClient() {
                 override fun onCloseWindow(window: WebView) {

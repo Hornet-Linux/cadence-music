@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useUi } from "@/app/uiStore";
 import { usePlayer } from "@/player/playerStore";
+import { usePlaybackBlock } from "@/player/playbackBlock";
 import { formatDuration, primaryArtist } from "@/shared/types";
 import { LikeButton } from "./CollectionButtons";
 import { CoverArt } from "./CoverArt";
@@ -136,6 +137,7 @@ function SeekBar() {
 function NowPlaying() {
   const current = usePlayer((s) => s.current);
   const unresolved = usePlayer((s) => s.unresolved);
+  const block = usePlaybackBlock((s) => s.message);
   if (!current) {
     return (
       <div className="np">
@@ -153,9 +155,22 @@ function NowPlaying() {
         <div className="tt" title={current.title}>
           {current.title}
         </div>
-        <div className={`ta${unresolved ? " warn" : ""}`}>
-          {unresolved ? "Can't play this right now — check the source in Settings" : primaryArtist(current)}
-        </div>
+        {unresolved && block ? (
+          <button
+            className="ta warn"
+            style={{ whiteSpace: "normal", textAlign: "left", lineHeight: 1.25, minHeight: 44, display: "flex", alignItems: "center" }}
+            title="Try again"
+            onClick={() => void usePlayer.getState().playTrack(current)}
+          >
+            <span>
+              {block} <u>Try again</u>
+            </span>
+          </button>
+        ) : (
+          <div className={`ta${unresolved ? " warn" : ""}`}>
+            {unresolved ? "Can't play this right now — check the source in Settings" : primaryArtist(current)}
+          </div>
+        )}
       </div>
       <LikeButton track={current} size={18} />
     </div>

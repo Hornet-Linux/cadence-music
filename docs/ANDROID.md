@@ -22,11 +22,16 @@ account is needed.
    Play Protect may warn that the app is unrecognised: choose **Install anyway**.
 3. Open Cadence and enter your server's address, e.g. `music.example.com`. A bare
    address means `https://`; for a server on your network without a certificate, type
-   the scheme, e.g. `http://192.168.1.20:8787`.
-4. Allow notifications when asked (Android 13+). Without that permission playback still
-   works, but the notification and lock-screen controls don't appear.
+   the scheme, e.g. `http://192.168.1.20:8787`. The app checks the address (it asks the
+   server's `/api/health`) before saving it, and tells you if the server can't be reached or
+   isn't a Cadence server. The last address is remembered. A bare local address (an IP,
+   `localhost`, `.local`) that has no certificate is retried over `http://` automatically.
+4. The first time music plays (Android 13+), Cadence explains why it wants to show playback
+   controls and then asks for the notification permission. Without it playback still works,
+   but the notification and lock-screen controls don't appear. Nothing is asked when the app
+   opens.
 
-To switch servers later: **Settings → Server → Change server** in the player (this needs
+To switch servers later: long-press the Cadence launcher icon and choose **Change server**, or use **Settings → Server → Change server** in the player (this needs
 the web player's Android support, added in the AI DJ stack right before this PR; see [the native bridge](#the-native-bridge)); the failure
 screen also offers **Change server**.
 
@@ -99,6 +104,12 @@ build signed with it.
   anything on the network path can read or alter your traffic, including your password
   and session cookie. Use `https://` for anything reachable from outside your home, and
   only use `http://` on a network you trust. `https://` servers are validated as usual.
+  Plain HTTP is only allowed to **your server and local-network addresses** (private and
+  loopback IPs, `.local`/`.lan`/`.home.arpa` names, single-label names like `nas`, and
+  Tailscale's 100.64.0.0/10); the player refuses `http://` loads to anywhere else.
+- **Links leave the app.** A link you tap that goes off your server opens in your browser.
+  Sign-in redirects (your server's single sign-on, Spotify, Apple Music) still happen
+  inside the app, because they need its session.
 - **The bridge is bound to your server's exact origin** (scheme, host and port as you typed
   them). If your server redirects to a different origin (e.g. `http://` → `https://`, or to
   another hostname), the page works but the native bridge (notification controls, on-device
@@ -110,7 +121,11 @@ build signed with it.
   Back out via the system) stops playback.
 - Cleartext also applies to cover art in the notification, which is fetched over the same
   scheme as your server.
-- There's no Google Play listing or in-app updater: install new releases by hand.
+- There's no Google Play listing and no silent updater (a sideloaded app can't update itself):
+  install new releases by hand. Once a day at most, while online, the app looks at the
+  [latest release](https://github.com/Hornet-Linux/cadence-music/releases/latest) on GitHub and,
+  if it's newer than the installed `versionName`, shows a one-time "A newer version is available" note linking to the release page.
+  Dev/nightly builds (non-numeric version) skip it.
 
 ### On-device AI (Gemini Nano)
 
@@ -169,6 +184,18 @@ When you use those controls, the app calls the handlers the page registered with
 `seekto`). So the web player's existing Media Session integration
 (`src/player/integrations.ts`) is all that's needed; no extra web code.
 
+On a plain-`http://` server (not a secure context) Chrome does not provide `navigator.mediaSession` at all, so the injected script supplies a small stand-in (and `MediaMetadata`) with the same surface; without it the notification would never appear for LAN servers.
+
+## If something goes wrong
+
+- **Can't reach your server** card: it names the cause (offline, name not found, refused,
+  timed out, certificate) and retries by itself when the network comes back; **Change server**
+  is on the card.
+- **The player's renderer crashes** (the WebView runs out of memory): the app builds a fresh
+  player instead of closing.
+- **Debugging the player**: debug builds enable WebView remote debugging, so with the phone
+  connected over USB open `chrome://inspect` on a computer. Release builds do not.
+
 ## Building it yourself
 
 Needs JDK 17 and the Android SDK (Android Studio brings both):
@@ -177,6 +204,10 @@ Needs JDK 17 and the Android SDK (Android Studio brings both):
 cd apps/android
 ./gradlew testDebugUnitTest assembleRelease     # APK: app/build/outputs/apk/release/
 ```
+
+Debug builds are signed with `apps/android/app/debug.keystore`, a **debug-only** key committed on
+purpose (password `android`) so a debug APK built anywhere, including in Docker, installs over the
+previous one without an uninstall. Never sign anything you publish with it.
 
 Without a release key (see above) the release build is signed with the debug key. To sign
 with your own, put the keystore path and passwords in `apps/android/keystore.properties`

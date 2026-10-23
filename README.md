@@ -38,6 +38,9 @@ step-by-step guides written for beginners, starting with
   server, with cover art, favourites, playlists and play counts reported back.
   The server owner sets the Jellyfin address; everyone signs in with their own
   Jellyfin account. See [docs/JELLYFIN.md](docs/JELLYFIN.md).
+- **Music from elsewhere** — WebDAV (Nextcloud, ownCloud, NAS), S3-compatible storage,
+  Google Drive and OneDrive (experimental), plus Bandcamp links; SMB/NFS shares via
+  the normal library. See [docs/CLOUD_SOURCES.md](docs/CLOUD_SOURCES.md).
 - **AI DJ** — a nonstop, personalised mix with short spoken intros, like
   Spotify's DJ. Songs are picked by an LLM you choose: a model on your own
   computer (**[Ollama](https://ollama.com)**, LM Studio, llama.cpp…), a provider
@@ -49,19 +52,25 @@ step-by-step guides written for beginners, starting with
 
 ## Quick start
 
-**1. Run the server** on any Linux VPS, after pointing a domain's DNS at it:
+**1. Run the server** with Docker Compose (recommended). On any machine with Docker:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/install.sh | bash
+mkdir cadence && cd cadence
+curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/compose/docker-compose.yml
+# edit the music folder and PUBLIC_URL in docker-compose.yml, then:
+docker compose up -d
 ```
 
-That installs Docker if needed, asks a few questions (Enter accepts the
-defaults), sets up HTTPS and prints a one-time setup code. Every question is
-explained in the wiki's
+No `.env` file needed. Want HTTPS for a domain? Use
+[`docker-compose.caddy.yml`](deploy/compose/docker-compose.caddy.yml) instead.
+Update with `docker compose pull && docker compose up -d`. Image tags, the
+optional helper script and troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+Step-by-step guides for every setup are in the wiki's
 [Self-Hosting](https://github.com/Hornet-Linux/cadence-music/wiki/Self-Hosting) page.
 
-**2. Claim it:** open `https://your-domain/app`, enter the setup code and choose
-your admin login. Manage people at `https://your-domain/admin`.
+**2. Claim it:** open `http://your-server:8787/app` (or your domain), enter the
+setup code from `docker compose logs cadence | grep "setup code"` and choose
+your admin login. Manage people and single sign-on at `/admin`.
 
 **3. Listen** in the browser at `/app`, or install an app:
 
@@ -194,3 +203,12 @@ Every push and PR runs [ci.yml](.github/workflows/ci.yml):
 [ios.yml](.github/workflows/ios.yml) builds the unsigned `Cadence.ipa` when
 `apps/ios` changes. Pushing a `v*` tag publishes a GitHub Release with all four
 downloads.
+
+## Documentation
+
+- [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) — deploy the server, Caddy,
+  Authentik/OIDC setup, configuration reference.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it fits together.
+- [docs/PLUGINS.md](docs/PLUGINS.md) — desktop and server plugins.
+- [docs/CLOUD_SOURCES.md](docs/CLOUD_SOURCES.md) — WebDAV, S3, Google Drive/OneDrive;
+  [docs/BANDCAMP.md](docs/BANDCAMP.md) — Bandcamp.

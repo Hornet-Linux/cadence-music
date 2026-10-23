@@ -12,6 +12,10 @@ export default tseslint.config(
       globals: { ...globals.node },
     },
     rules: {
+      // New in ESLint 10: stricter style checks that flag code written before the
+      // upgrade (mostly community plugins). Warn until each is cleaned up.
+      "no-useless-assignment": "warn",
+      "preserve-caught-error": "warn",
       "no-undef": "off",
     },
   },

@@ -14,6 +14,15 @@ package net.hornetlinux.cadencemusic
 object WebScripts {
     const val BRIDGE_NAME = "CadenceAndroid"
 
+    /**
+     * Sends Escape to the page when a sheet or dialog is open, so Back closes it instead of
+     * leaving the page. Evaluates to true when something was open.
+     */
+    const val CLOSE_OVERLAY =
+        "(function(){var o=document.querySelector('[role=dialog],.more-backdrop,.queue-drawer.open');" +
+            "if(!o)return false;var t=document.activeElement||document.body;" +
+            "t.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));return true})()"
+
     val SOURCE = """
 (function () {
   if (window.__cadenceInstalled) return;
@@ -52,8 +61,57 @@ object WebScripts {
   var handlers = {};
   var position = null;
   var timer = 0;
+  var tracked = null;
+  var MEDIA_EVENTS = ["play", "pause", "seeked", "ratechange", "loadedmetadata", "ended"];
 
-  function firstMedia() { return document.querySelector("audio,video"); }
+  // The player keeps its audio in a detached `new Audio()`, which never reaches document-level
+  // listeners, so remember whichever media element is asked to play and listen to it directly.
+  var MediaProto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
+  if (MediaProto && MediaProto.play) {
+    var origPlay = MediaProto.play;
+    MediaProto.play = function () {
+      if (tracked !== this) {
+        tracked = this;
+        MEDIA_EVENTS.forEach(function (t) { tracked.addEventListener(t, schedule); });
+      }
+      return origPlay.apply(this, arguments);
+    };
+  }
+  function firstMedia() { return tracked || document.querySelector("audio,video"); }
+
+  // Chrome only exposes navigator.mediaSession on secure origins (https or localhost). A server
+  // on a LAN address over plain http has none, so the page would never describe what is playing
+  // and there would be no notification. Provide a small stand-in with the same surface.
+  if (!ms) {
+    if (typeof window.MediaMetadata === "undefined") {
+      window.MediaMetadata = function (init) {
+        init = init || {};
+        this.title = init.title || "";
+        this.artist = init.artist || "";
+        this.album = init.album || "";
+        this.artwork = init.artwork || [];
+      };
+    }
+    var fakeMetadata = null;
+    var fakeState = "none";
+    ms = {
+      setActionHandler: function (action, handler) { handlers[action] = handler; },
+      setPositionState: function (s) { position = s || null; schedule(); },
+      setMicrophoneActive: function () {},
+      setCameraActive: function () {}
+    };
+    Object.defineProperty(ms, "metadata", {
+      enumerable: true,
+      get: function () { return fakeMetadata; },
+      set: function (v) { fakeMetadata = v; schedule(); }
+    });
+    Object.defineProperty(ms, "playbackState", {
+      enumerable: true,
+      get: function () { return fakeState; },
+      set: function (v) { fakeState = v; schedule(); }
+    });
+    try { Object.defineProperty(navigator, "mediaSession", { value: ms, configurable: true }); } catch (e) {}
+  }
 
   function report() {
     timer = 0;

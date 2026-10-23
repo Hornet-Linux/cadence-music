@@ -38,6 +38,10 @@ vi.mock("@/plugins/builtins/spotify/spotifyStore", () => ({
 
 const { useDj } = await import("./djStore");
 const { useJellyfin } = await import("@/plugins/builtins/jellyfin/jellyfinStore");
+const { useProviders } = await import("./providers");
+// Fresh apps have no provider of their own; these tests use one the listener added.
+const ownOllama = { id: "ollama", name: "Ollama", kind: "ollama" as const, baseUrl: "http://localhost:11434", model: "m", share: false };
+useProviders.setState({ local: [ownOllama] });
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe("useDj", () => {
@@ -108,6 +112,15 @@ describe("setup check", () => {
     expect(useDj.getState().error).toContain("Ollama");
     expect(planDjSet).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it("asks for the server's AI DJ when there is no provider at all", async () => {
+    useProviders.setState({ local: [] });
+    await useDj.getState().start();
+    expect(useDj.getState()).toMatchObject({ status: "idle", needsSetup: true });
+    expect(useDj.getState().error).toContain("server owner");
+    expect(planDjSet).not.toHaveBeenCalled();
+    useProviders.setState({ local: [ownOllama] });
   });
 });
 

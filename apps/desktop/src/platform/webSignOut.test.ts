@@ -3,6 +3,9 @@ import { useAppleMusic } from "@/plugins/builtins/appleMusic/appleMusicStore";
 import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { keyStorageNote, useProviders } from "@/features/dj/providers";
+import { page } from "./webSignOut";
+
+const reload = vi.spyOn(page, "reload").mockImplementation(() => undefined);
 
 const win = window as unknown as Record<string, unknown>;
 
@@ -20,6 +23,10 @@ function seedStorage() {
     "music.TEAM.media-user-token": "apple-token",
     "server:url": "https://music.example",
     "dj:voice": "0",
+    "collection:v1": '{"likes":["spotify:track:1"]}',
+    "history:plays": '[{"playedAt":1}]',
+    "history:pending": "[]",
+    "player:session": '{"queue":[]}',
   };
   for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v);
 }
@@ -41,6 +48,7 @@ function setHost(platform: string) {
 }
 
 beforeEach(() => {
+  reload.mockClear();
   localStorage.clear();
   sessionStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
@@ -77,13 +85,14 @@ describe("signing out of the web player", () => {
     expect(spotifyLogout).toHaveBeenCalled();
     expect(unauthorize).toHaveBeenCalled();
     expect(Object.keys(localStorage).sort()).toEqual(["dj:voice", "server:url"]);
+    expect(reload).toHaveBeenCalledTimes(1);
 
     expect(useServer.getState().token).toBeNull();
     const spotify = useSpotify.getState();
     expect(spotify).toMatchObject({ status: "signed-out", clientId: "", profile: null, tracks: [], total: 0 });
     expect(useAppleMusic.getState()).toMatchObject({ status: "unavailable", tracks: [], total: 0 });
     expect(useProviders.getState().selected).toBe("");
-    expect(useProviders.getState().local.map((p) => p.id)).toEqual(["ollama"]);
+    expect(useProviders.getState().local).toEqual([]);
   });
 
   it("still clears storage when MusicKit can't sign out", async () => {

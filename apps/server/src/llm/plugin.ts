@@ -19,11 +19,26 @@ import {
   PRESETS,
   PROVIDER_KINDS,
   parseProviderConfig,
+  parseTextRequest,
   type FetchFn,
   type LlmProvider,
   type LlmStatus,
+  type LlmTextRequest,
   type ProviderKind,
 } from "./core/index.js";
+import { RateLimiter } from "../auth/rateLimit.js";
+import type { Db } from "../db.js";
+import { ensureBundledProvider, pullModelInBackground } from "./bundled.js";
+import {
+  CHAT_MAX_PARALLEL,
+  CHAT_RATE_MAX,
+  generateText,
+  MAX_CHAT_REPLY_CHARS,
+  MAX_STYLE,
+  sse,
+  tidyLine,
+  type ChatBody,
+} from "./chat.js";
 import { MAX_DEVICES_PER_USER, RelayHub } from "./relay.js";
 import { ProviderStore } from "./store.js";
 
@@ -33,7 +48,38 @@ const MAX_LINE = 200;
 /** AI DJ requests per person: a few sets an hour is plenty and bounds API spend. */
 const RATE_WINDOW_MS = 10 * 60_000;
 const RATE_MAX = 20;
+/** Status checks call the provider too; plenty for the settings screen, but bounded. */
+const STATUS_RATE_MAX = 30;
 const HEARTBEAT_MS = 20_000;
+
+/**
+ * DJ requests per person, kept in the database so a restart doesn't hand
+ * everyone a fresh allowance. The plugin owns this table.
+ */
+class DjUsage {
+  constructor(private readonly db: Db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS llm_dj_usage (user_id INTEGER NOT NULL, at INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS llm_dj_usage_user ON llm_dj_usage (user_id, at);`);
+  }
+
+  /** Records a request unless the person is over the limit; false when limited. */
+  take(userId: number, now = Date.now()): boolean {
+    this.db.prepare("DELETE FROM llm_dj_usage WHERE at <= ?").run(now - RATE_WINDOW_MS);
+    const { n } = this.db.prepare("SELECT COUNT(*) AS n FROM llm_dj_usage WHERE user_id = ?").get(userId) as { n: number };
+    if (n >= RATE_MAX) return false;
+    this.db.prepare("INSERT INTO llm_dj_usage (user_id, at) VALUES (?, ?)").run(userId, now);
+    return true;
+  }
+}
+
+/**
+ * Server providers never follow redirects: an admin-entered URL is where the
+ * server talks to, not wherever that host points it next (a redirect could
+ * otherwise reach an address the admin never typed).
+ */
+export function noRedirects(fetchImpl: FetchFn = (...args) => fetch(...args)): FetchFn {
+  return (input, init) => fetchImpl(input, { ...init, redirect: "error" });
+}
 
 const strings = (value: unknown, max = MAX_LIST): string[] =>
   Array.isArray(value)
@@ -158,11 +204,37 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
     version: "1.0.0",
     register(app, ctx) {
       const { requireUser, requireAdmin } = ctx;
-      const store = new ProviderStore(ctx.db, ctx.secret);
+      const store = new ProviderStore(ctx.db, ctx.secret, ctx.config.previousSecrets ?? []);
+      const keys = store.migrateKeys();
+      if (keys.resealed) ctx.log.info({ count: keys.resealed }, "Re-encrypted saved AI provider keys");
+      if (keys.unreadable.length) {
+        ctx.log.warn(
+          { providers: keys.unreadable },
+          "Some AI provider keys can't be decrypted (did SERVER_SECRET change? Set PREVIOUS_SERVER_SECRET, or enter the keys again in the admin panel)",
+        );
+      }
+      const serverFetch = noRedirects(options.fetchFn);
       const hub = new RelayHub();
       const cache = new Map<string, { updatedAt: number; provider: LlmProvider }>();
-      const recent = new Map<number, number[]>();
+      const usage = new DjUsage(ctx.db);
+      const statusLimit = new RateLimiter({ max: STATUS_RATE_MAX, windowMs: RATE_WINDOW_MS });
       const busy = new Set<number>();
+      const recentChat = new Map<number, number[]>();
+      const busyChat = new Map<number, number>();
+
+      // The server's own Ollama (OLLAMA_URL): register it and fetch its model,
+      // so the DJ runs on the server and no app needs Ollama of its own.
+      if (ctx.config.ollama) {
+        const ollama = ctx.config.ollama;
+        const id = ensureBundledProvider(store, ollama);
+        const stop = new AbortController();
+        app.addHook("onClose", async () => stop.abort());
+        app.addHook("onReady", async () => {
+          // Pull whatever model the provider uses now (an admin may have changed it).
+          const model = store.get(id)?.model ?? ollama.model;
+          void pullModelInBackground(ollama.url, model, ctx.log, stop.signal, serverFetch);
+        });
+      }
 
       function serverProvider(id: string): LlmProvider | null {
         const cfg = store.config(id);
@@ -172,7 +244,7 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
         }
         const hit = cache.get(id);
         if (hit && hit.updatedAt === cfg.updatedAt) return hit.provider;
-        const provider = createProvider(cfg, options.fetchFn);
+        const provider = createProvider(cfg, serverFetch);
         cache.set(id, { updatedAt: cfg.updatedAt, provider });
         return provider;
       }
@@ -252,6 +324,12 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
         const ref = req.body?.provider ?? defaultRef();
         const provider = ref ? resolve(ref, req.user!.id) : null;
         if (!provider || !ref) return reply.code(404).send({ error: "provider_not_found" });
+        // A status check calls the provider, so it is limited like the DJ (admins are exempt).
+        if (req.user!.is_admin !== 1) {
+          const key = String(req.user!.id);
+          if (statusLimit.isLimited(key)) return reply.code(429).send({ error: "rate_limited" });
+          statusLimit.hit(key);
+        }
         try {
           return publicStatus(req, await provider.status(), ref) satisfies LlmStatusResponse;
         } catch (e) {
@@ -261,7 +339,7 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
 
       // ---- the DJ -----------------------------------------------------------------
 
-      app.post<{ Body: DjPicksRequest }>("/api/dj/picks", { preHandler: requireUser }, async (req, reply) => {
+      app.post<{ Body: DjPicksRequest & { style?: unknown; notes?: unknown } }>("/api/dj/picks", { preHandler: requireUser }, async (req, reply) => {
         const userId = req.user!.id;
         const ref = typeof req.body?.provider === "string" ? req.body.provider : defaultRef();
         if (!ref) return reply.code(409).send({ error: "no_provider", message: "No AI provider is set up on this server" });
@@ -279,17 +357,16 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
           },
           {
             mood: typeof req.body.mood === "string" ? req.body.mood.trim().slice(0, 200) : undefined,
+            style: typeof req.body.style === "string" ? tidyLine(req.body.style, MAX_STYLE) || undefined : undefined,
+            notes: strings(req.body.notes, 12),
             switchUp: req.body.switchUp === true,
             avoid: strings(req.body.avoid, 80),
             count: Math.min(20, Math.max(1, Math.trunc(Number(req.body.count)) || 8)),
           },
         );
 
-        const now = Date.now();
-        const times = (recent.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-        if (times.length >= RATE_MAX) return reply.code(429).send({ error: "rate_limited" });
         if (busy.has(userId)) return reply.code(429).send({ error: "busy" });
-        recent.set(userId, [...times, now]);
+        if (!usage.take(userId)) return reply.code(429).send({ error: "rate_limited" });
 
         busy.add(userId);
         try {
@@ -300,6 +377,123 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
         } finally {
           busy.delete(userId);
         }
+      });
+
+      // ---- free-form AI for plugins (song chat, playlist builder, taste summary) ----
+
+      // With `schema` the reply is JSON ({ data }); otherwise text ({ text }), or
+      // server-sent events (delta / done / error) with `stream: true`.
+      app.post<{ Body: ChatBody }>("/api/llm/chat", { preHandler: requireUser }, async (req, reply) => {
+        // Off unless the server owner opted in (admin panel or LLM_CHAT_ENABLED=1): it lets people
+        // spend the server's AI credits on their own prompts.
+        if (!ctx.settings.llmChatEnabled()) {
+          return reply.code(403).send({ error: "chat_disabled", message: "AI chat is turned off on this server. Ask the server owner to enable it in the admin panel." });
+        }
+        const userId = req.user!.id;
+        const body = req.body ?? {};
+        const ref = typeof body.provider === "string" ? body.provider : defaultRef();
+        if (!ref) return reply.code(409).send({ error: "no_provider", message: "No AI provider is set up on this server" });
+        const provider = resolve(ref, userId);
+        if (!provider) return reply.code(404).send({ error: "provider_not_found" });
+
+        let request: LlmTextRequest;
+        try {
+          request = parseTextRequest(body);
+        } catch {
+          return reply.code(400).send({ error: "invalid_request" });
+        }
+        const schema = body.schema;
+        if (schema !== undefined && (!schema || typeof schema !== "object" || Array.isArray(schema))) {
+          return reply.code(400).send({ error: "invalid_request" });
+        }
+
+        const now = Date.now();
+        const times = (recentChat.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+        if (times.length >= CHAT_RATE_MAX) return reply.code(429).send({ error: "rate_limited" });
+        if ((busyChat.get(userId) ?? 0) >= CHAT_MAX_PARALLEL) return reply.code(429).send({ error: "busy" });
+        recentChat.set(userId, [...times, now]);
+        busyChat.set(userId, (busyChat.get(userId) ?? 0) + 1);
+
+        const errorMessage = (e: unknown) => {
+          const detail = e instanceof Error ? e.message : String(e);
+          const device = ref.startsWith("device:");
+          if (!device) req.log.warn({ detail: detail.slice(0, 500), provider: ref }, "AI provider call failed");
+          return device || req.user?.is_admin === 1 ? deviceMessage(detail) : publicMessage(e);
+        };
+
+        try {
+          if (schema) {
+            const data = await provider.chatJson({ ...request, schema: schema as Record<string, unknown> });
+            return { data };
+          }
+          if (body.stream !== true) return { text: await generateText(provider, request) };
+
+          reply.hijack();
+          const raw = reply.raw;
+          raw.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform",
+            Connection: "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+          });
+          const write = (chunk: string) => {
+            if (raw.destroyed || raw.writableEnded) return;
+            try {
+              raw.write(chunk);
+            } catch {
+              // The client went away.
+            }
+          };
+          const abort = new AbortController();
+          const onClose = () => abort.abort();
+          raw.on("close", onClose);
+          let sent = 0;
+          let tooLong = false;
+          try {
+            await generateText(
+              provider,
+              request,
+              (text) => {
+                sent += text.length;
+                if (sent > MAX_CHAT_REPLY_CHARS) {
+                  tooLong = true;
+                  abort.abort();
+                } else write(sse("delta", { text }));
+              },
+              abort.signal,
+            );
+            write(sse("done", {}));
+          } catch (e) {
+            if (tooLong) write(sse("done", {}));
+            else if (!abort.signal.aborted) write(sse("error", { message: errorMessage(e) }));
+          } finally {
+            raw.off("close", onClose);
+            if (!raw.writableEnded) raw.end();
+          }
+          return reply;
+        } catch (e) {
+          return reply.code(502).send({ error: "llm_failed", message: errorMessage(e) });
+        } finally {
+          const n = (busyChat.get(userId) ?? 1) - 1;
+          if (n <= 0) busyChat.delete(userId);
+          else busyChat.set(userId, n);
+        }
+      });
+
+      // ---- admin: free-form AI chat switch ---------------------------------------------
+
+      app.get("/api/admin/llm/chat", { preHandler: requireAdmin }, async () => ({
+        enabled: ctx.settings.llmChatEnabled(),
+        locked: ctx.settings.llmChatLocked(),
+      }));
+
+      app.put<{ Body: { enabled?: unknown } }>("/api/admin/llm/chat", { preHandler: requireAdmin }, async (req, reply) => {
+        if (typeof req.body?.enabled !== "boolean") return reply.code(400).send({ error: "invalid_request" });
+        if (ctx.settings.llmChatLocked()) return reply.code(409).send({ error: "locked_by_environment" });
+        ctx.settings.setLlmChatEnabled(req.body.enabled);
+        req.log.info({ admin: req.user!.username, enabled: req.body.enabled }, "admin changed AI chat");
+        return { enabled: ctx.settings.llmChatEnabled(), locked: false };
       });
 
       // ---- admin: server providers --------------------------------------------
@@ -341,7 +535,7 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
             }
             const apiKey = b.apiKey || (b.id ? store.apiKey(b.id) : undefined);
             const config = parseProviderConfig({ kind: b.kind, baseUrl: b.baseUrl, model: b.model ?? "", apiKey });
-            return await createProvider(config, options.fetchFn).status();
+            return await createProvider(config, serverFetch).status();
           } catch (e) {
             return reply.code(400).send({ error: "invalid_provider", message: e instanceof Error ? e.message : String(e) });
           }
@@ -365,7 +559,6 @@ export function createLlmPlugin(options: LlmPluginOptions = {}): ServerPlugin {
           "Cache-Control": "no-cache, no-transform",
           Connection: "keep-alive",
           "X-Accel-Buffering": "no",
-          "Access-Control-Allow-Origin": "*",
         });
         // Writing to a stream that has closed (or is closing) must never throw.
         const write = (chunk: string): boolean => {

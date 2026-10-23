@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { LlmDeviceRegistration, LlmRelayJob, LlmRelayResult } from "@uma/shared";
-import { apiUrl, useServer } from "@/plugins/builtins/server/serverStore";
+import { apiUrl, authHeaders, useServer } from "@/plugins/builtins/server/serverStore";
 import type { HostBridge } from "../../../electron/preload";
 import { deviceId, localConfig, useProviders, type LocalProvider } from "./providers";
 
@@ -79,11 +79,25 @@ export function parseEvents(buffer: string): { events: { event: string; data: st
   return { events, rest };
 }
 
+/**
+ * Jobs this device runs at once. The server is trusted to send only its
+ * owner's jobs, but a cap bounds what a misbehaving server could make this
+ * device (and its provider and key) do.
+ */
+export const MAX_RUNNING_JOBS = 2;
+let running = 0;
+
 /** Run one job against the matching local provider. */
-export async function runJob(job: LlmRelayJob, local: LocalProvider[], llm: HostBridge["llm"] | undefined): Promise<LlmRelayResult> {
+export async function runJob(
+  job: LlmRelayJob,
+  local: LocalProvider[],
+  llm: Pick<HostBridge["llm"], "status" | "chatJson"> | undefined,
+): Promise<LlmRelayResult> {
   const provider = local.find((p) => p.id === job.providerId && p.share);
   if (!provider) return { ok: false, error: "That provider isn't shared from this device any more" };
   if (!llm) return { ok: false, error: "This device can't run AI requests" };
+  if (running >= MAX_RUNNING_JOBS) return { ok: false, error: "That device is busy" };
+  running++;
   try {
     const config = await localConfig(provider);
     if (job.op === "status") return { ok: true, data: await llm.status(config) };
@@ -91,6 +105,8 @@ export async function runJob(job: LlmRelayJob, local: LocalProvider[], llm: Host
     return { ok: true, data: await llm.chatJson(config, job.request) };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    running--;
   }
 }
 
@@ -104,7 +120,7 @@ async function answer(jobId: string, result: LlmRelayResult): Promise<void> {
   const { url, token } = useServer.getState();
   await fetch(apiUrl(url, `api/llm/devices/jobs/${jobId}`), {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    headers: { ...authHeaders(token), "content-type": "application/json" },
     body: JSON.stringify(result),
   }).catch(() => undefined);
 }
@@ -116,7 +132,7 @@ async function connectLoop(registration: LlmDeviceRegistration, signal: AbortSig
       const { url, token } = useServer.getState();
       const res = await fetch(apiUrl(url, "api/llm/devices/connect"), {
         method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        headers: { ...authHeaders(token), "content-type": "application/json" },
         body: JSON.stringify(registration),
         signal,
       });

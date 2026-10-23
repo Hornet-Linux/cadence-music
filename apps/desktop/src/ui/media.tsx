@@ -55,6 +55,7 @@ export function TrackRow({
   showAlbum = true,
   onRemove,
   likeAction,
+  onPlay,
 }: {
   track: Track;
   index: number;
@@ -64,6 +65,8 @@ export function TrackRow({
   onRemove?: () => void;
   /** Replaces the Liked Songs heart (e.g. with a Jellyfin favourite toggle). */
   likeAction?: ReactNode;
+  /** Replaces playback (e.g. a link-out service that opens the track elsewhere). */
+  onPlay?: () => void;
 }) {
   const playQueue = usePlayer((s) => s.playQueue);
   const addToQueue = usePlayer((s) => s.addToQueue);
@@ -71,13 +74,18 @@ export function TrackRow({
   const toggle = usePlayer((s) => s.toggle);
   const doubleClick = usePrefs((s) => s.doubleClick);
   const isCurrent = useIsCurrent(track);
-  const play = () => (isCurrent ? toggle() : void playQueue(queue, index));
+  const play = () => (onPlay ? onPlay() : isCurrent ? toggle() : void playQueue(queue, index));
+  // Touch screens have no double-click: a tap on the row plays it.
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
   return (
     <div
       className={`track-row${isCurrent ? " playing" : ""}`}
       role="row"
       tabIndex={0}
+      onClick={(e) => {
+        if (coarse && !(e.target as HTMLElement).closest("button")) play();
+      }}
       onDoubleClick={() => (doubleClick === "queue" ? addToQueue(track) : play())}
       onKeyDown={(e) => {
         if (e.key === "Enter") play();

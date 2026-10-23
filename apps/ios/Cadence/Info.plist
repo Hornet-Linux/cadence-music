@@ -21,7 +21,12 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
@@ -41,7 +46,9 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Self-hosted servers on a home network are often plain http. -->
+		<!-- Self-hosted servers on a home network are often plain http, and the address is
+		     typed at run time, which ATS exceptions can't express. The web view narrows it:
+		     WebPolicy blocks plain http except to the server and local addresses. -->
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 		<key>NSAllowsLocalNetworking</key>

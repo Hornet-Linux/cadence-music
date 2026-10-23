@@ -1,0 +1,35 @@
+.taste {
+  max-width: 720px;
+}
+.taste-privacy {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.taste-text p {
+  line-height: 1.6;
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+.taste-data ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.taste .ai-actions .btn {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .taste .ai-actions .btn {
+    flex: 1 1 auto;
+  }
+}

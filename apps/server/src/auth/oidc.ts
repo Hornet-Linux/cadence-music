@@ -31,7 +31,13 @@ export class OidcClient {
     private readonly config: OidcConfig,
     readonly callbackUrl: string,
     private readonly fetchFn: FetchFn = fetch,
+    /** A provider that hangs must not hold sign-in requests open forever. */
+    private readonly timeoutMs = 10_000,
   ) {}
+
+  private request(url: string, init: RequestInit = {}): Promise<Response> {
+    return this.fetchFn(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+  }
 
   get displayName(): string {
     return this.config.displayName;
@@ -49,14 +55,14 @@ export class OidcClient {
 
   private async loadDiscovery(): Promise<DiscoveryDocument> {
     const url = `${stripSlash(this.config.issuer)}/.well-known/openid-configuration`;
-    const res = await this.fetchFn(url, { headers: { accept: "application/json" } });
+    const res = await this.request(url, { headers: { accept: "application/json" } });
     if (!res.ok) throw new Error(`OIDC discovery failed (${res.status})`);
     const doc = (await res.json()) as Partial<DiscoveryDocument>;
     if (!doc.issuer || !doc.authorization_endpoint || !doc.token_endpoint) {
       throw new Error("OIDC discovery document is missing required fields");
     }
     if (stripSlash(doc.issuer) !== stripSlash(this.config.issuer)) {
-      throw new Error("OIDC discovery issuer does not match OIDC_ISSUER");
+      throw new Error(`OIDC discovery issuer ${doc.issuer} does not match the configured issuer`);
     }
     return doc as DiscoveryDocument;
   }
@@ -97,7 +103,7 @@ export class OidcClient {
       const secret = encodeURIComponent(this.config.clientSecret);
       headers.authorization = `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`;
     }
-    const res = await this.fetchFn(doc.token_endpoint, { method: "POST", headers, body });
+    const res = await this.request(doc.token_endpoint, { method: "POST", headers, body });
     if (!res.ok) throw new Error(`OIDC token exchange failed (${res.status})`);
     return (await res.json()) as TokenResponse;
   }
@@ -105,7 +111,7 @@ export class OidcClient {
   async userinfo(accessToken: string): Promise<Claims | null> {
     const doc = await this.discover();
     if (!doc.userinfo_endpoint) return null;
-    const res = await this.fetchFn(doc.userinfo_endpoint, {
+    const res = await this.request(doc.userinfo_endpoint, {
       headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" },
     });
     if (!res.ok) return null;

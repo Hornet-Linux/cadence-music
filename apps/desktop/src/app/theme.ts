@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { ACCENTS, usePrefs } from "@/features/preferences/prefsStore";
 import { usePlayer } from "@/player/playerStore";
-import { dominantColor, fallbackPair, hslCss, rgbToHsl, vivid, type Hsl } from "@/ui/color";
+import { calm, dominantColor, fallbackPair, hslCss, rgbToHsl, type Hsl } from "@/ui/color";
 
 function hexToHsl(hex: string): Hsl {
   const n = Number.parseInt(hex.slice(1), 16);
@@ -29,11 +29,11 @@ export function useTheme(): void {
 
     const apply = (base: Hsl) => {
       if (cancelled) return;
-      const color = vivid(base);
-      root.setProperty("--ambient", ambientOn ? hslCss(color) : "hsl(250 30% 22%)");
+      const color = calm(base);
+      root.setProperty("--ambient", ambientOn ? hslCss(color) : "hsl(230 12% 40%)");
       if (accent === "artwork") {
         root.setProperty("--accent-from", hslCss(color));
-        root.setProperty("--accent-to", hslCss({ ...color, h: (color.h + 45) % 360 }));
+        root.setProperty("--accent-to", hslCss({ ...color, h: (color.h + 12) % 360, l: Math.min(0.78, color.l + 0.04) }));
       }
     };
 
@@ -44,7 +44,7 @@ export function useTheme(): void {
     }
 
     const seed = current?.album ?? current?.title ?? "";
-    const fallback = hexToHsl(current ? fallbackPair(seed)[0] : "#8b6bff");
+    const fallback = hexToHsl(current ? fallbackPair(seed)[0] : "#9aa4e0");
     if (current?.artwork) {
       dominantColor(current.artwork).then(apply, () => apply(fallback));
     } else {

@@ -38,6 +38,11 @@ export interface Config {
   adminUsername?: string;
   adminPassword?: string;
   oidc?: OidcConfig;
+  /**
+   * The OIDC_* values actually set in the environment. They win over (and
+   * lock) the matching fields on the admin panel's Single sign-on page.
+   */
+  oidcEnv?: Partial<OidcConfig>;
   /** Spotify app (client) ID offered to desktop apps. Not a secret. */
   spotifyClientId?: string;
   /** Enables Apple Music by letting the server mint MusicKit developer tokens. */
@@ -50,6 +55,18 @@ export interface Config {
   jellyfinUrl?: string;
   /** Where the sign-up page sends people to download the desktop app. */
   appDownloadUrl?: string;
+  /**
+   * An Ollama the server runs next to itself (the bundled `ollama` container,
+   * or one on the server's network). The server sets it up as an AI DJ
+   * provider and downloads the model, so apps never need Ollama themselves.
+   */
+  ollama?: { url: string; model: string };
+  /**
+   * Earlier server secrets (PREVIOUS_SERVER_SECRET, comma-separated). Saved
+   * API keys sealed with one of them still open, and are re-sealed with the
+   * current secret on start, so SERVER_SECRET can be rotated.
+   */
+  previousSecrets?: string[];
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
   /**
@@ -137,6 +154,26 @@ function parseSignup(env: Env): Config["signup"] {
   throw new Error("SIGNUP_MODE must be closed, open or invite");
 }
 
+export const DEFAULT_OLLAMA_MODEL = "llama3.2:3b";
+
+/** OLLAMA_URL (and OLLAMA_MODEL): an Ollama the server itself calls. */
+export function parseOllama(env: Env): Config["ollama"] {
+  const raw = env.OLLAMA_URL?.trim();
+  if (!raw) return undefined;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("OLLAMA_URL must be a URL such as http://ollama:11434");
+  }
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password || url.search || url.hash) {
+    throw new Error("OLLAMA_URL must be a plain http(s) address such as http://ollama:11434");
+  }
+  const model = env.OLLAMA_MODEL?.trim() || DEFAULT_OLLAMA_MODEL;
+  if (model.length > 200 || !/^[\w.:/-]+$/.test(model)) throw new Error("OLLAMA_MODEL must be a model name such as llama3.2:3b");
+  return { url: url.href.replace(/\/+$/, ""), model };
+}
+
 export function loadConfig(env: Env = process.env): Config {
   const publicUrl = env.PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined;
   if (publicUrl && !/^https?:\/\//.test(publicUrl)) {
@@ -159,6 +196,15 @@ export function loadConfig(env: Env = process.env): Config {
       adminGroups: list(env.OIDC_ADMIN_GROUPS),
     };
   }
+
+  const oidcEnv: Partial<OidcConfig> = {};
+  if (issuer) oidcEnv.issuer = issuer;
+  if (clientId) oidcEnv.clientId = clientId;
+  if (env.OIDC_CLIENT_SECRET?.trim()) oidcEnv.clientSecret = env.OIDC_CLIENT_SECRET.trim();
+  if (env.OIDC_NAME?.trim()) oidcEnv.displayName = env.OIDC_NAME.trim();
+  if (env.OIDC_SCOPES?.trim()) oidcEnv.scopes = env.OIDC_SCOPES.trim();
+  if (list(env.OIDC_ALLOWED_GROUPS).length) oidcEnv.allowedGroups = list(env.OIDC_ALLOWED_GROUPS);
+  if (list(env.OIDC_ADMIN_GROUPS).length) oidcEnv.adminGroups = list(env.OIDC_ADMIN_GROUPS);
 
   const port = int(env.PORT, 8787, "PORT");
   if (port < 1 || port > 65535) throw new Error("PORT must be between 1 and 65535");
@@ -189,11 +235,13 @@ export function loadConfig(env: Env = process.env): Config {
     try {
       jellyfinUrl = parseJellyfinUrl(env.JELLYFIN_URL);
     } catch (e) {
-      throw new Error(`JELLYFIN_URL: ${e instanceof Error ? e.message : "invalid address"}`);
+      throw new Error(`JELLYFIN_URL: ${e instanceof Error ? e.message : "invalid address"}`, { cause: e });
     }
   }
 
   return {
+    ollama: parseOllama(env),
+    previousSecrets: list(env.PREVIOUS_SERVER_SECRET),
     host: env.HOST?.trim() || "0.0.0.0",
     port,
     dataDir: path.resolve(env.DATA_DIR?.trim() || "./data"),
@@ -202,6 +250,7 @@ export function loadConfig(env: Env = process.env): Config {
     adminUsername: env.ADMIN_USERNAME?.trim() || undefined,
     adminPassword: env.ADMIN_PASSWORD || undefined,
     oidc,
+    oidcEnv,
     spotifyClientId,
     appleMusic,
     signup: parseSignup(env),

@@ -1,0 +1,173 @@
+/* Shared by the server-library plugins. Calm and muted; tap targets are at least 44px. */
+.sl-page {
+  --sl-gap: 14px;
+}
+.sl-page .btn,
+.sl-page .text-input,
+.sl-page select.text-input {
+  min-height: 44px;
+}
+.sl-page select.text-input {
+  appearance: none;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+.sl-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.sl-stat {
+  padding: 14px 16px;
+}
+.sl-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sl-stat.warn .sl-stat-value {
+  color: #e6c47a;
+}
+.sl-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 4px 0 14px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+.sl-tabs button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px 10px 0 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.sl-tabs button.on {
+  color: var(--text);
+  border-bottom-color: var(--text-muted);
+}
+.sl-count {
+  margin-left: 7px;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+}
+.sl-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sl-toolbar .grow {
+  flex: 1 1 160px;
+}
+.sl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sl-item {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.sl-item h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.sl-path {
+  font-family: "Cascadia Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+.sl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sl-actions .btn {
+  padding: 8px 16px;
+}
+.sl-progress {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.sl-progress-bar {
+  height: 100%;
+  background: var(--text-muted);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.sl-diff {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 0.88rem;
+  align-items: baseline;
+}
+.sl-diff .old {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
+}
+.sl-diff .new {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.sl-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  margin-right: 6px;
+}
+.sl-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+@media (max-width: 760px) {
+  .sl-actions .btn {
+    flex: 1 1 120px;
+  }
+}
+
+/* Hit areas of at least 44px for the shared pace buttons and switches, without changing how they look. */
+.web .sl-page .segmented button,
+.sl-page .segmented button {
+  min-height: 44px;
+}
+.sl-page .switch {
+  position: relative;
+}
+.sl-page .switch::before {
+  content: "";
+  position: absolute;
+  inset: -9px 0;
+}
+
+.sl-page .sl-play {
+  min-width: 44px;
+  min-height: 44px;
+}

@@ -1,6 +1,7 @@
 // End-to-end test of the web player against a running server container:
-// sign up on the landing page, sign in through the app's setup wizard, find a
-// track from the server's library and play it. Fails on page errors and CSP
+// sign up on the landing page, sign in through the web player's first-run
+// screen (which closes itself once you are signed in), find a track from the
+// server's library and play it. Fails on page errors and CSP
 // violations. Screenshots go to $SHOTS.
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -34,24 +35,48 @@ try {
   await shot("2-signed-up");
   console.log("✓ signed up on the landing page");
 
-  // ---- Web player: wizard + sign-in ----------------------------------------
+  // ---- Web player: first run + sign-in -------------------------------------
+  // The page is served by the user's own server, so the wizard only asks for a
+  // sign-in (no server address, no "files on this computer", no deploy script).
   await page.getByRole("link", { name: "Open the web player" }).click();
   await page.waitForURL(`${BASE}/app/`);
   const wizard = page.getByRole("dialog");
   await wizard.getByRole("heading", { name: "Welcome to Cadence" }).waitFor({ timeout: 15_000 });
+  const welcome = await wizard.innerText();
+  assert.ok(!/files on this computer|setup.sh/i.test(welcome), `the web wizard shows desktop-only text:
+${welcome}`);
   await wizard.getByRole("button", { name: "Get started", exact: true }).click();
-  await wizard.getByRole("heading", { name: "Connect your server" }).waitFor();
+  await wizard.getByRole("heading", { name: "Sign in", exact: true }).waitFor();
   await wizard.getByPlaceholder("Username").fill("webtester");
   await wizard.getByPlaceholder("Password").fill("web-test-password");
+  await shot("3-wizard-sign-in");
   await wizard.getByRole("button", { name: "Sign in", exact: true }).click();
-  await wizard.getByText("Web Tester").waitFor({ timeout: 10_000 });
-  await shot("3-wizard-signed-in");
-  console.log("✓ signed in from the web player's setup wizard");
-  while (await wizard.getByRole("button", { name: "Next", exact: true }).count()) {
-    await wizard.getByRole("button", { name: "Next", exact: true }).click();
-  }
-  await wizard.getByRole("button", { name: "Start listening", exact: true }).click();
-  await page.locator(".wizard-backdrop").waitFor({ state: "detached" });
+  // Signed in to the server that serves the page: nothing left to set up, so the wizard closes by itself.
+  await page.locator(".wizard-backdrop").waitFor({ state: "detached", timeout: 10_000 });
+  await page.getByRole("heading", { level: 1 }).first().waitFor();
+  await page.getByRole("button", { name: "Library", exact: true }).waitFor();
+  await shot("3-home-signed-in");
+  console.log("✓ signed in from the web player's first-run screen; the wizard closed and Home is showing");
+
+  // A signed-in visitor is never blocked by the wizard, even on a first run.
+  await page.evaluate(() => localStorage.removeItem("onboarding:done"));
+  await page.reload();
+  await page.getByRole("button", { name: "Library", exact: true }).waitFor();
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator(".wizard-backdrop").count(), 0, "the wizard blocked a signed-in visitor");
+  console.log("✓ no wizard for a signed-in visitor");
+
+  // ---- Wide layout: the full sidebar ------------------------------------------
+  const rail = page.locator("nav.rail");
+  await rail.getByRole("button", { name: "Server", exact: true }).waitFor();
+  assert.equal(await rail.getByRole("button", { name: "More", exact: true }).count(), 0, "the wide layout should not hide pages behind More");
+  await rail.getByRole("button", { name: "Collapse sidebar" }).click();
+  await page.reload();
+  await rail.getByRole("button", { name: "Expand sidebar" }).waitFor();
+  assert.ok((await rail.boundingBox()).width < 100, "the folded sidebar should be an icon rail");
+  await rail.getByRole("button", { name: "Expand sidebar" }).click();
+  await shot("3-sidebar");
+  console.log("✓ wide layout: full sidebar lists plugin pages and folds to icons (remembered)");
 
   // ---- Library + playback ---------------------------------------------------
   await page.getByRole("button", { name: "Library", exact: true }).click();
@@ -89,7 +114,7 @@ try {
   await page.waitForTimeout(1000);
   await page.evaluate(() => localStorage.removeItem("collection:v1"));
   await page.reload();
-  await page.getByRole("button", { name: "Liked Songs", exact: true }).click();
+  await page.getByRole("button", { name: "Favourites", exact: true }).click();
   await page.locator(".track-row", { hasText: "Smoke Test" }).waitFor({ timeout: 15_000 });
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.locator(".collection-tile", { hasText: "Road trip" }).click();
@@ -97,21 +122,28 @@ try {
   await shot("5-playlist");
   console.log("✓ liked a song and made a playlist; both came back from the server");
 
-  // ---- Phone layout (as in the iOS app) --------------------------------------
+  // ---- Phone layout (as in the Android and iOS apps) --------------------------
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("heading", { name: "Your Library" }).waitFor();
-  const tabBar = await page.locator(".rail").boundingBox();
+  const tabBar = await page.locator(".tabbar").boundingBox();
   assert.ok(tabBar && tabBar.y > 700, `expected the nav as a bottom tab bar on phones (y=${tabBar?.y})`);
+  const tabs = await page.locator(".tabbar .tab").evaluateAll((els) => els.map((e) => e.textContent?.trim()));
+  assert.deepEqual(tabs, ["Home", "Search", "Library", "Favourites", "More"], "the phone tab bar should have five tabs");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(overflow <= 0, `the phone layout scrolls sideways by ${overflow}px`);
   await shot("5-phone-library");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await shot("6-phone-home");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  // Plugin pages and Settings are reachable from the More sheet.
+  await page.getByRole("button", { name: "More", exact: true }).click();
+  const sheet = page.locator(".more-sheet");
+  await sheet.getByRole("button", { name: "Server", exact: true }).waitFor();
+  await shot("7-phone-more");
+  await sheet.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Server", exact: true }).click();
-  await shot("7-phone-settings");
-  console.log("✓ phone layout: bottom tab bar, no sideways scrolling");
+  await shot("8-phone-settings");
+  console.log("✓ phone layout: five-tab bottom bar, More sheet, no sideways scrolling");
 
   const relevant = problems.filter((p) => !/favicon/i.test(p));
   assert.deepEqual(relevant, [], `the page reported problems:\n${relevant.join("\n")}`);

@@ -27,8 +27,11 @@ enum BridgeOrigin {
     static func origin(scheme: String, host: String, port: Int?) -> Origin? {
         let scheme = scheme.lowercased()
         // Some Foundation versions return IPv6 hosts with their brackets, others without.
-        let host = host.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
-        guard let standard = defaultPort(for: scheme), !host.isEmpty else { return nil }
+        // A non-ASCII host is compared in its ASCII (punycode) form, which is how WebKit reports it.
+        let trimmed = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        guard let standard = defaultPort(for: scheme), !trimmed.isEmpty,
+              let host = Punycode.asciiHost(trimmed)
+        else { return nil }
         let effective = (port == nil || port == 0) ? standard : port!
         return Origin(scheme: scheme, host: host, port: effective)
     }

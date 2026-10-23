@@ -11,12 +11,15 @@ stay on the device.
 | Where | Who calls it | Who holds the API key |
 | --- | --- | --- |
 | **Server provider** (set up by the server owner) | The server | The server, encrypted in the database. Never sent to any app. |
-| **A provider on one of your computers** (Ollama on `localhost`, LM Studio, a key you typed into the desktop app) | That computer, via the server relay | That computer only |
+| **Server provider** using the bundled Ollama container (see below) | The server | No key needed |
+| **A provider on one of your computers** (Ollama on `localhost`, LM Studio, a key you typed into the desktop app), only if you add one | That computer, via the server relay | That computer only |
 | **Calling a provider straight from the app** | The app itself | The app's own storage |
 
 Keys saved on the server cannot be read back through the API, so a lost or
 compromised phone cannot leak them. Keys you enter on a device stay on that
-device.
+device: the desktop app keeps them in its main process (the page can't read
+them back) and only sends a key to the address it was saved for, so changing
+a provider's address means entering its key again.
 
 ## Supported providers
 
@@ -32,6 +35,37 @@ Three wire protocols cover nearly everything:
 
 `GET /api/llm/presets` lists one-click starting points (URL, whether a key is
 needed, whether it only runs locally).
+
+## Running the model on the server (bundled Ollama)
+
+The simplest setup runs the model on the server itself, so nobody needs Ollama
+or an API key on their phone or computer. The compose file includes an
+optional Ollama container; `setup.sh` asks about it ("Run the AI DJ on this
+server?"), or add it by hand in `deploy/.env`:
+
+```
+COMPOSE_PROFILES=https,ollama-gpu   # or "ollama" without an NVIDIA GPU
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.1:8b            # default llama3.2:3b; small models suit a CPU
+```
+
+then `docker compose up -d`. On start the server adds **Ollama (this
+server)** as an AI provider (the default, unless you already chose one) and
+downloads the model in the background; `docker compose logs -f server` shows
+when it is ready. From then on the admin panel owns that provider: you can
+change its model or turn it off there.
+
+- Ollama is only on the Docker network: no port is published, so only the
+  Cadence server can reach it.
+- `ollama-gpu` needs an NVIDIA GPU and the
+  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+  on the host. Models live in the `ollama-models` volume.
+- To download another model by hand: `docker compose exec ollama ollama pull <model>`
+  (`ollama-gpu` for the GPU variant).
+
+Apps no longer come with an "Ollama on this computer" provider: a fresh app
+uses the server's provider, and only someone who adds a provider in
+Settings → AI DJ calls a model from their own device.
 
 ## Setting up a server provider
 
@@ -50,7 +84,15 @@ POST /api/admin/llm/providers
 `hasKey`). `POST /api/admin/llm/test` tries settings before you save them.
 The first provider becomes the default; set `isDefault` to change it.
 Admin-defined URLs may point anywhere the server can reach, including other
-machines on your network. The server rejects base URLs that contain a
+machines on your network. The server never follows a redirect from a
+provider, so it only talks to the address an admin typed.
+
+Saved keys are encrypted with a key derived from the server secret and bound
+to their provider, so a key copied onto another provider's row in the
+database won't decrypt. To rotate `SERVER_SECRET`, set the old value as
+`PREVIOUS_SERVER_SECRET` for one start: keys are re-encrypted with the new
+secret, and the old one can then be removed. A key that can't be decrypted is
+logged on start and shown as "saved key can't be read" in the admin panel. The server rejects base URLs that contain a
 username/password, a query string or a fragment, and limits the name to 60
 characters, the model to 200 and the API key to 512.
 
@@ -112,10 +154,42 @@ sign-in redirect) can't use Apple Intelligence or change the server.
 
 ## Limits
 
-`POST /api/dj/picks` is the only endpoint that runs a model for ordinary
-users, so a signed-in account can't use the server's API credits for arbitrary
-prompts. It is limited to 20 requests per person per 10 minutes and one at a
-time.
+`POST /api/dj/picks` builds its own prompt, so a signed-in account can't use
+the server's API credits for arbitrary prompts through it. It is limited to 20
+requests per person per 10 minutes and one at a time; the count is kept in the database,
+so a restart doesn't reset it. `POST /api/llm/status` (which also calls the provider)
+allows 30 checks per person per 10 minutes; admins aren't limited. A computer sharing
+its providers runs at most 2 relay jobs at once.
+
+The AI plugins below (song chat, playlist builder, taste summary) need
+free-form questions, so they use `POST /api/llm/chat`, which relays a prompt the
+app built. That would let a signed-in person spend the server's credits on their
+own prompts, so **it is off by default** and the server owner opts in: tick
+"AI chat for plugins" on the admin page's AI providers tab, or set
+`LLM_CHAT_ENABLED=1` in the server's environment (`=0` forces it off; the
+environment wins over the admin setting). While it is off the route answers 403
+`chat_disabled` and the plugins tell the person to ask the server owner to enable
+AI chat in the admin panel; the DJ keeps working. A provider on the person's own
+device never goes through this route, so it works without the setting.
+When on, it is bounded: 60 requests per person per 10 minutes, at most 3 answers
+at once, 32,000 characters in and 20,000 out, and errors from the provider are
+hidden from non-admins as for the DJ. The admin API is `GET/PUT /api/admin/llm/chat`.
+
+## AI plugins
+
+Six community plugins build on the DJ and use the provider chosen in Settings →
+AI DJ (the same server, device, local or on-device providers). Turn them on in
+Settings → Plugins; each shows a pointer to Settings → AI DJ when no provider
+works.
+
+| Plugin | What it does |
+| --- | --- |
+| DJ personalities | Warm, dry, calm, hype or minimal hosts, or your own. Changes how the model words intros (`style`) and the system voice's rate, pitch and voice. |
+| AI playlist builder | "Rainy Sunday cooking" becomes a playlist. Every song is looked up in your server library, Jellyfin or Spotify; made-up songs are never played. |
+| Ask about this song | A chat with the current song as context, streamed when the provider can stream. |
+| Mood radio | Focus, workout, sleep, party and commute radio that tops up the queue and feeds skips and finished songs back to the model. |
+| Neural voices | Speaks intros through an OpenAI-compatible `/v1/audio/speech` server (OpenAI, Kokoro, Piper). Falls back to the system voice. The server must allow browser requests (CORS). |
+| Taste summary | "Your taste in three paragraphs". Only aggregate counts are sent, only when you press the button, and the screen shows exactly what is sent. |
 
 Whatever a model (or a device) returns is bounded before it reaches an app: at
 most 25 picks, artist and title cut to 200 characters, the intro to 400, and
