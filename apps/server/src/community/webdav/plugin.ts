@@ -122,7 +122,6 @@ export function createWebdavPlugin(options: WebdavPluginOptions = {}): ServerPlu
           }
           const folders = b.folders === undefined ? [] : cleanFolders(b.folders);
           if (folders === null) return reply.code(400).send({ error: "bad_request", message: "Those folders aren't valid" });
-          limiter.hit(key);
           try {
             const url = parseSourceUrl(b.url, "WebDAV address");
             precheckUrl(url, policy());
@@ -137,6 +136,8 @@ export function createWebdavPlugin(options: WebdavPluginOptions = {}): ServerPlu
             void runtime.index(userId).catch(() => undefined);
             return { connected: true, address: baseUrl, username, folders };
           } catch (e) {
+            // Only failed attempts count, so choosing folders or reconnecting never locks anyone out.
+            limiter.hit(key);
             if (e instanceof RemoteError && e.code === "auth_failed") {
               return reply.code(400).send({ error: "webdav_bad_credentials", message: "The server refused that user name or password" });
             }

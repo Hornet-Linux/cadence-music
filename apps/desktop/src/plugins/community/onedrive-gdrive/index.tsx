@@ -1,5 +1,5 @@
 import type { Plugin } from "../../types";
-import { DiscIcon } from "@/ui/icons";
+import { CloudIcon } from "../_sourcekit/icons";
 import { useServer } from "../../builtins/server/serverStore";
 import { remoteId } from "../_remoteSource/logic";
 import { RemoteSourcePage } from "../_remoteSource/RemoteSourcePage";
@@ -52,14 +52,14 @@ const cloudPlugin: Plugin = {
       id: "onedrive-gdrive",
       title: "Google Drive & OneDrive",
       description: "Music in your Google Drive or OneDrive (experimental).",
-      icon: <DiscIcon size={19} />,
+      icon: <CloudIcon size={19} />,
       keywords: ["google", "drive", "onedrive", "microsoft", "cloud", "oauth"],
       render: () => <CloudSettings />,
     });
     ctx.registerSidebarItem({
       id: "gdrive",
       label: "Google Drive",
-      icon: <DiscIcon />,
+      icon: <CloudIcon />,
       render: () => (
         <RemoteSourcePage
           store={useGoogleDrive}
@@ -73,7 +73,7 @@ const cloudPlugin: Plugin = {
     ctx.registerSidebarItem({
       id: "onedrive",
       label: "OneDrive",
-      icon: <DiscIcon />,
+      icon: <CloudIcon />,
       render: () => (
         <RemoteSourcePage
           store={useOneDrive}

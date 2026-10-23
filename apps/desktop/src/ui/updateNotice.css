@@ -1,0 +1,32 @@
+.update-notice {
+  -webkit-app-region: no-drag;
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: min(520px, calc(100% - 340px));
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated-2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.update-notice a {
+  color: var(--accent);
+  white-space: nowrap;
+}
+.update-notice button {
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.update-notice button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}

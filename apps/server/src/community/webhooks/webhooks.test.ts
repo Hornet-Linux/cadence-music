@@ -199,6 +199,7 @@ test("admin API: endpoints are validated, secrets are shown once, and a recorded
     assert.equal(refused.statusCode, 400);
     assert.equal(refused.json().error, "blocked_address");
     assert.equal((await t.app.inject({ method: "POST", url: "/api/webhooks/endpoints", headers: admin, payload: { name: "x", url: "javascript:alert(1)" } })).statusCode, 400);
+    assert.equal((await t.app.inject({ method: "POST", url: "/api/webhooks/endpoints", headers: admin, payload: { name: "x", url, allowPrivate: true, events: ["*"] } })).statusCode, 400, "an events list with nothing valid in it is refused");
 
     const created = await t.app.inject({ method: "POST", url: "/api/webhooks/endpoints", headers: admin, payload: { name: "Local", url, allowPrivate: true, template: "n8n" } });
     assert.equal(created.statusCode, 201);

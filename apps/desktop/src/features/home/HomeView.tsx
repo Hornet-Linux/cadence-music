@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { recentTracks, topTracks, useHistory } from "@/features/history/historyStore";
 import { DjCard } from "@/features/dj/DjCard";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
@@ -6,7 +6,7 @@ import { useSettingsModal } from "@/features/settings/settingsStore";
 import { usePlayer } from "@/player/playerStore";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
-import type { LibrarySource } from "@/plugins/types";
+import type { HomeWidgetContribution, LibrarySource } from "@/plugins/types";
 import { primaryArtist, type Track } from "@/shared/types";
 import { CoverArt } from "@/ui/CoverArt";
 import { EmptyState } from "@/ui/EmptyState";
@@ -21,7 +21,7 @@ function SourceShelf({ source }: { source: LibrarySource }) {
   const tracks = source.useTracks();
   if (tracks.length === 0) return null;
   return (
-    <Shelf icon={<DiscIcon size={18} />} title={`From ${source.label}`}>
+    <Shelf icon={<DiscIcon size={18} />} title={`From ${source.label.replace(/^Your /, "your ")}`}>
       {tracks.slice(0, CARDS).map((t) => (
         <MediaCard key={t.id} track={t} queue={tracks} />
       ))}
@@ -112,6 +112,44 @@ function NothingYet() {
   );
 }
 
+/** How many plugin widgets Home shows before folding the rest behind "Show more". */
+export const HOME_WIDGET_LIMIT = 4;
+
+/** Heaviest first; ties keep a stable alphabetical order so Home never reshuffles. */
+export function orderWidgets(widgets: HomeWidgetContribution[]): HomeWidgetContribution[] {
+  return [...widgets].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || a.title.localeCompare(b.title));
+}
+
+function HomeWidgets({ widgets }: { widgets: HomeWidgetContribution[] }) {
+  const [all, setAll] = useState(false);
+  const ordered = useMemo(() => orderWidgets(widgets), [widgets]);
+  if (ordered.length === 0) return null;
+  const shown = all ? ordered : ordered.slice(0, HOME_WIDGET_LIMIT);
+  const hidden = ordered.length - shown.length;
+  return (
+    <div className="home-widgets">
+      {shown.map((w) => (
+        <section className="section" key={w.id}>
+          <div className="section-head">
+            <h2>
+              <span className="section-icon">
+                <SparkleIcon size={18} />
+              </span>
+              {w.title}
+            </h2>
+          </div>
+          <div className="card pad">{w.render()}</div>
+        </section>
+      ))}
+      {(hidden > 0 || all) && ordered.length > HOME_WIDGET_LIMIT && (
+        <button className="btn show-more" onClick={() => setAll(!all)} aria-expanded={all}>
+          {all ? "Show fewer" : `Show ${hidden} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function HomeView() {
   const widgets = usePluginHost((s) => s.contributions.homeWidgets);
   const sources = usePluginHost((s) => s.contributions.librarySources);
@@ -177,19 +215,7 @@ export function HomeView() {
         </div>
       )}
 
-      {widgets.map((w) => (
-        <section className="section" key={w.id}>
-          <div className="section-head">
-            <h2>
-              <span className="section-icon">
-                <SparkleIcon size={18} />
-              </span>
-              {w.title}
-            </h2>
-          </div>
-          <div className="card pad">{w.render()}</div>
-        </section>
-      ))}
+      <HomeWidgets widgets={widgets} />
     </div>
   );
 }

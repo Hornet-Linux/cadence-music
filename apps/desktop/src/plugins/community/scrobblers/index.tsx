@@ -12,7 +12,8 @@ function followServerAccount() {
   if (watchingServer) return;
   watchingServer = true;
   useServer.subscribe((state, prev) => {
-    if (state.user?.username !== prev.user?.username) useScrobblers.getState().reset();
+    if (state.user?.username !== prev.user?.username)
+      useScrobblers.getState().reset();
   });
 }
 
@@ -25,7 +26,8 @@ const scrobblersPlugin: Plugin = {
     id: "cadence.scrobblers",
     name: "Scrobblers",
     version: "1.0.0",
-    description: "Send what you play to Last.fm, Libre.fm, ListenBrainz or Maloja, from every device, through your server.",
+    description:
+      "Send what you play to Last.fm, Libre.fm, ListenBrainz or Maloja, from every device, through your server.",
     author: "Cadence",
     capabilities: ["ui.settings", "network.outbound"],
     apiRange: "^1.0.0",
@@ -37,7 +39,16 @@ const scrobblersPlugin: Plugin = {
       title: "Scrobbling",
       description: "Last.fm, Libre.fm, ListenBrainz and Maloja.",
       icon: <DiscIcon size={19} />,
-      keywords: ["last.fm", "lastfm", "listenbrainz", "libre.fm", "maloja", "scrobble", "history", "listens"],
+      keywords: [
+        "last.fm",
+        "lastfm",
+        "listenbrainz",
+        "libre.fm",
+        "maloja",
+        "scrobble",
+        "history",
+        "listens",
+      ],
       render: () => <ScrobblersSettings />,
     });
   },

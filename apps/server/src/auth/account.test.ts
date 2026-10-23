@@ -215,7 +215,12 @@ test("device names are readable", () => {
   assert.equal(deviceLabel("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"), "Safari on macOS");
   assert.equal(deviceLabel("Mozilla/5.0 (Windows NT 10.0) Gecko/20100101 Firefox/130.0"), "Firefox on Windows");
   assert.equal(deviceLabel("Mozilla/5.0 (Windows NT 10.0; Win64) AppleWebKit/537.36 Edg/130.0 Chrome/130.0 Safari/537.36"), "Edge on Windows");
-  assert.equal(deviceLabel("okhttp/4.12.0"), "Android app");
+  assert.equal(deviceLabel("okhttp/4.12.0"), "Cadence for Android");
+  assert.equal(deviceLabel("Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0 Mobile Safari/537.36"), "Cadence for Android");
+  assert.equal(deviceLabel("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/130.0 Mobile/15E148 Safari/605.1.15"), "Firefox on iPhone");
+  assert.equal(deviceLabel("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"), "Cadence for iPhone");
+  assert.equal(deviceLabel("curl/8.9.1"), "Script or command-line tool");
+  assert.equal(deviceLabel("node"), "Script or command-line tool");
   assert.equal(deviceLabel(""), "Unknown device");
   assert.equal(deviceLabel(null), "Unknown device");
 });

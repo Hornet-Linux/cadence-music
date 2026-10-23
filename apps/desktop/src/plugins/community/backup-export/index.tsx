@@ -120,7 +120,7 @@ function HistoryExport() {
       </div>
       <div>
         <button className="btn" disabled={busy} onClick={() => void download()}>
-          Download history
+          {busy ? "Preparing..." : "Download history"}
         </button>
       </div>
     </Section>

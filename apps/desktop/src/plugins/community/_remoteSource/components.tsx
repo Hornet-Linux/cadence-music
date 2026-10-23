@@ -46,7 +46,7 @@ export function ServerGate<S extends RemoteStatus>({
     return (
       <div className="stack rs-root">
         <p className="notice">
-          {label} isn&apos;t turned on at your server. The server owner can enable it under Settings, Plugins, then restart the server.
+          {label} isn&apos;t turned on at your server. The server owner turns it on in the server's admin page under Plugins, then restarts the server.
         </p>
         <div>
           <button className="btn ghost" onClick={() => void refresh()}>

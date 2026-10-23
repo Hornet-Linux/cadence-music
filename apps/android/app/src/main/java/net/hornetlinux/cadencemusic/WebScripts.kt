@@ -14,6 +14,15 @@ package net.hornetlinux.cadencemusic
 object WebScripts {
     const val BRIDGE_NAME = "CadenceAndroid"
 
+    /**
+     * Sends Escape to the page when a sheet or dialog is open, so Back closes it instead of
+     * leaving the page. Evaluates to true when something was open.
+     */
+    const val CLOSE_OVERLAY =
+        "(function(){var o=document.querySelector('[role=dialog],.more-backdrop,.queue-drawer.open');" +
+            "if(!o)return false;var t=document.activeElement||document.body;" +
+            "t.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));return true})()"
+
     val SOURCE = """
 (function () {
   if (window.__cadenceInstalled) return;

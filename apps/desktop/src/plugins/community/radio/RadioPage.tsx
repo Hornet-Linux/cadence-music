@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePlayer } from "@/player/playerStore";
 import { HeartIcon, PauseIcon, PlayIcon, SearchIcon } from "@/ui/icons";
 import { describeError, useDebounced } from "../_sourcekit/api";
-import { Art, Chips, IconButton, PageHeader, Problem, SignInGate } from "../_sourcekit/ui";
+import { Art, Chips, IconButton, PageHeader, Problem, SignInGate, LoadingRows } from "../_sourcekit/ui";
 import { describeStation, fetchFacets, fetchStations, isFavourite, stationIdOf, stationToTrack, useRadio, type Facet, type RadioStation } from "./radioStore";
 
 type Tab = "favourites" | "top" | "trending" | "search";
@@ -164,7 +164,7 @@ function Browse({ tab }: { tab: "top" | "trending" | "search" }) {
           <StationRow key={s.id} station={s} queue={state.items} index={i} />
         ))}
       </div>
-      {state.loading && <p className="empty">Loading stations…</p>}
+      {state.loading && <LoadingRows label="Loading stations…" />}
       {filtered && <p className="empty">Search by name, or pick a country, language or genre.</p>}
       {!state.loading && !state.error && !filtered && state.items.length === 0 && <p className="empty">No stations found.</p>}
       {!state.loading && state.hasMore && (
@@ -189,7 +189,7 @@ function Favourites() {
           <StationRow key={s.id} station={s} queue={favs} index={i} />
         ))}
       </div>
-      {!loaded && <p className="empty">Loading your stations…</p>}
+      {!loaded && <LoadingRows label="Loading your stations…" />}
       {loaded && !error && favs.length === 0 && <p className="empty">No favourite stations yet. Tap the heart on a station to keep it here.</p>}
     </>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePlayer } from "@/player/playerStore";
+import { useServer } from "@/plugins/builtins/server/serverStore";
 import { primaryArtist, type Track } from "@/shared/types";
 import { CoverArt } from "@/ui/CoverArt";
 import { Notice, Page, UsersIcon } from "../_social/ui";
@@ -45,12 +46,12 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-function ListenerList({ names }: { names: string[] }) {
+function ListenerList({ names, me }: { names: string[]; me?: string }) {
   if (names.length === 0) return <p className="muted small">Nobody has joined yet.</p>;
   return (
     <ul className="sx-chips" aria-label="Listeners">
       {names.map((n) => (
-        <li key={n}>{n}</li>
+        <li key={n}>{n === me ? `${n} (you)` : n}</li>
       ))}
     </ul>
   );
@@ -101,6 +102,7 @@ function HostView() {
 
 function GuestView() {
   const { room, hostTrack, host, drift, unplayable, listeners, link, leave, resync, notice } = useListenAlong();
+  const me = useServer((s) => s.user?.username);
   const local = usePlayer((s) => s.current);
   const playing = usePlayer((s) => s.isPlaying);
   if (!room) return null;
@@ -142,9 +144,9 @@ function GuestView() {
       </section>
       <section className="sx-card">
         <h2>
-          Also here ({listeners.length}) <span className={`la-dot ${link}`} title={link} />
+          Listening ({listeners.length}) <span className={`la-dot ${link}`} title={link} />
         </h2>
-        <ListenerList names={listeners} />
+        <ListenerList names={listeners} me={me} />
       </section>
       {notice && <Notice>{notice}</Notice>}
     </div>

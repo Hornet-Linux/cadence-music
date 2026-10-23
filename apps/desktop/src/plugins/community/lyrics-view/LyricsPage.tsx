@@ -29,14 +29,26 @@ function SearchAgain() {
     <form className="lv-search" onSubmit={submit}>
       <label className="lv-field">
         <span>Title</span>
-        <input className="text-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input
+          className="text-input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
       </label>
       <label className="lv-field">
         <span>Artist</span>
-        <input className="text-input" value={artist} onChange={(e) => setArtist(e.target.value)} />
+        <input
+          className="text-input"
+          value={artist}
+          onChange={(e) => setArtist(e.target.value)}
+        />
       </label>
       <div className="lv-group">
-        <button type="submit" className="lv-btn strong" disabled={!title.trim()}>
+        <button
+          type="submit"
+          className="lv-btn strong"
+          disabled={!title.trim()}
+        >
           <SearchIcon size={16} /> Search
         </button>
         {query && (
@@ -58,11 +70,15 @@ function Status() {
   const lyrics = useLyricsView((s) => s.lyrics);
   const providers = usePluginHost((s) => s.contributions.lyricsProviders);
 
-  if (!track) return <p className="lv-note">Play a song and its lyrics will appear here.</p>;
+  if (!track)
+    return (
+      <p className="lv-note">Play a song and its lyrics will appear here.</p>
+    );
   if (phase === "no-providers" || (phase === "idle" && !providers.length)) {
     return (
       <p className="lv-note">
-        No lyrics source is turned on. Open Settings, then Plugins, and enable <strong>Lyrics from LRCLIB</strong>.
+        No lyrics source is turned on. Open Settings, then Plugins, and enable{" "}
+        <strong>Lyrics from LRCLIB</strong>.
       </p>
     );
   }
@@ -76,7 +92,9 @@ function Status() {
   if (phase === "none") {
     return (
       <p className="lv-note" role="status">
-        No lyrics found for this track{choice !== "auto" ? " from this source" : ""}. Try <em>Search again</em> with a simpler title, or pick another source.
+        No lyrics found for this track
+        {choice !== "auto" ? " from this source" : ""}. Try{" "}
+        <em>Search again</em> with a simpler title, or pick another source.
       </p>
     );
   }
@@ -84,7 +102,11 @@ function Status() {
     return (
       <p className="lv-note warn" role="alert">
         Could not get lyrics. {errors.join(" ")}{" "}
-        <button type="button" className="lv-link" onClick={() => void load({ fresh: true })}>
+        <button
+          type="button"
+          className="lv-link"
+          onClick={() => void load({ fresh: true })}
+        >
           Try again
         </button>
       </p>
@@ -95,7 +117,9 @@ function Status() {
       <p className="lv-credit">
         Lyrics from {lyrics.source}
         {" · "}
-        {lyrics.synced ? "time-synced, tap a line to jump to it" : "not time-synced"}
+        {lyrics.synced
+          ? "time-synced, tap a line to jump to it"
+          : "not time-synced"}
       </p>
     );
   }
@@ -117,7 +141,8 @@ export function LyricsPage() {
   useEffect(() => attach(), [attach]);
   // Providers can appear after the page opens (a plugin was just enabled).
   useEffect(() => {
-    if (providers.length && phase === "no-providers") useLyricsView.getState().load();
+    if (providers.length && phase === "no-providers")
+      useLyricsView.getState().load();
   }, [providers.length, phase]);
 
   const canKaraoke = !!track;
@@ -128,37 +153,64 @@ export function LyricsPage() {
         {track ? (
           <p className="lv-now">
             <strong>{track.title}</strong>
-            <span className="muted"> {"·"} {primaryArtist(track)}</span>
+            <span className="muted">
+              {" "}
+              {"·"} {primaryArtist(track)}
+            </span>
           </p>
         ) : null}
       </header>
 
-      <div className="lv-toolbar">
-        <div className="lv-group">
-          <label className="lv-select-wrap">
-            <span className="lv-sr">Lyrics source</span>
-            <select className="lv-select" value={providers.some((p) => p.id === choice) ? choice : "auto"} onChange={(e) => setChoice(e.target.value)} aria-label="Lyrics source">
-              <option value="auto">Source: automatic</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className={`lv-btn${searching ? " on" : ""}`} aria-expanded={searching} onClick={() => setSearching((v) => !v)} disabled={!track}>
-            Search again
+      {!track && (
+        <p className="lv-empty">
+          Play a song and its lyrics will appear here, following along as it
+          plays.
+        </p>
+      )}
+      {track && (
+        <div className="lv-toolbar">
+          <div className="lv-group">
+            <label className="lv-select-wrap">
+              <span className="lv-sr">Lyrics source</span>
+              <select
+                className="lv-select"
+                value={providers.some((p) => p.id === choice) ? choice : "auto"}
+                onChange={(e) => setChoice(e.target.value)}
+                aria-label="Lyrics source"
+              >
+                <option value="auto">Source: automatic</option>
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={`lv-btn${searching ? " on" : ""}`}
+              aria-expanded={searching}
+              onClick={() => setSearching((v) => !v)}
+              disabled={!track}
+            >
+              Search again
+            </button>
+          </div>
+          <FontControls />
+          <TranslateControls />
+          <button
+            type="button"
+            className="lv-btn strong"
+            onClick={() => setKaraoke(true)}
+            disabled={!canKaraoke}
+          >
+            Karaoke mode
           </button>
         </div>
-        <FontControls />
-        <TranslateControls />
-        <button type="button" className="lv-btn strong" onClick={() => setKaraoke(true)} disabled={!canKaraoke}>
-          Karaoke mode
-        </button>
-      </div>
+      )}
 
       {searching && track && <SearchAgain />}
-      <Status />
+      {track && <Status />}
       <TranslateNote />
       {phase === "ready" && <LyricsBody variant="page" />}
       {karaoke && <Karaoke />}

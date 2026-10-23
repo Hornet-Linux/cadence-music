@@ -347,6 +347,24 @@ describe("gapless and crossfade", () => {
     expect(usePlayer.getState().current?.id).toBe("b");
   });
 
+  it("a seek during the blend stays on the outgoing song at full volume", async () => {
+    await usePlayer.getState().playQueue(queue(), 0);
+    useTuning.getState().set({ crossfadeSec: 6 });
+    const outgoing = lastPlayed();
+    clock.time = 194.5;
+    await vi.advanceTimersByTimeAsync(300);
+    const incoming = lastPlayed();
+    expect(incoming).not.toBe(outgoing);
+    await vi.advanceTimersByTimeAsync(1500);
+    clock.time = 60;
+    usePlayer.getState().seek(60);
+    expect(usePlayer.getState().current?.id).toBe("a");
+    expect(outgoing.volume).toBeCloseTo(0.8);
+    expect(incoming.getAttribute("src")).toBeNull();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(usePlayer.getState().current?.id).toBe("a");
+  });
+
   it("does not crossfade past a stop-after-track request", async () => {
     await usePlayer.getState().playQueue(queue(), 0);
     useTuning.getState().set({ crossfadeSec: 4, stopAfterTrack: true });

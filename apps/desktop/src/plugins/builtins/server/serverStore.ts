@@ -11,6 +11,7 @@ import type {
 } from "@uma/shared";
 import type { Track } from "@/shared/types";
 import { isWeb } from "@/platform/webHost";
+import { friendlyBlock, usePlaybackBlock } from "@/player/playbackBlock";
 import { webSessionState } from "@/platform/webSessionState";
 
 const URL_KEY = "server:url";
@@ -94,6 +95,17 @@ async function errorCode(res: Response): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Every route follows the same rule: a plugin that answers 401 with its own error code
+ * (a wrong Audiobookshelf password, an expired service session) is talking about that
+ * service, so it must not sign the person out of Cadence.
+ */
+export async function endsCadenceSession(route: string, res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  const code = await errorCode(res);
+  return isJellyfinRoute(route) ? code === "unauthorized" : code === undefined || code === "unauthorized";
 }
 
 export function normalizeServerUrl(input: string): string {
@@ -185,7 +197,7 @@ export const useServer = create<ServerState>((set, get) => {
     for (const [k, v] of Object.entries(authHeaders(token))) headers.set(k, v);
     if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
     const res = await fetch(apiUrl(url, route), { ...init, headers });
-    if (res.status === 401 && token && !(isJellyfinRoute(route) && (await errorCode(res)) !== "unauthorized")) {
+    if (token && (await endsCadenceSession(route, res))) {
       set({ token: null, user: null, tracks: [], total: 0, integrations: null });
       void saveToken(null);
       throw new Error("Your session expired. Sign in again.");
@@ -427,9 +439,14 @@ export const useServer = create<ServerState>((set, get) => {
 
     async streamUrl(serverTrackId) {
       if (!get().token) return null;
-      const signed = await request<StreamUrlResponse>(
-        `api/tracks/${encodeURIComponent(serverTrackId)}/stream-url`,
-      );
+      let signed: StreamUrlResponse;
+      try {
+        signed = await request<StreamUrlResponse>(`api/tracks/${encodeURIComponent(serverTrackId)}/stream-url`);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 429) usePlaybackBlock.getState().set(friendlyBlock(err.code, err.message.replace(/^Request failed (d+): ?/, "")));
+        throw err;
+      }
+      usePlaybackBlock.getState().set(null);
       return apiUrl(get().url, signed.path);
     },
 

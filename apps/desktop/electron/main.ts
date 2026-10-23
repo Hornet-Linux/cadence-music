@@ -220,7 +220,22 @@ async function runWidevineProbe() {
 }
 
 // ---- App lifecycle ---------------------------------------------------------
+// One Cadence per profile: a second launch focuses the running window instead of
+// opening another (two copies would fight over the control-API port, Discord and the media keys).
+const gotInstanceLock = WIDEVINE_PROBE || app.requestSingleInstanceLock();
+if (!gotInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!gotInstanceLock) return;
   if (WIDEVINE_PROBE) {
     await runWidevineProbe();
     return;

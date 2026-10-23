@@ -68,19 +68,29 @@ export function shuffled<T>(items: T[], random: () => number = Math.random): T[]
 export interface RingDeps {
   player: Pick<PlayerApi, "playTracks" | "getState">;
   tracksFor: (alarm: Alarm) => Track[];
+  /**
+   * Music to play when the chosen source is empty (no liked songs yet, a deleted playlist).
+   * A wake-up alarm that stays silent is the worst outcome, so anything playable beats nothing.
+   */
+  fallback?: () => Track[];
   random?: () => number;
   /** How long to wait before checking that playback really started. */
   verifyAfterMs?: number;
 }
 
-export type RingResult = { ok: true; started: number } | { ok: false; reason: "empty" | "blocked" | "error" };
+export type RingResult = { ok: true; started: number; usedFallback?: boolean } | { ok: false; reason: "empty" | "blocked" | "error" };
 
 /**
  * Start the alarm's music, bringing the volume up gently. Resolves once playback is confirmed
  * (or has clearly failed: browsers may refuse to start audio without a recent interaction).
  */
 export async function ringAlarm(alarm: Alarm, deps: RingDeps): Promise<RingResult> {
-  const tracks = deps.tracksFor(alarm);
+  let tracks = deps.tracksFor(alarm);
+  let usedFallback = false;
+  if (tracks.length === 0) {
+    tracks = deps.fallback?.() ?? [];
+    usedFallback = tracks.length > 0;
+  }
   if (tracks.length === 0) return { ok: false, reason: "empty" };
   const queue = alarm.shuffle ? shuffled(tracks, deps.random) : tracks;
   const tuning = useTuning.getState();
@@ -97,7 +107,7 @@ export async function ringAlarm(alarm: Alarm, deps: RingDeps): Promise<RingResul
     return { ok: false, reason: "blocked" };
   }
   if (alarm.rampSec > 0) await ramp(alarm.rampSec);
-  return { ok: true, started: queue.length };
+  return usedFallback ? { ok: true, started: queue.length, usedFallback } : { ok: true, started: queue.length };
 }
 
 /** Raise the master gain from near-silent to full over `rampSec` seconds. */

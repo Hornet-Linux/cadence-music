@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useSettingsModal } from "@/features/settings/settingsStore";
 import { useServer } from "../../builtins/server/serverStore";
+import { LoadingRows, Problem } from "../_sourcekit/ui";
 import { ConnectCard, SourceBrowser } from "../sourcesCommon/SourceBrowser";
 import type { BrowseApi } from "../sourcesCommon/types";
 import { useIsFavourite, usePlex } from "./plexStore";
@@ -50,7 +51,11 @@ export function PlexPage() {
       {!serverUser ? (
         <ConnectCard title="Sign in to your server first" text="Plex connects through your Cadence server." action={{ label: "Open server settings", onClick: () => openSettings("server") }} />
       ) : !status ? (
-        <p className="empty">{checking ? "Checking Plex…" : (error ?? "Couldn't check Plex.")}</p>
+        checking ? (
+          <LoadingRows label="Checking Plex…" rows={3} />
+        ) : (
+          <Problem message={error ?? "Couldn't reach Plex."} onRetry={() => void usePlex.getState().refresh()} />
+        )
       ) : !status.configured ? (
         <ConnectCard
           title="Plex isn't set up on this server"

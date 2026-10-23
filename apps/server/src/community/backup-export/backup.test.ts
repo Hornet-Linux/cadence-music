@@ -243,3 +243,7 @@ test("export and backup routes: ownership, formats and admin-only snapshots", as
     await t.cleanup();
   }
 });
+test("M3U leaves out the Unknown artist placeholder", () => {
+  const m3u = toM3U("x", [{ id: "a", title: "Song", artists: [{ name: "Unknown artist" }], durationSec: 10 }], (t) => t.id);
+  assert.ok(m3u.split("\n").includes("#EXTINF:10,Song"));
+});

@@ -461,3 +461,14 @@ test("limits how often a person can try to connect", async () => {
     await dav.stop();
   }
 });
+
+test("successful connects (like saving chosen folders) never use up the attempt limit", async () => {
+  const dav = library(await new FakeWebdav().start());
+  const { app, alice } = await setup({ env: ALLOW, maxConnectAttempts: 2 });
+  try {
+    for (let i = 0; i < 5; i++) assert.equal((await connect(app, alice, dav)).statusCode, 200);
+  } finally {
+    await app.close();
+    await dav.stop();
+  }
+});

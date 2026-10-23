@@ -118,7 +118,12 @@ export function VisualizerPage() {
       if (prefs.mode === "bars") {
         const gap = 4;
         const w = (width - gap * (BARS - 1)) / BARS;
-        g.globalAlpha = 0.75;
+        // A soft wash from the accent at the top into the muted ink: calm, no glow.
+        const tint = g.createLinearGradient(0, 0, 0, height);
+        tint.addColorStop(0, cssColor(el, "--accent", ink));
+        tint.addColorStop(1, ink);
+        g.fillStyle = tint;
+        g.globalAlpha = 0.7;
         levels.forEach((v, i) => {
           const h = Math.max(2, v * (height - 8));
           const x = i * (w + gap);

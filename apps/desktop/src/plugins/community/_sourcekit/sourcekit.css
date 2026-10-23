@@ -16,7 +16,9 @@
   flex-direction: column;
   gap: 2px;
 }
-.sk-row {
+.sk-row:not(.skeleton) {
+  /* The app also has a global .sk-row (a fixed-height loading bar); these rows grow with their text. */
+  height: auto;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -25,10 +27,7 @@
   padding: 6px 8px;
   border-radius: var(--radius-sm);
 }
-.sk-row:hover {
-  background: var(--surface);
-}
-.sk-row.current {
+.sk-row:not(.skeleton).current {
   background: var(--surface-hover);
 }
 .sk-art {
@@ -295,11 +294,115 @@
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
   }
-  .sk-row {
+  .sk-row:not(.skeleton) {
     gap: 10px;
     padding: 4px 2px;
   }
   .sk-detail-head {
     gap: 12px;
+  }
+}
+/* ---- Feel: calm motion, hover only where a mouse can hover, a gentle press ---- */
+.sk-row:not(.skeleton),
+.sk-icon,
+.sk-chip,
+.sk-pill,
+.sk-main,
+.sk-tile .sk-art {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 120ms ease,
+    filter 160ms ease;
+}
+@media (hover: hover) {
+  .sk-row:not(.skeleton):hover {
+    background: var(--surface);
+  }
+  .sk-icon:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+  .sk-chip:hover:not(.on),
+  .sk-pill:hover:not(.on) {
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+  .sk-tile:hover .sk-art {
+    filter: brightness(1.08);
+  }
+}
+.sk-icon:active:not(:disabled),
+.sk-chip:active,
+.sk-pill:active {
+  transform: scale(0.95);
+}
+.sk-tile:active .sk-art {
+  transform: scale(0.98);
+}
+.sk-chip:focus-visible,
+.sk-pill:focus-visible,
+.sk-main:focus-visible,
+.sk-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sk-row:not(.skeleton),
+.sk-loading {
+  animation: sk-fade-in 220ms ease both;
+}
+@keyframes sk-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.sk-ghost {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 6px 8px;
+}
+.sk-ghost-art {
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+}
+.sk-ghost-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sk-ghost-line {
+  display: block;
+  width: 55%;
+  height: 12px;
+}
+.sk-ghost-line.short {
+  width: 35%;
+  height: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-row:not(.skeleton),
+  .sk-icon,
+  .sk-chip,
+  .sk-pill,
+  .sk-main,
+  .sk-tile .sk-art,
+  .sk-loading {
+    transition: none;
+    animation: none;
+  }
+  .sk-icon:active:not(:disabled),
+  .sk-chip:active,
+  .sk-pill:active,
+  .sk-tile:active .sk-art {
+    transform: none;
+  }
+  .sk-loading .skeleton {
+    animation: none;
   }
 }

@@ -5,6 +5,7 @@ import {
   fixCasing,
   normalizeFeat,
   parseFilenamePrefix,
+  folderTags,
   suggestForLibrary,
   titleCase,
   type TagTrack,
@@ -98,4 +99,18 @@ test("suggests titles and track numbers from file names when tags are missing", 
     "a real title tag is never replaced by the file name",
   );
   assert.ok(!suggestions.some((s) => s.trackId === "z" && s.field === "trackNo"), "an existing track number is kept");
+});
+
+test("untagged files get artist and album from their Artist/Album folders", () => {
+  assert.deepEqual(folderTags("Test Artist/Demo Album/01 Warm Sine.wav"), { artist: "Test Artist", album: "Demo Album" });
+  assert.deepEqual(folderTags("Music/Band/Record/01 x.flac"), { artist: "Band", album: "Record" });
+  assert.equal(folderTags("Loose/01 x.flac"), null, "one folder is not enough to tell artist from album");
+  assert.equal(folderTags("Band/Record/CD2/01 x.flac"), null, "a disc folder is not an album name");
+  const out = suggestForLibrary([t("01 Song", { relPath: "Test Artist/Demo Album/01 Song.wav", artist: null, album: null, albumArtist: null, trackNo: null })]);
+  const byField = Object.fromEntries(out.map((s) => [s.field, s]));
+  assert.equal(byField.artist?.newValue, "Test Artist");
+  assert.equal(byField.album?.newValue, "Demo Album");
+  assert.equal(byField.artist?.rule, "from-folders");
+  // Tags that are already there are never replaced by folder names.
+  assert.ok(!suggestForLibrary([t("01 Song", { relPath: "X/Y/01 Song.wav" })]).some((s) => s.rule === "from-folders"));
 });

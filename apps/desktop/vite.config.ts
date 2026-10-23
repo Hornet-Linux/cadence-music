@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import { fileURLToPath, URL } from "node:url";
+import { readFileSync } from "node:fs";
+
+const appVersion = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version;
 
 const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
 
@@ -28,6 +31,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    define: { __APP_VERSION__: JSON.stringify(appVersion) },
     resolve: { alias },
     plugins: [
       react(),

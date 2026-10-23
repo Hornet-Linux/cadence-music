@@ -66,6 +66,10 @@ input::placeholder{color:var(--faint)}
 .switch[aria-checked=true]::after{transform:translateX(20px);background:var(--accent)}
 .switch:disabled{opacity:.5}
 .switch-wrap{display:inline-flex;align-items:center;justify-content:center;min-width:52px;min-height:44px}
+.switch::before{content:"";position:absolute;inset:-7px -4px}
+.plugin-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:16px}
+.plugin-tools input[type=search]{flex:1 1 220px;width:auto}
+.plugin-tools .seg{flex:none}
 
 /* surfaces */
 .card{padding:20px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line);margin-bottom:16px}

@@ -548,7 +548,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
   // Plugin knobs (speed, master gain...) take effect immediately.
   useTuning.subscribe((s, prev) => {
-    if (s.rate !== prev.rate || s.preservePitch !== prev.preservePitch || s.masterGain !== prev.masterGain) {
+    if (s.rate !== prev.rate || s.preservePitch !== prev.preservePitch) {
+      // Hide the waveform jump of a rate change under a tiny dip so it does not click.
+      audioGraph.softly(refreshOutputs);
+    } else if (s.masterGain !== prev.masterGain) {
       refreshOutputs();
     }
     if (s.crossfadeSec === 0 && !s.gapless && (prev.gapless || prev.crossfadeSec > 0)) dropPreload();
@@ -677,7 +680,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     seek(seconds) {
       if (!Number.isFinite(seconds)) return;
-      completeFade();
+      // The seek bar still shows the outgoing track during a blend, so a seek means "stay on
+      // this song": drop the incoming track and bring this one back to full volume.
+      if (fade) {
+        cancelFade();
+        applyOutput(audio);
+      }
       if (backend.kind === "html") audio.currentTime = seconds;
       else if (backend.kind === "external") void backend.handle.seek(seconds).catch(ignore);
       set({ position: seconds });

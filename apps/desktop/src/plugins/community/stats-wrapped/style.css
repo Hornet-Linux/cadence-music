@@ -93,3 +93,21 @@
     font-size: 2.6rem;
   }
 }
+/* The share card settles in gently once drawn. */
+.sw-share {
+  scroll-margin-top: 16px;
+}
+.sw-card-img {
+  animation: sw-card-in 240ms ease-out both;
+}
+@keyframes sw-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sw-card-img {
+    animation: none;
+  }
+}

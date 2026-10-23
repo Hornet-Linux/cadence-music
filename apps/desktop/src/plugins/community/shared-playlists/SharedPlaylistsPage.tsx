@@ -87,10 +87,16 @@ function Detail({ detail, me }: { detail: SharedDetail; me: number | null }) {
 
   // Pick up other people's changes while this page is open.
   useEffect(() => {
-    const timer = setInterval(() => {
+    const tick = () => {
       if (document.visibilityState === "visible") void store.refresh();
-    }, 8000);
-    return () => clearInterval(timer);
+    };
+    const timer = setInterval(tick, 5000);
+    // Coming back to the tab or app shows the latest votes straight away.
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail.id]);
 

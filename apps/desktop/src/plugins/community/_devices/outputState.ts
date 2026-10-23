@@ -14,6 +14,8 @@ interface OutputState {
   /** A short message when the last switch or the current output failed. */
   error: string | null;
   busy: boolean;
+  /** Per output target: why devices may not be able to fetch audio (e.g. the server address is private). */
+  warnings: Record<string, string | null>;
   setActive: (active: ActiveOutput | null) => void;
   setError: (error: string | null) => void;
 }
@@ -22,6 +24,7 @@ export const useOutput = create<OutputState>((set) => ({
   active: null,
   error: null,
   busy: false,
+  warnings: {},
   setActive: (active) => set({ active }),
   setError: (error) => set({ error }),
 }));
@@ -95,6 +98,11 @@ export function isLocalSilenced(): boolean {
 }
 
 /** Show or clear a warning without changing which output is selected (e.g. "this track cannot be played there"). */
+/** Remember (or clear) a target's hint about devices not being able to reach the server. */
+export function setTargetWarning(targetId: string, message: string | null): void {
+  useOutput.setState((s) => (s.warnings[targetId] === message ? s : { warnings: { ...s.warnings, [targetId]: message } }));
+}
+
 export function setOutputWarning(message: string | null): void {
   useOutput.setState({ error: message });
 }

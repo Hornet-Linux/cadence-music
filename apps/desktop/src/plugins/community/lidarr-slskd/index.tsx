@@ -76,22 +76,23 @@ function Settings({ config, onSaved }: { config: Config; onSaved: () => void }) 
       <Check checked={accepted} onChange={setAccepted}>
         I have read this and take responsibility for what I request.
       </Check>
+      {!accepted && <p className="muted small">Tick the box above to unlock the settings. Nothing can be saved, tested or searched until you have read the notice.</p>}
       {error && <Notice tone="error">{error}</Notice>}
       <div className="ops-grid">
         <Field label="Lidarr address" htmlFor="ld-url">
-          <input id="ld-url" type="url" value={lUrl} onChange={(e) => setLUrl(e.target.value)} placeholder="http://lidarr:8686" />
+          <input id="ld-url" disabled={!accepted} type="url" value={lUrl} onChange={(e) => setLUrl(e.target.value)} placeholder="http://lidarr:8686" />
         </Field>
         <Field label="Lidarr API key" hint={config.lidarr?.apiKeySet ? "A key is saved. Leave blank to keep it." : "Lidarr: Settings, General, Security."} htmlFor="ld-key">
-          <input id="ld-key" type="password" autoComplete="off" value={lKey} onChange={(e) => setLKey(e.target.value)} />
+          <input id="ld-key" disabled={!accepted} type="password" autoComplete="off" value={lKey} onChange={(e) => setLKey(e.target.value)} />
         </Field>
         <Field label="Root folder (optional)" hint="Defaults to Lidarr's first root folder." htmlFor="ld-root">
-          <input id="ld-root" type="text" value={lRoot} onChange={(e) => setLRoot(e.target.value)} placeholder="/music" />
+          <input id="ld-root" disabled={!accepted} type="text" value={lRoot} onChange={(e) => setLRoot(e.target.value)} placeholder="/music" />
         </Field>
         <Field label="slskd address (optional)" htmlFor="sk-url">
-          <input id="sk-url" type="url" value={sUrl} onChange={(e) => setSUrl(e.target.value)} placeholder="http://slskd:5030" />
+          <input id="sk-url" disabled={!accepted} type="url" value={sUrl} onChange={(e) => setSUrl(e.target.value)} placeholder="http://slskd:5030" />
         </Field>
         <Field label="slskd API key" hint={config.slskd?.apiKeySet ? "A key is saved. Leave blank to keep it." : "Created in slskd's own configuration."} htmlFor="sk-key">
-          <input id="sk-key" type="password" autoComplete="off" value={sKey} onChange={(e) => setSKey(e.target.value)} />
+          <input id="sk-key" disabled={!accepted} type="password" autoComplete="off" value={sKey} onChange={(e) => setSKey(e.target.value)} />
         </Field>
       </div>
       <div className="ops-actions">
@@ -181,6 +182,7 @@ function Slskd() {
   const [q, setQ] = useState("");
   const [id, setId] = useState<string | null>(null);
   const [result, setResult] = useState<SlskdResult | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null);
   const status = useLoad(() => api<{ connected: boolean; version: string | null; state: string | null }>("api/slskd/status"));
 
   useEffect(() => {
@@ -192,9 +194,10 @@ function Slskd() {
         const r = await api<SlskdResult>(`api/slskd/search/${id}`);
         if (!alive) return;
         setResult(r);
+        setPollError(null);
         if (!r.isComplete) timer = setTimeout(() => void poll(), 2500);
-      } catch {
-        // The error shows on the next manual search.
+      } catch (err) {
+        if (alive) setPollError(err instanceof Error ? err.message : "Could not read the search results.");
       }
     };
     void poll();
@@ -206,6 +209,7 @@ function Slskd() {
 
   const start = async () => {
     setResult(null);
+    setPollError(null);
     const res = await run(() => api<{ id: string }>("api/slskd/search", { method: "POST", body: JSON.stringify({ query: q.trim() }) }));
     if (res) setId(res.id);
   };
@@ -220,6 +224,9 @@ function Slskd() {
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the network" aria-label="Search slskd" onKeyDown={(e) => e.key === "Enter" && q.trim().length > 1 && void start()} />
         <button className="btn" disabled={busy || q.trim().length < 2} onClick={() => void start()}>Search</button>
       </div>
+      {pollError && <Notice tone="error">{pollError}</Notice>}
+      {id && !result && !pollError && <p className="muted small">Searching...</p>}
+      {result && result.isComplete && result.responses.length === 0 && <p className="muted">Nobody answered that search.</p>}
       {result && (
         <>
           <p className="muted small">{result.isComplete ? "Finished" : "Searching"}: {result.responseCount} people, {result.fileCount} files.</p>
@@ -228,7 +235,7 @@ function Slskd() {
               <div className="ops-item" key={r.username}>
                 <div className="ops-item-text">
                   <div className="ops-item-title">{r.username} {r.freeUploadSlots && <span className="ops-pill ok">free slot</span>}</div>
-                  <div className="ops-item-sub">{r.fileCount} files, for example {r.files[0]?.filename.split(/[\\/]/).pop() ?? ""}</div>
+                  <div className="ops-item-sub">{r.fileCount} file{r.fileCount === 1 ? "" : "s"}, for example {r.files[0]?.filename.split(/[\\/]/).pop() ?? ""}</div>
                 </div>
               </div>
             ))}
@@ -247,6 +254,7 @@ function Panel() {
       {config.error && <Notice tone="error">{config.error}</Notice>}
       {config.data && <Settings config={config.data} onSaved={config.reload} />}
       {config.data?.acknowledged && config.data.lidarr && <Requests config={config.data} />}
+      {config.data && !config.data.acknowledged && <p className="muted small">Album search and status appear here after you accept the notice and save your Lidarr address.</p>}
     </div>
   );
 }
