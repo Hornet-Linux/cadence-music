@@ -129,7 +129,8 @@ afterEach(async () => {
 function request(port: number, opts: { path: string; method?: string; headers?: Record<string, string>; body?: string }) {
   return new Promise<{ status: number; json: Record<string, unknown> }>((resolve, reject) => {
     const req = http.request(
-      { host: "127.0.0.1", port, path: opts.path, method: opts.method ?? "GET", headers: opts.headers },
+      // A fresh connection per request, so no pooled keep-alive socket outlives a server restart.
+      { host: "127.0.0.1", port, path: opts.path, method: opts.method ?? "GET", headers: opts.headers, agent: false },
       (res) => {
         let text = "";
         res.on("data", (c) => (text += c));

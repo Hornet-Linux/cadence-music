@@ -13,7 +13,7 @@ connections) is a plugin, on both the desktop and the server.
   local files on its own, or connects to your server.
 - **iOS app** (`apps/ios`) — sideloaded with a free Apple ID; plays from your
   server in the background. See [docs/IOS.md](docs/IOS.md).
-- **Android app** (`apps/android`) � a native shell around your server's web
+- **Android app** (`apps/android`) � a native shell around your server's web
   player; sideload the APK. See [docs/ANDROID.md](docs/ANDROID.md).
 - **Self-hosted server** (`apps/server`) — one Docker container. Scans your music
   folder, streams it with seeking, and handles accounts.
@@ -40,18 +40,23 @@ connections) is a plugin, on both the desktop and the server.
 
 ## Quick start
 
-**1. Run the server** on any Linux VPS, after pointing a domain's DNS at it:
+**1. Run the server** with Docker Compose (recommended). On any machine with Docker:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/install.sh | bash
+mkdir cadence && cd cadence
+curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/Hornet-Linux/cadence-music/main/deploy/compose/docker-compose.yml
+# edit the music folder and PUBLIC_URL in docker-compose.yml, then:
+docker compose up -d
 ```
 
-That installs Docker if needed, asks a few questions (Enter accepts the
-defaults), sets up HTTPS and prints a one-time setup code. Details and
-troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+No `.env` file needed. Want HTTPS for a domain? Use
+[`docker-compose.caddy.yml`](deploy/compose/docker-compose.caddy.yml) instead.
+Update with `docker compose pull && docker compose up -d`. Image tags, the
+optional helper script and troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
 
-**2. Claim it:** open `https://your-domain/app`, enter the setup code and choose
-your admin login. Manage people at `https://your-domain/admin`.
+**2. Claim it:** open `http://your-server:8787/app` (or your domain), enter the
+setup code from `docker compose logs cadence | grep "setup code"` and choose
+your admin login. Manage people and single sign-on at `/admin`.
 
 **3. Listen** in the browser at `/app`, or install the app:
 
