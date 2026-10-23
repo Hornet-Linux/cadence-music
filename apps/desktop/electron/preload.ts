@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AuthResponse } from "@uma/shared";
-import type { LlmConfig, LlmJsonRequest, LlmStatus } from "./llm";
+import type { LlmJsonRequest, LlmStatus } from "./llm";
+import type { LocalLlmConfig } from "./llmKeys";
 import type { SpotifyAccessToken, SpotifyStatus } from "./spotify";
 
 // The only surface the renderer (and, through it, plugins) can touch in the
@@ -30,11 +31,19 @@ const api = {
     token: () => ipcRenderer.invoke("spotify:token") as Promise<SpotifyAccessToken | null>,
     logout: () => ipcRenderer.invoke("spotify:logout") as Promise<void>,
   },
-  /** LLM calls for the AI DJ, made from the main process. */
+  /**
+   * LLM calls for the AI DJ, made from the main process. A saved provider is
+   * named by `providerId`; its key is attached here and only sent to the
+   * address it was saved for.
+   */
   llm: {
-    status: (config: LlmConfig) => ipcRenderer.invoke("llm:status", config) as Promise<LlmStatus>,
-    chatJson: <T = unknown>(config: LlmConfig, req: LlmJsonRequest) =>
+    status: (config: LocalLlmConfig) => ipcRenderer.invoke("llm:status", config) as Promise<LlmStatus>,
+    chatJson: <T = unknown>(config: LocalLlmConfig, req: LlmJsonRequest) =>
       ipcRenderer.invoke("llm:chat-json", config, req) as Promise<T>,
+    /** Save (or with null, remove) a provider's API key, bound to `baseUrl`'s origin. */
+    saveKey: (providerId: string, baseUrl: string, key: string | null) =>
+      ipcRenderer.invoke("llm:save-key", providerId, baseUrl, key) as Promise<void>,
+    hasKey: (providerId: string) => ipcRenderer.invoke("llm:has-key", providerId) as Promise<boolean>,
   },
   platform: process.platform,
 };

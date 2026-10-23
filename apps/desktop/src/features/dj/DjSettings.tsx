@@ -6,7 +6,7 @@ import { useDj } from "./djStore";
 import { EMPTY_FORM, ProviderForm, type ProviderFormValue } from "./ProviderForm";
 import {
   effectiveOption,
-  getApiKey,
+  hasApiKey,
   keyStorageNote,
   providerOptions,
   providerStatus,
@@ -61,12 +61,13 @@ export function DjSettings() {
   async function testLocal(v: ProviderFormValue): Promise<LlmStatus> {
     const llm = window.host?.llm;
     if (!llm) return { available: false, models: [], error: "Not available in this build" };
-    const apiKey = v.apiKey || (editing && editing !== "new" && !v.clearKey ? await getApiKey(editing.id) : undefined);
-    return llm.status({ kind: v.kind, baseUrl: v.baseUrl.trim(), model: v.model.trim(), ...(apiKey ? { apiKey } : {}) });
+    // A newly typed key is tried as given; otherwise the saved provider's own key (the host adds it).
+    const saved = editing && editing !== "new" && !v.clearKey ? { providerId: editing.id } : {};
+    return llm.status({ kind: v.kind, baseUrl: v.baseUrl.trim(), model: v.model.trim(), ...(v.apiKey ? { apiKey: v.apiKey } : saved) });
   }
 
   async function edit(p: LocalProvider) {
-    setEditingHasKey(!!(await getApiKey(p.id)));
+    setEditingHasKey(await hasApiKey(p.id));
     setEditing(p);
   }
 

@@ -105,7 +105,7 @@ export function ServerProviders() {
               {!p.enabled && <span className="badge">Off</span>}
               <div className="muted small">
                 {p.kind} · {p.model} · {p.baseUrl}
-                {p.hasKey ? " · key saved" : ""}
+                {p.keyUnreadable ? " · saved key can't be read: enter it again" : p.hasKey ? " · key saved" : ""}
               </div>
             </div>
             <div className="row">

@@ -456,7 +456,7 @@ const SCRIPT = String.raw`
       const items = list.items;
       const rows = items.map((p) => h("tr", null,
         h("td", null, h("b", null, p.name), h("small", null, KINDS[p.kind] || p.kind)),
-        h("td", null, p.model, h("small", null, p.baseUrl + (p.hasKey ? " · key saved" : ""))),
+        h("td", null, p.model, h("small", null, p.baseUrl + (p.keyUnreadable ? " · saved key can't be read: enter it again" : p.hasKey ? " · key saved" : ""))),
         h("td", null, p.isDefault ? h("span", { class: "pill admin" }, "Default") : null, " ", p.enabled ? null : h("span", { class: "pill" }, "Off")),
         h("td", null, h("div", { class: "actions" },
           act("Test", async () => {
