@@ -1,31 +1,107 @@
 // Browser code for the admin panel, part 3: single sign-on, plugins, activity and start-up.
 export const ADMIN_C = String.raw`
-// ---- Single sign-on (read-only) -----------------------------------------
+// ---- Single sign-on ------------------------------------------------------
+const SSO_ENV = { issuer: "OIDC_ISSUER", clientId: "OIDC_CLIENT_ID", clientSecret: "OIDC_CLIENT_SECRET", displayName: "OIDC_NAME", scopes: "OIDC_SCOPES", allowedGroups: "OIDC_ALLOWED_GROUPS", adminGroups: "OIDC_ADMIN_GROUPS" };
+
 async function renderSso() {
   const s = await api("/api/admin/sso");
-  if (!s.configured) {
-    return render(pageHead("Single sign-on", "Let people sign in with an account from your own identity provider."),
-      card("Not set up", "Single sign-on isn't configured on this server. It is set with OIDC_* variables in the server's environment (the setup script can do it), then a restart. This page only shows its status; it never changes it.",
-        h("p", { class: "muted" }, "Works with Authentik, Keycloak, Authelia, Google and any other OpenID Connect provider.")));
+  const locked = s.locked || {};
+  const anyEnv = Object.keys(locked).some((k) => locked[k]);
+  const anySaved = Object.keys(s.source || {}).some((k) => s.source[k] === "admin");
+  const lockNote = (f) => locked[f] ? "Set by " + SSO_ENV[f] + " in the server's environment, so it is locked here." : null;
+  const input = (id, f, value, extra) => h("input", Object.assign({ id: id, value: value || "", disabled: !!locked[f], autocomplete: "off", spellcheck: "false" }, extra || {}));
+
+  const issuer = input("sso-issuer", "issuer", s.issuer, { type: "url", placeholder: "https://auth.example.com/application/o/cadence/" });
+  const clientId = input("sso-client", "clientId", s.clientId, { placeholder: "cadence" });
+  const secret = input("sso-secret", "clientSecret", "", { type: "password", autocomplete: "new-password",
+    placeholder: locked.clientSecret ? "Set in the environment" : s.hasClientSecret ? "Saved. Leave empty to keep it" : "Leave empty for a public client" });
+  const name = input("sso-name", "displayName", s.source && s.source.displayName === "default" ? "" : s.name, { placeholder: "Single sign-on", maxlength: "60" });
+  const scopes = input("sso-scopes", "scopes", s.scopes, { placeholder: "openid profile email" });
+  const allowed = input("sso-allowed", "allowedGroups", (s.allowedGroups || []).join(", "), { placeholder: "music-users" });
+  const admins = input("sso-admins", "adminGroups", (s.adminGroups || []).join(", "), { placeholder: "music-admins" });
+  let removeSecret = false;
+  const result = saying();
+
+  function body() {
+    const b = {};
+    if (!locked.issuer) b.issuer = issuer.value.trim();
+    if (!locked.clientId) b.clientId = clientId.value.trim();
+    if (!locked.displayName) b.displayName = name.value.trim();
+    if (!locked.scopes) b.scopes = scopes.value.trim();
+    if (!locked.allowedGroups) b.allowedGroups = allowed.value;
+    if (!locked.adminGroups) b.adminGroups = admins.value;
+    if (!locked.clientSecret) b.clientSecret = removeSecret ? null : secret.value;
+    return b;
   }
-  const list = (a) => (a.length ? a.join(", ") : "Anyone who can sign in there");
-  render(pageHead("Single sign-on", "Read-only. Change it in the server's environment, then restart."),
-    s.discovery.ok ? h("div", { class: "banner ok", role: "status" }, "The provider " + s.name + " is reachable and answered its discovery document.")
-      : h("div", { class: "banner error", role: "alert" }, "Couldn't reach the provider" + (s.discovery.error ? ": " + s.discovery.error : ".")),
-    !s.publicUrlSet ? h("div", { class: "banner warn" }, "PUBLIC_URL isn't set, so sign-in can't return to this server. Set it and restart.") : null,
-    card("Provider", null, h("dl", { class: "kv" },
-      h("dt", null, "Button label"), h("dd", null, "Sign in with " + s.name),
-      h("dt", null, "Issuer"), h("dd", null, h("code", null, s.issuer)),
-      h("dt", null, "Client ID"), h("dd", null, h("code", null, s.clientId)),
-      h("dt", null, "Client secret"), h("dd", null, s.hasClientSecret ? "Set (hidden)" : "None (public client)"),
-      h("dt", null, "Scopes"), h("dd", null, s.scopes),
-      h("dt", null, "Accounts using it"), h("dd", null, String(s.ssoAccounts)))),
-    card("Access", "Groups are read from the sign-in token.", h("dl", { class: "kv" },
-      h("dt", null, "Allowed groups"), h("dd", null, list(s.allowedGroups)),
-      h("dt", null, "Admin groups"), h("dd", null, s.adminGroups.length ? s.adminGroups.join(", ") : "None: admins are made here"))),
-    card("Redirect addresses", "Add these as allowed redirect URIs at your provider.", h("dl", { class: "kv" },
-      h("dt", null, "Server callback"), h("dd", null, s.callbackUrl ? h("code", null, s.callbackUrl) : "Needs PUBLIC_URL"),
-      h("dt", null, "Web player"), h("dd", null, s.webCallbackUrl ? h("code", null, s.webCallbackUrl) : "Needs PUBLIC_URL"))));
+
+  async function test() {
+    result.say("Contacting the provider…");
+    try {
+      const r = await api("/api/admin/sso/test", { method: "POST", body: JSON.stringify({ issuer: issuer.value.trim() }) });
+      result.say(r.ok ? "Connected. The provider answered as " + r.issuer + "." : "Couldn't use that issuer: " + r.error, !r.ok);
+      return r.ok;
+    } catch (err) { result.say(err.message, true); return false; }
+  }
+
+  const ERRORS = {
+    invalid_issuer: "The issuer must be an http(s) address, like https://auth.example.com/realms/home.",
+    invalid_clientId: "The client ID can't contain spaces.",
+    scopes_need_openid: "Scopes must include openid.",
+    invalid_allowedGroups: "Allowed groups: use a comma-separated list of up to 50 names.",
+    invalid_adminGroups: "Admin groups: use a comma-separated list of up to 50 names.",
+  };
+  Object.assign(messages, ERRORS);
+
+  async function save() {
+    try {
+      const next = await api("/api/admin/sso", { method: "PUT", body: JSON.stringify(body()) });
+      toast(next.active ? "Saved. The next sign-in uses these settings." : "Saved");
+      renderSso();
+    } catch (err) { result.say(err.message, true); }
+  }
+
+  const status = !s.configured
+    ? h("div", { class: "banner", role: "status" }, "Not set up yet. Fill in the issuer and client ID below and save; the Sign in button appears in the apps straight away.")
+    : s.discovery && s.discovery.ok ? h("div", { class: "banner ok", role: "status" }, "On. " + s.name + " is reachable and answered its discovery document.")
+      : h("div", { class: "banner error", role: "alert" }, "Couldn't reach the provider" + (s.discovery && s.discovery.error ? ": " + s.discovery.error : "."));
+
+  const copyRow = (label, value) => h("div", { class: "field" },
+    h("span", { class: "help" }, label),
+    value ? h("div", { class: "copy-row", style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" },
+      h("code", { style: "overflow-wrap:anywhere;min-width:0;flex:1 1 200px;padding:10px 12px" }, value),
+      h("button", { class: "btn", type: "button", onclick: () => copy(value), "aria-label": "Copy " + label }, "Copy"))
+      : h("p", { class: "muted" }, "Needs PUBLIC_URL"));
+
+  render(pageHead("Single sign-on", "Let people sign in with an account from your own identity provider (Authentik, Keycloak, Authelia, Google…)."),
+    status,
+    !s.publicUrlSet ? h("div", { class: "banner warn" }, "PUBLIC_URL isn't set, so sign-in can't return to this server. Set it in the server's environment and restart.") : null,
+    s.secretUnreadable ? h("div", { class: "banner warn" }, "The saved client secret can't be read (the server secret changed). Enter it again.") : null,
+    card("1. Register Cadence at your provider", "Create an OpenID Connect client (confidential or public with PKCE) and add both addresses as allowed redirect URIs.",
+      copyRow("Server callback", s.callbackUrl), copyRow("Web player", s.webCallbackUrl)),
+    card("2. Provider", "Saved here and used from the next sign-in. No restart needed." + (anyEnv ? " Fields set with OIDC_* variables win and are locked; change those in the environment and restart." : ""),
+      field("Issuer", issuer, lockNote("issuer") || "The provider's issuer address. Cadence reads <issuer>/.well-known/openid-configuration."),
+      field("Client ID", clientId, lockNote("clientId")),
+      field("Client secret", secret, lockNote("clientSecret") || (s.hasClientSecret ? "Stored encrypted and never shown again. Type a new one to replace it." : "Stored encrypted with this server's secret.")),
+      !locked.clientSecret && s.hasClientSecret ? h("label", { class: "check", style: "display:flex;gap:10px;align-items:center;min-height:44px" },
+        h("input", { type: "checkbox", id: "sso-remove-secret", onchange: (e) => { removeSecret = e.target.checked; secret.disabled = removeSecret; } }),
+        "Remove the saved secret (public client)") : null,
+      field("Button label", name, lockNote("displayName") || "Shown as Sign in with <label>."),
+      field("Scopes", scopes, lockNote("scopes") || "Space-separated. Must include openid. Add groups if your provider needs it for the groups claim.")),
+    card("3. Who can sign in", "Groups come from the groups claim in the ID token or userinfo. Comma-separated; empty means anyone your provider lets through.",
+      field("Allowed groups", allowed, lockNote("allowedGroups")),
+      field("Admin groups", admins, lockNote("adminGroups") || "Members become admins here (and stop being admins when removed from the group). Empty: admins are made on the People page."),
+      h("p", { class: "muted small" }, s.ssoAccounts === 1 ? "1 account signs in this way." : s.ssoAccounts + " accounts sign in this way.")),
+    h("section", { class: "card" },
+      h("div", { class: "form-actions" },
+        h("button", { class: "btn", type: "button", onclick: test }, "Test connection"),
+        button("Save", save, "primary"),
+        anySaved ? button("Remove saved settings", async () => {
+          const ok = await ask({ title: "Remove the saved single sign-on settings?", text: anyEnv ? "Values from the environment stay in effect." : "The Sign in button disappears from the apps. Existing accounts stay; their owners need a password to sign in.", confirm: "Remove", danger: true });
+          if (!ok) return;
+          await api("/api/admin/sso", { method: "DELETE" });
+          toast("Single sign-on settings removed"); renderSso();
+        }, "danger") : null),
+      result));
 }
 
 // ---- Plugins -------------------------------------------------------------
