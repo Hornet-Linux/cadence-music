@@ -55,6 +55,18 @@ export interface Config {
   jellyfinUrl?: string;
   /** Where the sign-up page sends people to download the desktop app. */
   appDownloadUrl?: string;
+  /**
+   * An Ollama the server runs next to itself (the bundled `ollama` container,
+   * or one on the server's network). The server sets it up as an AI DJ
+   * provider and downloads the model, so apps never need Ollama themselves.
+   */
+  ollama?: { url: string; model: string };
+  /**
+   * Earlier server secrets (PREVIOUS_SERVER_SECRET, comma-separated). Saved
+   * API keys sealed with one of them still open, and are re-sealed with the
+   * current secret on start, so SERVER_SECRET can be rotated.
+   */
+  previousSecrets?: string[];
   /** 0 disables periodic rescans. */
   scanIntervalMinutes: number;
   /**
@@ -142,6 +154,26 @@ function parseSignup(env: Env): Config["signup"] {
   throw new Error("SIGNUP_MODE must be closed, open or invite");
 }
 
+export const DEFAULT_OLLAMA_MODEL = "llama3.2:3b";
+
+/** OLLAMA_URL (and OLLAMA_MODEL): an Ollama the server itself calls. */
+export function parseOllama(env: Env): Config["ollama"] {
+  const raw = env.OLLAMA_URL?.trim();
+  if (!raw) return undefined;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("OLLAMA_URL must be a URL such as http://ollama:11434");
+  }
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password || url.search || url.hash) {
+    throw new Error("OLLAMA_URL must be a plain http(s) address such as http://ollama:11434");
+  }
+  const model = env.OLLAMA_MODEL?.trim() || DEFAULT_OLLAMA_MODEL;
+  if (model.length > 200 || !/^[\w.:/-]+$/.test(model)) throw new Error("OLLAMA_MODEL must be a model name such as llama3.2:3b");
+  return { url: url.href.replace(/\/+$/, ""), model };
+}
+
 export function loadConfig(env: Env = process.env): Config {
   const publicUrl = env.PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined;
   if (publicUrl && !/^https?:\/\//.test(publicUrl)) {
@@ -208,6 +240,8 @@ export function loadConfig(env: Env = process.env): Config {
   }
 
   return {
+    ollama: parseOllama(env),
+    previousSecrets: list(env.PREVIOUS_SERVER_SECRET),
     host: env.HOST?.trim() || "0.0.0.0",
     port,
     dataDir: path.resolve(env.DATA_DIR?.trim() || "./data"),

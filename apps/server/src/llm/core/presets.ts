@@ -15,6 +15,8 @@ export interface ProviderPreset {
 
 /** One-click starting points. Any other OpenAI-style server works as "custom". */
 export const PRESETS: readonly ProviderPreset[] = [
+  // Cadence's own Ollama container (docker compose profile "ollama" or "ollama-gpu").
+  { id: "ollama-bundled", name: "Ollama (bundled with Cadence)", kind: "ollama", baseUrl: "http://ollama:11434", needsKey: false, local: false, defaultModel: "llama3.2:3b" },
   { id: "ollama", name: "Ollama", kind: "ollama", baseUrl: "http://localhost:11434", needsKey: false, local: true, defaultModel: "llama3.2:3b" },
   { id: "lmstudio", name: "LM Studio", kind: "openai-compatible", baseUrl: "http://localhost:1234/v1", needsKey: false, local: true },
   { id: "llamacpp", name: "llama.cpp server", kind: "openai-compatible", baseUrl: "http://localhost:8080/v1", needsKey: false, local: true },

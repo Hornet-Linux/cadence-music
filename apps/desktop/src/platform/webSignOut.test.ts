@@ -83,7 +83,7 @@ describe("signing out of the web player", () => {
     expect(spotify).toMatchObject({ status: "signed-out", clientId: "", profile: null, tracks: [], total: 0 });
     expect(useAppleMusic.getState()).toMatchObject({ status: "unavailable", tracks: [], total: 0 });
     expect(useProviders.getState().selected).toBe("");
-    expect(useProviders.getState().local.map((p) => p.id)).toEqual(["ollama"]);
+    expect(useProviders.getState().local).toEqual([]);
   });
 
   it("still clears storage when MusicKit can't sign out", async () => {

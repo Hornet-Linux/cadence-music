@@ -242,6 +242,23 @@ if confirm "Set up Apple Music now?" n; then
 fi
 
 # ---------------------------------------------------------------------------
+section "AI DJ (optional)"
+info "The AI DJ can run its language model on this server (with Ollama in"
+info "Docker), so phones and computers don't need Ollama or an API key."
+OLLAMA_PROFILE="" OLLAMA_MODEL=""
+if confirm "Run the AI DJ on this server?" n; then
+  OLLAMA_PROFILE="ollama" model_default="llama3.2:3b"
+  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
+    info "Found an NVIDIA GPU. Using it needs the NVIDIA Container Toolkit."
+    if confirm "Use the GPU?" y; then OLLAMA_PROFILE="ollama-gpu" model_default="llama3.1:8b"; fi
+  else
+    info "No NVIDIA GPU found, so it runs on the CPU: a small model works best."
+  fi
+  ask_valid OLLAMA_MODEL "Model (from ollama.com/library)" '^[A-Za-z0-9_.:/-]{1,200}$'     "Enter a model name such as llama3.2:3b." "$model_default"
+  info "The server downloads it on first start; that can take a few minutes."
+fi
+
+# ---------------------------------------------------------------------------
 section "Writing $ENV_FILE"
 umask 077
 {
@@ -249,7 +266,9 @@ umask 077
   echo "MUSIC_PATH=$(envq "$MUSIC_PATH")"
   echo "HOST_PORT=$(envq "$HOST_PORT")"
   echo "PUBLIC_URL=$(envq "$PUBLIC_URL")"
-  if [ -n "$BUNDLED_HTTPS" ]; then echo "COMPOSE_PROFILES='https'"; fi
+  profiles="${BUNDLED_HTTPS:+https}"
+  if [ -n "$OLLAMA_PROFILE" ]; then profiles="${profiles:+$profiles,}$OLLAMA_PROFILE"; fi
+  if [ -n "$profiles" ]; then echo "COMPOSE_PROFILES=$(envq "$profiles")"; fi
   echo "SCAN_INTERVAL_MINUTES='60'"
   echo "LOG_LEVEL='info'"
   echo "SIGNUP_MODE=$(envq "$SIGNUP_MODE")"
@@ -268,6 +287,10 @@ umask 077
   fi
   if [ -n "$SPOTIFY_CLIENT_ID" ]; then
     echo "SPOTIFY_CLIENT_ID=$(envq "$SPOTIFY_CLIENT_ID")"
+  fi
+  if [ -n "$OLLAMA_PROFILE" ]; then
+    echo "OLLAMA_URL='http://ollama:11434'"
+    echo "OLLAMA_MODEL=$(envq "$OLLAMA_MODEL")"
   fi
   if [ -n "$APPLE_MUSIC_TEAM_ID" ]; then
     echo "APPLE_MUSIC_TEAM_ID=$(envq "$APPLE_MUSIC_TEAM_ID")"

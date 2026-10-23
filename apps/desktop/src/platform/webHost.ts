@@ -2,6 +2,7 @@ import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
 import type { CadenceNativeBridge } from "../host";
 import { createLlmProvider } from "../../electron/llm";
+import { hasKey, resolveConfig, saveKey } from "../../electron/llmKeys";
 import { authNoticeFor, showAuthNotice } from "./authNotice";
 
 // Browser stand-in for the Electron preload bridge (window.host), so the same
@@ -185,8 +186,10 @@ const auth: HostBridge["auth"] = {
 // Called straight from the page; Ollama must allow this origin (OLLAMA_ORIGINS).
 
 const llm: HostBridge["llm"] = {
-  status: (config) => createLlmProvider(config).status(),
-  chatJson: (config, req) => createLlmProvider(config).chatJson(req),
+  status: async (config) => createLlmProvider(await resolveConfig(secrets, config)).status(),
+  chatJson: async (config, req) => createLlmProvider(await resolveConfig(secrets, config)).chatJson(req),
+  saveKey: (providerId, baseUrl, key) => saveKey(secrets, providerId, baseUrl, key),
+  hasKey: (providerId) => hasKey(secrets, providerId),
 };
 
 // Desktop-only integrations (Discord, global shortcuts, control API, Slack) do

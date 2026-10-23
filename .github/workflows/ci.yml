@@ -274,10 +274,11 @@ jobs:
         working-directory: deploy
         run: |
           # domain, own web server?, port, music files? (+folder, create it), local admin,
-          # sign-up (+invite, code), OIDC (+6 answers), Spotify (+id), Apple Music, start now
+          # sign-up (+invite, code), OIDC (+6 answers), Spotify (+id), Apple Music,
+          # AI DJ on this server (+model; no GPU on the runner), start now
           printf '%s\n' music.example.test y '' y /tmp/uma-setup-music y n y y friends-code \
             y https://auth.example.test/application/o/music/ music-app s3cret-value '' music-users music-admins \
-            y 0123456789abcdef0123456789abcdef n n | bash setup.sh
+            y 0123456789abcdef0123456789abcdef n y qwen3:4b n | bash setup.sh
           test "$(stat -c %a .env)" = 600
           test -d /tmp/uma-setup-music
           grep -qx "PUBLIC_URL='https://music.example.test'" .env
@@ -290,7 +291,11 @@ jobs:
           grep -qx "SPOTIFY_CLIENT_ID='0123456789abcdef0123456789abcdef'" .env
           grep -qx "SIGNUP_MODE='invite'" .env
           grep -qx "SIGNUP_INVITE_CODE='friends-code'" .env
-          if grep -q COMPOSE_PROFILES .env || test -f Caddyfile; then echo "unexpected bundled Caddy"; exit 1; fi
+          grep -qx "COMPOSE_PROFILES='ollama'" .env
+          grep -qx "OLLAMA_URL='http://ollama:11434'" .env
+          grep -qx "OLLAMA_MODEL='qwen3:4b'" .env
+          docker compose config --services | grep -qx ollama
+          if docker compose config --services | grep -qx caddy || test -f Caddyfile; then echo "unexpected bundled Caddy"; exit 1; fi
           if grep -q ADMIN_PASSWORD .env; then echo "unexpected admin password"; exit 1; fi
           docker compose config --quiet
           # Re-running without confirming keeps the existing file.
@@ -302,10 +307,11 @@ jobs:
         working-directory: deploy
         run: |
           # domain, own web server? no (bundled Caddy), port, music files? no, admin,
-          # sign-up, OIDC, Spotify, Apple Music, start now
-          printf '%s\n' music.example.test n '' n n n n n n n | bash setup.sh
+          # sign-up, OIDC, Spotify, Apple Music, AI DJ, start now
+          printf '%s\n' music.example.test n '' n n n n n n n n | bash setup.sh
           grep -qx "MUSIC_PATH='./music'" .env
           grep -qx "COMPOSE_PROFILES='https'" .env
+          if grep -q OLLAMA_URL .env; then echo "unexpected Ollama"; exit 1; fi
           grep -q "reverse_proxy server:8787" Caddyfile
           docker compose config --services | grep -qx caddy
           grep -qx "SIGNUP_MODE='closed'" .env
