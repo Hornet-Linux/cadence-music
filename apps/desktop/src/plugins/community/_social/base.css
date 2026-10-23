@@ -29,7 +29,7 @@
   overflow-x: auto;
 }
 .sx-tabs button {
-  min-height: 40px;
+  min-height: 44px;
 }
 .sx-notice {
   margin-bottom: var(--sx-gap);
