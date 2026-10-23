@@ -33,9 +33,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package.json') }}
+          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-desktop-
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
 
@@ -57,9 +57,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package.json') }}
+          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-desktop-
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run test:coverage
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
@@ -83,9 +83,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package.json') }}
+          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-desktop-
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
       - name: Build the web player
         run: npm run build:web
@@ -116,9 +116,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package.json') }}
+          key: ${{ runner.os }}-npm-desktop-${{ hashFiles('apps/desktop/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-desktop-
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
       - name: Launch the app (Linux, virtual display) and take screenshots
         if: runner.os == 'Linux'
@@ -167,7 +167,7 @@ jobs:
           python -m pip install --upgrade castlabs-evs
           python -m castlabs_evs.account reauth -A "$EVS_ACCOUNT_NAME" -P "$EVS_PASSWD"
           echo "VMP_SIGN=1" >> "$GITHUB_ENV"
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - name: Build Windows installer
         run: npm run electron:build:win
       - name: Upload installer
@@ -205,7 +205,7 @@ jobs:
           python -m pip install --upgrade castlabs-evs
           python -m castlabs_evs.account reauth -A "$EVS_ACCOUNT_NAME" -P "$EVS_PASSWD"
           echo "VMP_SIGN=1" >> "$GITHUB_ENV"
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - name: Build macOS disk images (Apple Silicon and Intel)
         run: npm run electron:build:mac
       - name: Check the apps are signed and launch
@@ -238,9 +238,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-server-${{ hashFiles('apps/server/package.json') }}
+          key: ${{ runner.os }}-npm-server-${{ hashFiles('apps/server/package-lock.json') }}
           restore-keys: ${{ runner.os }}-npm-server-
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

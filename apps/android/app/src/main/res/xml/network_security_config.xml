@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Self-hosters often run Cadence over plain http on their LAN (http://192.168.1.20:8787),
-  where there is no certificate to check, so cleartext is allowed. https servers are
-  validated normally. See docs/ANDROID.md.
+  where there is no certificate to check. The server address is typed at run time, which
+  this file can't express, so cleartext is permitted here and narrowed at run time:
+  WebPolicy lets plain http reach only the configured server and local-network addresses
+  (PlayerWebView refuses everything else). https servers are validated normally.
+  See docs/ANDROID.md.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true" />

@@ -6,8 +6,13 @@ import { useSpotify } from "@/plugins/builtins/spotify/spotifyStore";
 // Browser storage that belongs to the person using this browser, not to the
 // Cadence account: another person signing in next must not inherit it.
 const DEVICE_KEYS = [
+  "secret:server.token", // a session token from before the web player used a cookie
   "secret:spotify.session", // Spotify refresh token + client ID
   "spotify:clientId",
+  "collection:v1", // liked songs and playlists cache
+  "history:plays", // play history
+  "history:pending", // plays waiting to upload (sent before sign-out when possible)
+  "player:session", // the saved queue
   "dj:providers",
   "dj:provider",
   "dj:llm", // legacy single-provider setting
@@ -18,11 +23,16 @@ const DEVICE_KEY_PREFIXES = [
   "music.", // MusicKit's Apple Music user token
 ];
 
+/** Reloads the page; replaced in tests (jsdom can't navigate). */
+export const page = {
+  reload: () => location.replace(location.pathname.startsWith("/app") ? "/app/" : "/"),
+};
+
 /**
- * Web sign-out: forget everything this browser holds for the previous person's
- * streaming services and AI providers, in storage and in memory, so the next
- * sign-in starts clean. The Cadence session token itself is cleared by the
- * caller.
+ * Web sign-out: forget everything this browser holds for the previous person
+ * (streaming services, AI providers, library caches, history and queue), then
+ * reload so every in-memory store starts empty for the next person. The
+ * Cadence session itself is ended by the caller.
  */
 export async function clearWebDeviceData(): Promise<void> {
   try {
@@ -43,4 +53,5 @@ export async function clearWebDeviceData(): Promise<void> {
   useAppleMusic.setState({ status: "unavailable", tracks: [], total: 0, loading: false, error: null });
 
   resetLocalProviders();
+  page.reload();
 }
