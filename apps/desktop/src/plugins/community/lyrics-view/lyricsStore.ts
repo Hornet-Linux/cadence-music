@@ -4,7 +4,7 @@ import { usePluginHost } from "@/plugins/host";
 import type { Lyrics, PluginContext } from "../../types";
 import { isInstrumental } from "./lrc";
 import { findLyrics } from "./loader";
-import { TRANSLATE_LANGUAGES, useLyricsTranslators } from "./api";
+import { defaultTranslateLanguage, TRANSLATE_LANGUAGES, useLyricsTranslators } from "./api";
 
 export type Phase = "idle" | "no-providers" | "loading" | "ready" | "none" | "error";
 export type TranslateStatus = "idle" | "loading" | "ready" | "error";
@@ -121,7 +121,7 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
     fontScale: 1,
     karaoke: false,
     translateOn: false,
-    translateLanguage: "English",
+    translateLanguage: defaultTranslateLanguage(),
     translateStatus: "idle",
     translatedLines: null,
     translateError: null,
@@ -241,7 +241,7 @@ export function startLyricsView(ctx: PluginContext): void {
     fontScale: clampScale(prefs.fontScale ?? 1),
     choice: prefs.choice ?? "auto",
     translateOn: prefs.translateOn === true,
-    translateLanguage: prefs.translateLanguage && languages.includes(prefs.translateLanguage) ? prefs.translateLanguage : "English",
+    translateLanguage: prefs.translateLanguage && languages.includes(prefs.translateLanguage) ? prefs.translateLanguage : defaultTranslateLanguage(),
   });
   try {
     const state = ctx.player.getState();

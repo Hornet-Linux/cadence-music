@@ -304,6 +304,7 @@ export class Scrobbler {
             ? "The server owner has not allowed custom addresses."
             : `The server owner has not added ${LABELS[id]} API keys yet.`;
       }
+      const counts = this.queue.counts(userId, id, now);
       return {
         id,
         label: LABELS[id],
@@ -316,9 +317,9 @@ export class Scrobbler {
         awaitingApproval: !isConnected && !!state?.pending && now - state.pending.at < PENDING_TOKEN_MS,
         host: id === "listenbrainz" ? (isConnected ? state?.host ?? LISTENBRAINZ_DEFAULT_HOST : undefined) : id === "maloja" ? state?.url : undefined,
         lastError: state?.lastError,
-        lastSuccessAt: state?.lastSuccessAt,
+        lastSuccessAt: Math.max(state?.lastSuccessAt ?? 0, counts.lastSentAt ?? 0) || undefined,
         sent: state?.sent ?? 0,
-        queue: this.queue.counts(userId, id, now),
+        queue: counts,
       };
     });
     return {

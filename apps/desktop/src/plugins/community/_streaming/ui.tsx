@@ -258,6 +258,8 @@ export function ServicePage({ store, info, extra }: { store: StreamingStore; inf
   }, [signedIn, store]);
 
   const usable = !!status?.configured;
+  // Link-out services (TIDAL) cannot play in Cadence: a row tap opens the track there instead of a dead queue entry.
+  const linkOnly = status?.features.playback === "link";
   const canLibrary = usable && !!status?.features.library && !!status.connected;
   const wrap = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setError(null);
@@ -288,7 +290,14 @@ export function ServicePage({ store, info, extra }: { store: StreamingStore; inf
   const list = (tracks: Track[]) => (
     <div className="track-list">
       {tracks.map((t, i) => (
-        <TrackRow key={t.id} track={t} index={i} queue={tracks} likeAction={rowActions(t)} />
+        <TrackRow
+          key={t.id}
+          track={t}
+          index={i}
+          queue={tracks}
+          likeAction={rowActions(t)}
+          onPlay={linkOnly && links[t.id] ? () => window.open(links[t.id], "_blank", "noopener,noreferrer") : undefined}
+        />
       ))}
     </div>
   );

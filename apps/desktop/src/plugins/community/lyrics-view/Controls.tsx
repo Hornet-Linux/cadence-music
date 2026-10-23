@@ -1,4 +1,4 @@
-import { useLyricsTranslators, TRANSLATE_LANGUAGES } from "./api";
+import { useLyricsTranslators, TRANSLATE_LANGUAGES, looksEnglish } from "./api";
 import { FONT_MAX, FONT_MIN, FONT_STEP, useLyricsView } from "./lyricsStore";
 
 /** A- / A+ buttons. */
@@ -25,7 +25,9 @@ export function TranslateControls() {
   const status = useLyricsView((s) => s.translateStatus);
   const setOn = useLyricsView((s) => s.setTranslateOn);
   const setLanguage = useLyricsView((s) => s.setTranslateLanguage);
+  const lyrics = useLyricsView((s) => s.lyrics);
   if (!available) return null;
+  if (!on && language === "English" && lyrics && looksEnglish(lyrics.lines.map((l) => l.text))) return null;
   return (
     <div className="lv-group">
       <button type="button" className={`lv-btn${on ? " on" : ""}`} aria-pressed={on} onClick={() => setOn(!on)}>

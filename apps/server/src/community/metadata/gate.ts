@@ -46,7 +46,13 @@ export class Gate {
       } finally {
         this.waiting -= 1;
       }
-      return task();
+      try {
+        return await task();
+      } finally {
+        // Count the gap from when the answer came back: a slow DNS lookup or connect on the
+        // first call must not let the next one reach the service sooner than the limit.
+        this.last = Math.max(this.last, this.now());
+      }
     });
     this.tail = run.catch(() => undefined);
     return run;

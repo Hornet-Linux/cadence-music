@@ -63,14 +63,20 @@ export interface Summary {
 
 export function summarize(s: ServiceStatus): Summary {
   if (!s.connected) {
-    if (s.awaitingApproval) return { label: "Waiting for your approval", tone: "warn" };
-    if (!s.available) return { label: "Not set up on this server", tone: "off" };
+    if (s.awaitingApproval)
+      return { label: "Waiting for your approval", tone: "warn" };
+    if (!s.available)
+      return { label: "Not set up on this server", tone: "off" };
     return { label: "Not connected", tone: "off" };
   }
   if (s.needsReauth) return { label: "Sign-in needs renewing", tone: "error" };
   if (!s.enabled) return { label: "Paused", tone: "off" };
-  if (s.queue.pending > 0 && s.lastError) return { label: `Retrying, ${s.queue.pending} waiting`, tone: "warn" };
-  return { label: s.username ? `Connected as ${s.username}` : "Connected", tone: "ok" };
+  if (s.queue.pending > 0 && s.lastError)
+    return { label: `Retrying, ${s.queue.pending} waiting`, tone: "warn" };
+  return {
+    label: s.username ? `Connected as ${s.username}` : "Connected",
+    tone: "ok",
+  };
 }
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
@@ -98,7 +104,9 @@ export function untilTime(at: number, now: number): string {
 export function queueLine(q: QueueCounts, now: number): string {
   const parts: string[] = [];
   if (q.pending > 0) {
-    parts.push(`${q.pending} waiting${q.nextAttemptAt && q.nextAttemptAt > now ? `, next try ${untilTime(q.nextAttemptAt, now)}` : ""}`);
+    parts.push(
+      `${q.pending} waiting${q.nextAttemptAt && q.nextAttemptAt > now ? `, next try ${untilTime(q.nextAttemptAt, now)}` : ""}`,
+    );
   } else {
     parts.push("Nothing waiting");
   }
@@ -110,7 +118,9 @@ export function queueLine(q: QueueCounts, now: number): string {
 /** The server answers errors as "Request failed (409): message". Show only the message. */
 export function cleanError(err: unknown): string {
   const text = err instanceof Error ? err.message : String(err);
-  return text.replace(/^Request failed \(\d+\):\s*/, "") || "Something went wrong.";
+  return (
+    text.replace(/^Request failed \(\d+\):\s*/, "") || "Something went wrong."
+  );
 }
 
 const TOKEN_RE = /^[\w-]{8,100}$/;
@@ -124,8 +134,15 @@ export function validServiceAddress(raw: string): boolean {
   const text = raw.trim();
   if (!text || /\s/.test(text) || /[?#]/.test(text)) return false;
   try {
-    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`);
-    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password && !!url.hostname;
+    const url = new URL(
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`,
+    );
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      !url.username &&
+      !url.password &&
+      !!url.hostname
+    );
   } catch {
     return false;
   }
@@ -135,7 +152,27 @@ export const DEFAULT_LB_HOST = "https://api.listenbrainz.org";
 
 export const SERVICE_BLURB: Record<ServiceId, string> = {
   lastfm: "Send what you play to your Last.fm profile.",
-  librefm: "Send what you play to Libre.fm, the free Last.fm-compatible service.",
-  listenbrainz: "Send what you play to ListenBrainz, or to your own ListenBrainz server.",
+  librefm:
+    "Send what you play to Libre.fm, the free Last.fm-compatible service.",
+  listenbrainz:
+    "Send what you play to ListenBrainz, or to your own ListenBrainz server.",
   maloja: "Send what you play to your own Maloja server.",
 };
+
+/** Upstream status codes mean little to people: say what is happening and that Cadence keeps trying. */
+export function friendlyError(
+  message: string,
+  label: string,
+  queued: boolean,
+): string {
+  if (
+    /\(HTTP 5\d\d\)|\(HTTP 408\)|timed out|could not reach|unreachable/i.test(
+      message,
+    )
+  ) {
+    return queued
+      ? `${label} isn't answering right now. Your plays are saved and will be sent automatically.`
+      : `${label} wasn't answering a moment ago.`;
+  }
+  return message;
+}
