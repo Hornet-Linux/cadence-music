@@ -2,7 +2,8 @@ import { create } from "zustand";
 import type { DjPicksResponse, LlmProviderInfo, LlmProvidersResponse } from "@uma/shared";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { isWeb } from "@/platform/webHost";
-import { DEFAULT_LLM_CONFIG, extractJson, type LlmConfig, type LlmStatus, type ProviderKind } from "../../../electron/llm";
+import { DEFAULT_LLM_CONFIG, extractJson, type LlmStatus, type ProviderKind } from "../../../electron/llm";
+import type { LocalLlmConfig } from "../../../electron/llmKeys";
 import { buildDjMessages, cleanReply, DJ_SCHEMA, type DjPick, type DjRequest } from "./prompt";
 import type { TasteProfile } from "./tasteProfile";
 
@@ -18,7 +19,6 @@ const PROVIDERS_KEY = "dj:providers";
 const SELECTED_KEY = "dj:provider";
 const LEGACY_CONFIG_KEY = "dj:llm";
 const DEVICE_ID_KEY = "dj:device-id";
-const SECRET_PREFIX = "dj.key.";
 
 /** A provider configured on this device. The API key is kept apart, in secure storage. */
 export interface LocalProvider {
@@ -42,7 +42,7 @@ export interface ProviderOption {
   isDefault?: boolean;
 }
 
-const DEFAULT_LOCAL: LocalProvider = {
+const LEGACY_LOCAL: LocalProvider = {
   id: "ollama",
   name: "Ollama",
   kind: DEFAULT_LLM_CONFIG.kind,
@@ -68,12 +68,18 @@ function write(key: string, value: unknown): void {
   }
 }
 
+/**
+ * Providers on this device are only ones the listener added. There is no
+ * built-in "Ollama on this computer": the DJ's model runs on the server
+ * (docs/AI_DJ.md), so a fresh app never calls anything on the device itself.
+ */
 function loadLocal(): LocalProvider[] {
   const saved = read<LocalProvider[]>(PROVIDERS_KEY);
-  if (saved?.length) return saved;
-  // Carry over the single Ollama setting from before providers existed.
+  if (saved) return saved;
+  // Carry over an Ollama setting someone saved before providers existed.
   const legacy = read<{ baseUrl?: string; model?: string }>(LEGACY_CONFIG_KEY);
-  return [{ ...DEFAULT_LOCAL, baseUrl: legacy?.baseUrl ?? DEFAULT_LOCAL.baseUrl, model: legacy?.model ?? DEFAULT_LOCAL.model }];
+  if (!legacy) return [];
+  return [{ ...LEGACY_LOCAL, baseUrl: legacy.baseUrl ?? LEGACY_LOCAL.baseUrl, model: legacy.model ?? LEGACY_LOCAL.model }];
 }
 
 /** A stable random id for this install, so the server can tell its devices apart. */
@@ -95,20 +101,24 @@ export function deviceId(): string {
   return id;
 }
 
-export async function getApiKey(id: string): Promise<string | undefined> {
+/**
+ * Keys are saved by the host (the desktop app's main process, or the web
+ * player's storage), bound to the provider's address. The page can't read
+ * them back; it only learns whether one is saved.
+ */
+export async function hasApiKey(id: string): Promise<boolean> {
   try {
-    return (await window.host?.secrets?.get(SECRET_PREFIX + id)) ?? undefined;
+    return (await window.host?.llm?.hasKey?.(id)) ?? false;
   } catch {
-    return undefined;
+    return false;
   }
 }
 
-async function setApiKey(id: string, key: string | null): Promise<void> {
-  const secrets = window.host?.secrets;
-  if (!secrets) return;
+async function setApiKey(id: string, baseUrl: string, key: string | null): Promise<void> {
+  const llm = window.host?.llm;
+  if (!llm?.saveKey) return;
   try {
-    if (key) await secrets.set(SECRET_PREFIX + id, key);
-    else await secrets.delete(SECRET_PREFIX + id);
+    await llm.saveKey(id, baseUrl, key);
   } catch (err) {
     console.warn("Could not save the API key securely", err);
   }
@@ -123,13 +133,12 @@ export function keyStorageNote(): string {
 
 /** Forget every provider configured on this device (the web player does this on sign-out). */
 export function resetLocalProviders(): void {
-  useProviders.setState({ local: [{ ...DEFAULT_LOCAL }], selected: "", remote: [], native: null });
+  useProviders.setState({ local: [], selected: "", remote: [], native: null });
 }
 
-/** The config to call a local provider with, key included. */
-export async function localConfig(p: LocalProvider): Promise<LlmConfig> {
-  const apiKey = await getApiKey(p.id);
-  return { kind: p.kind, baseUrl: p.baseUrl, model: p.model, ...(apiKey ? { apiKey } : {}) };
+/** The config to call a local provider with. The host adds its saved key. */
+export async function localConfig(p: LocalProvider): Promise<LocalLlmConfig> {
+  return { kind: p.kind, baseUrl: p.baseUrl, model: p.model, providerId: p.id };
 }
 
 interface ProvidersState {
@@ -157,7 +166,7 @@ export const useProviders = create<ProvidersState>((set, get) => ({
 
   async addLocal(p, apiKey) {
     const id = Math.random().toString(36).slice(2, 10);
-    if (apiKey) await setApiKey(id, apiKey);
+    if (apiKey) await setApiKey(id, p.baseUrl, apiKey);
     const local = [...get().local, { ...p, id }];
     set({ local });
     write(PROVIDERS_KEY, local);
@@ -165,14 +174,15 @@ export const useProviders = create<ProvidersState>((set, get) => ({
   },
 
   async updateLocal(id, patch, apiKey) {
-    if (apiKey !== undefined) await setApiKey(id, apiKey);
+    const baseUrl = patch.baseUrl ?? get().local.find((p) => p.id === id)?.baseUrl ?? "";
+    if (apiKey !== undefined) await setApiKey(id, baseUrl, apiKey);
     const local = get().local.map((p) => (p.id === id ? { ...p, ...patch } : p));
     set({ local });
     write(PROVIDERS_KEY, local);
   },
 
   async removeLocal(id) {
-    await setApiKey(id, null);
+    await setApiKey(id, "", null);
     const local = get().local.filter((p) => p.id !== id);
     set({ local });
     write(PROVIDERS_KEY, local);

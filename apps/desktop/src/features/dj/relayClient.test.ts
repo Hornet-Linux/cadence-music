@@ -6,7 +6,7 @@ vi.mock("@/plugins/builtins/server/serverStore", () => ({
   useServer: { getState: () => ({ url: "", token: null, user: null }), subscribe: () => () => undefined },
 }));
 
-const { buildRegistration, classifyConnect, parseEvents, runJob } = await import("./relayClient");
+const { buildRegistration, classifyConnect, MAX_RUNNING_JOBS, parseEvents, runJob } = await import("./relayClient");
 
 const provider = (over: Partial<import("./providers").LocalProvider> = {}) => ({
   id: "ollama",
@@ -66,6 +66,17 @@ describe("runJob", () => {
     expect(await runJob(job(), [provider({ share: false })], llm)).toMatchObject({ ok: false });
     expect(await runJob(job({ providerId: "other" }), [provider()], llm)).toMatchObject({ ok: false });
     expect(await runJob(job(), [provider()], llm)).toEqual({ ok: false, error: "Ollama isn't running" });
+  });
+
+  it("runs at most a few jobs at once, whatever the server sends", async () => {
+    let release = () => undefined as void;
+    const gate = new Promise<void>((r) => (release = r));
+    const llm = { status: vi.fn(), chatJson: vi.fn().mockImplementation(() => gate.then(() => ({ picks: [] }))) };
+    const first = Array.from({ length: MAX_RUNNING_JOBS }, () => runJob(job(), [provider()], llm));
+    expect(await runJob(job(), [provider()], llm)).toEqual({ ok: false, error: "That device is busy" });
+    release();
+    await Promise.all(first);
+    expect(await runJob(job(), [provider()], llm)).toEqual({ ok: true, data: { picks: [] } });
   });
 });
 

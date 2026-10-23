@@ -4,6 +4,7 @@ import type { Db } from "./db.js";
 import type { FetchFn } from "./auth/oidc.js";
 import { oidcResolver } from "./auth/oidcSettings.js";
 import { registerAuthRoutes } from "./auth/routes.js";
+import { csrfOk, registerWebSessionCookies, sessionCredential } from "./auth/webSession.js";
 import { startSessionPurge, userForToken } from "./auth/sessions.js";
 import { registerWebApp } from "./web/webApp.js";
 import { Settings } from "./settings.js";
@@ -11,6 +12,7 @@ import { adminPlugin } from "./admin/plugin.js";
 import { historyPlugin } from "./history/plugin.js";
 import { collectionPlugin } from "./collection/plugin.js";
 import { integrationsPlugin } from "./integrations/plugin.js";
+import { spotifySessionPlugin } from "./integrations/spotifySession.js";
 import { libraryPlugin } from "./library/plugin.js";
 import { jellyfinPlugin } from "./jellyfin/plugin.js";
 import { llmPlugin } from "./llm/plugin.js";
@@ -21,6 +23,7 @@ import { Jobs, ServerEvents } from "./plugins/runtime.js";
 export const builtinPlugins: ServerPlugin[] = [
   libraryPlugin,
   integrationsPlugin,
+  spotifySessionPlugin,
   historyPlugin,
   collectionPlugin,
   llmPlugin,
@@ -60,8 +63,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const stopSessionPurge = startSessionPurge(db);
   app.addHook("onClose", async () => stopSessionPurge());
 
-  // The desktop app calls the API from its own origin with bearer tokens (no
-  // cookies), so allowing any origin does not expose sessions.
+  // The desktop app calls the API from its own origin with bearer tokens, so
+  // allowing any origin does not expose sessions. The web player's session
+  // cookie is never sent with "*" (browsers refuse credentials with it), is
+  // SameSite=Strict, and writes need the X-Cadence-CSRF header, which this
+  // preflight doesn't allow from other origins.
+  registerWebSessionCookies(app);
   app.addHook("onRequest", async (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
     reply.header("Access-Control-Allow-Headers", "Authorization, Content-Type, Range");
@@ -72,10 +79,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   async function requireUser(req: FastifyRequest, reply: FastifyReply) {
-    const header = req.headers.authorization ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-    const user = token ? userForToken(db, token) : null;
-    if (!user) return reply.code(401).send({ error: "unauthorized" });
+    const credential = sessionCredential(req);
+    const user = credential ? userForToken(db, credential.token) : null;
+    if (!user || !credential) return reply.code(401).send({ error: "unauthorized" });
+    if (!csrfOk(req, credential)) return reply.code(403).send({ error: "csrf" });
     req.user = user;
   }
 

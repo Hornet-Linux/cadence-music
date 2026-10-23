@@ -103,7 +103,7 @@ async function send(ctx: JellyfinContext, method: string, path: string, opts: Re
     if (res.status >= 300 && res.status < 400 && res.status !== 304) {
       const location = res.headers.get("location");
       void res.body?.cancel().catch(() => undefined);
-      let next: URL | null = null;
+      let next: URL | null;
       try {
         next = location ? new URL(location, url) : null;
       } catch {

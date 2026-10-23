@@ -104,6 +104,12 @@ build signed with it.
   anything on the network path can read or alter your traffic, including your password
   and session cookie. Use `https://` for anything reachable from outside your home, and
   only use `http://` on a network you trust. `https://` servers are validated as usual.
+  Plain HTTP is only allowed to **your server and local-network addresses** (private and
+  loopback IPs, `.local`/`.lan`/`.home.arpa` names, single-label names like `nas`, and
+  Tailscale's 100.64.0.0/10); the player refuses `http://` loads to anywhere else.
+- **Links leave the app.** A link you tap that goes off your server opens in your browser.
+  Sign-in redirects (your server's single sign-on, Spotify, Apple Music) still happen
+  inside the app, because they need its session.
 - **The bridge is bound to your server's exact origin** (scheme, host and port as you typed
   them). If your server redirects to a different origin (e.g. `http://` → `https://`, or to
   another hostname), the page works but the native bridge (notification controls, on-device

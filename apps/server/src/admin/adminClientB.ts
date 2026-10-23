@@ -198,7 +198,7 @@ async function renderAi() {
       h("div", { class: "grow" },
         h("div", { class: "name" }, p.name),
         h("div", { class: "sub" }, (KINDS[p.kind] || p.kind) + " · " + p.model),
-        h("div", { class: "sub" }, p.baseUrl + (p.hasKey ? " · key saved" : "")),
+        h("div", { class: "sub" }, p.baseUrl + (p.keyUnreadable ? " · saved key can't be read: enter it again" : p.hasKey ? " · key saved" : "")),
         h("div", { class: "tags" }, p.isDefault ? h("span", { class: "badge accent" }, "Default") : null, p.enabled ? null : h("span", { class: "badge" }, "Off"))),
       h("div", { class: "actions" },
         button("Test", async () => {

@@ -168,7 +168,18 @@ struct WebPlayer: UIViewRepresentable {
         web.scrollView.pinchGestureRecognizer?.isEnabled = false
         web.allowsBackForwardNavigationGestures = true
         context.coordinator.web = web
-        web.load(URLRequest(url: url))
+        // Plain http only to the server and local addresses (see WebPolicy). The rules
+        // compile asynchronously, so the first load waits for them.
+        let serverURL = url
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "cadence-http-policy", encodedContentRuleList: WebPolicy.contentRules(server: serverURL)
+        ) { [weak web] list, _ in
+            DispatchQueue.main.async {
+                guard let web else { return }
+                if let list { web.configuration.userContentController.add(list) }
+                web.load(URLRequest(url: serverURL))
+            }
+        }
         return web
     }
 
@@ -236,6 +247,24 @@ struct WebPlayer: UIViewRepresentable {
             decisionHandler(.allow)
         }
 
+        /// The server's pages and sign-in redirects stay; links the listener taps that leave the
+        /// server open in Safari, as do other schemes (mailto:, tel:). See WebPolicy.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            guard let url = navigationAction.request.url else { return decisionHandler(.allow) }
+            let tapped = navigationAction.navigationType == .linkActivated && webView === web
+            let mainFrame = navigationAction.targetFrame?.isMainFrame ?? true
+            switch WebPolicy.navigation(url, server: parent.url, userTapped: tapped, mainFrame: mainFrame) {
+            case .stay:
+                decisionHandler(.allow)
+            case .openExternally:
+                UIApplication.shared.open(url)
+                decisionHandler(.cancel)
+            case .block:
+                decisionHandler(.cancel)
+            }
+        }
+
         /// iOS ends the page's process when memory runs low, which leaves a blank view: load it again.
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
             guard webView === web else {
@@ -262,6 +291,14 @@ struct WebPlayer: UIViewRepresentable {
         // shares this web view's session, so window.opener keeps working.
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            // A tapped target=_blank link off the server goes to Safari, not a sheet.
+            if navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url,
+               WebPolicy.navigation(url, server: parent.url, userTapped: true, mainFrame: true) != .stay {
+                if url.scheme?.lowercased() != "http" || WebPolicy.allowsLoad(url, server: parent.url) {
+                    UIApplication.shared.open(url)
+                }
+                return nil
+            }
             let child = WKWebView(frame: .zero, configuration: configuration)
             child.uiDelegate = self
             child.navigationDelegate = self

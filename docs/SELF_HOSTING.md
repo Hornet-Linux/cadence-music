@@ -422,6 +422,7 @@ Database migrations run automatically on start.
 | `PUBLIC_URL` | — | Public base URL; required for OIDC. |
 | `SCAN_INTERVAL_MINUTES` | `60` | Periodic rescan; `0` disables. |
 | `TRUST_PROXY` | private-network proxies | Proxies whose `X-Forwarded-For` to believe: `false` (none, for direct exposure), a hop count, or comma-separated proxy IPs/CIDR ranges. Default is proxies on this machine or a private network. |
+| `PREVIOUS_SERVER_SECRET` | — | When rotating `SERVER_SECRET`: the old value(s), comma-separated, so saved AI provider keys are re-encrypted instead of lost. Remove after one start. |
 | `SERVER_SECRET` | generated | Signs stream URLs; generated into `DATA_DIR` if unset. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | — | Bootstrap admin account. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | — | Enable OIDC. |
@@ -437,4 +438,6 @@ Database migrations run automatically on start.
 | `APPLE_MUSIC_TEAM_ID`, `APPLE_MUSIC_KEY_ID` | — | Apple Developer team and MusicKit key IDs. |
 | `APPLE_MUSIC_PRIVATE_KEY` / `_FILE` | — | MusicKit `.p8` key (inline with `\n`, or a file path). |
 | `SOURCES_ALLOW_PRIVATE_NETWORK` | `false` | Let WebDAV, S3 and cloud-drive sources connect to servers on a private network (a NAS at home). See [CLOUD_SOURCES.md](CLOUD_SOURCES.md). |
+| `OLLAMA_URL` | — | An Ollama the server calls for the AI DJ, normally the bundled one: `http://ollama:11434` with `ollama` or `ollama-gpu` in `COMPOSE_PROFILES`. Added as the default AI provider. See [AI DJ](AI_DJ.md). |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model the server downloads into that Ollama on first start. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |

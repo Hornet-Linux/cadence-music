@@ -12,7 +12,7 @@ export function loadAppleMusicKey(config: AppleMusicConfig): KeyObject {
     if (key.asymmetricKeyType !== "ec") throw new Error("not an EC key");
     return key;
   } catch (err) {
-    throw new Error(`APPLE_MUSIC_PRIVATE_KEY is not a valid MusicKit (.p8) key: ${(err as Error).message}`);
+    throw new Error(`APPLE_MUSIC_PRIVATE_KEY is not a valid MusicKit (.p8) key: ${(err as Error).message}`, { cause: err });
   }
 }
 

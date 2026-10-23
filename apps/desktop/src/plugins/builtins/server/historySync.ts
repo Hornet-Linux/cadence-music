@@ -9,6 +9,11 @@ import { useServer } from "./serverStore";
 const BATCH = 200;
 let uploading = false;
 
+/** Upload plays made on this device that the server doesn't have yet. */
+export async function uploadPendingPlays(): Promise<void> {
+  return upload();
+}
+
 async function upload() {
   if (uploading || !useServer.getState().user) return;
   uploading = true;
