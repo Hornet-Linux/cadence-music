@@ -138,7 +138,7 @@ async function renderJellyfin() {
 const KINDS = { ollama: "Ollama", "openai-compatible": "OpenAI-compatible", anthropic: "Anthropic" };
 
 async function renderAi() {
-  const [first, presets] = await Promise.all([api("/api/admin/llm/providers"), api("/api/llm/presets")]);
+  const [first, presets, chat] = await Promise.all([api("/api/admin/llm/providers"), api("/api/llm/presets"), api("/api/admin/llm/chat")]);
   let items = first.items;
   let editing = null; // a provider being edited, "new", or null
 
@@ -219,6 +219,14 @@ async function renderAi() {
     render(pageHead("AI providers", items.length ? "These run the AI DJ for everyone who signs in, on any device." : "No providers yet. Add one so the AI DJ works on phones and browsers with no setup."),
       items.length ? h("ul", { class: "list" }, rows) : null,
       editing ? form() : h("div", { style: "margin-bottom:16px" }, button("Add a provider", async () => { editing = "new"; draw(); }, "primary")),
+      card("AI chat for plugins", chat.locked ? "Set by LLM_CHAT_ENABLED in the server's environment."
+        : "Off by default. The song chat, playlist builder and taste summary plugins need this. They spend your provider's credits on whatever people ask, within rate limits. The AI DJ works either way.",
+        h("label", { class: "check" },
+          h("input", { type: "checkbox", checked: chat.enabled, disabled: chat.locked, onchange: async (e) => {
+            try { const r = await api("/api/admin/llm/chat", { method: "PUT", body: JSON.stringify({ enabled: e.target.checked }) }); chat.enabled = r.enabled; toast(r.enabled ? "AI chat is on" : "AI chat is off"); }
+            catch (err) { e.target.checked = chat.enabled; toast(err.message, true); }
+          } }),
+          "Let signed-in people send their own questions to these providers")),
       card("Good to know", "Any OpenAI-compatible service works (OpenAI, LM Studio, llama.cpp, vLLM, OpenRouter, Groq), as do Ollama and Anthropic. The default is used when someone hasn't picked one. People can also use a model on their own device or computer from the app's AI DJ settings."));
   }
   draw();

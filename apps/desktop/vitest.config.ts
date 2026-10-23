@@ -7,7 +7,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "electron/**/*.test.ts"],
     coverage: {
       provider: "v8",
       reportsDirectory: "coverage",

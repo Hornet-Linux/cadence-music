@@ -1,0 +1,20 @@
+.tts-panel {
+  max-width: 640px;
+}
+.tts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.tts-panel .text-input,
+.tts-panel .btn {
+  min-height: 44px;
+}
+.tts-panel .row {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .tts-grid {
+    grid-template-columns: 1fr;
+  }
+}

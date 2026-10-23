@@ -1,0 +1,28 @@
+.sl-dup {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.sl-dup:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.sl-dup-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sl-play {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+.sl-tag.keep {
+  margin-left: 8px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}

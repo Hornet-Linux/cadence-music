@@ -1,0 +1,101 @@
+.pr-timeline {
+  position: relative;
+  height: 44px;
+  margin-top: 14px;
+}
+.pr-slider {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+  accent-color: var(--text-muted);
+  margin: 0;
+}
+.pr-region {
+  position: absolute;
+  top: 14px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  z-index: 1;
+}
+.pr-region.on {
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+.pr-mark {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  z-index: 3;
+  pointer-events: none;
+}
+.pr-mark::after {
+  content: attr(data-label);
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.pr-times {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+.pr-points {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+.pr-point {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pr-time {
+  font-variant-numeric: tabular-nums;
+  min-width: 4.4em;
+  color: var(--text-muted);
+}
+.pr-nudge {
+  display: inline-flex;
+  gap: 6px;
+}
+.pr-nudge .btn {
+  padding: 0 12px;
+  min-width: 52px;
+}
+.pr-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pr-rates .btn {
+  padding: 0 14px;
+}
+.pr-count {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.pr-field {
+  display: block;
+  width: 130px;
+}
+.pr-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.pr-check input {
+  width: 20px;
+  height: 20px;
+}

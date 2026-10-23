@@ -33,13 +33,26 @@ export interface ServerPluginContext {
   jobs: Jobs;
 }
 
-/** One setting on a plugin's admin form. Keys named like secrets are hidden when shown again. */
+/**
+ * One setting on a plugin's admin form (the generic Plugins page in /admin renders these).
+ * Values live in `settings.pluginConfig(id)`; `key` may be a dotted path (`"lidarr.url"`) for nested settings.
+ */
 export interface PluginConfigField {
   key: string;
   label: string;
-  type?: "text" | "password" | "number" | "boolean" | "url";
+  /** `secret` shows a hidden input. Defaults to `text`. */
+  type?: "text" | "url" | "secret" | "number" | "boolean" | "select";
   help?: string;
   placeholder?: string;
+  /** What the plugin uses while nothing is saved; the form shows it. */
+  default?: string | number | boolean;
+  /** Choices for a `select` field. */
+  options?: { value: string; label: string }[];
+  /**
+   * The plugin stores this value encrypted through its own routes. The admin page shows only whether
+   * it is set and never writes it; use the plugin's own settings screen to change it.
+   */
+  sealed?: boolean;
 }
 
 /**
@@ -51,12 +64,17 @@ export interface ServerPlugin {
   id: string;
   name: string;
   version: string;
-  /** One sentence for the admin panel's Plugins page. */
+  /** One or two sentences for the admin panel's Plugins page: what it does and what it needs. */
   description?: string;
   /**
    * Settings the admin can fill in on the Plugins page (stored with `settings.pluginConfig(id)`).
    * Without it the page offers a plain JSON editor.
    */
   configFields?: PluginConfigField[];
+  /** Shown above the settings: where to find anything the form cannot edit (sealed keys, per-user links, managed lists). */
+  configNote?: string;
+  /** Documentation of the routes the plugin adds, shown on the Plugins page: admin-only, and any signed-in user. */
+  adminRoutes?: string[];
+  userRoutes?: string[];
   register: (app: FastifyInstance, ctx: ServerPluginContext) => void | Promise<void>;
 }

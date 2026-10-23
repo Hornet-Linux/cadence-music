@@ -19,13 +19,15 @@ export async function planDjSet(
   provider: string,
   profile: TasteProfile,
   opts: DjSetOptions = {},
-  source: DjMusicSource = spotifySource,
+  source: Pick<DjMusicSource, "label" | "resolve"> = spotifySource,
 ): Promise<DjTrack[]> {
   const count = opts.count ?? 8;
   const history = opts.history ?? [];
   const picks = await requestPicks(provider, profile, {
     mood: opts.mood,
     switchUp: opts.switchUp,
+    style: opts.style,
+    notes: opts.notes,
     count: count + 3,
     avoid: history.map((h) => `${h.track.artists[0]?.name ?? ""} – ${h.track.title}`),
   });
