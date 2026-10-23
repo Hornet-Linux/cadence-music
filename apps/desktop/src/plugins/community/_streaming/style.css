@@ -213,3 +213,29 @@
     width: auto;
   }
 }
+
+/* ---- Feel: the panel eases in, nothing hides under it, rows breathe on phones ---- */
+.stream-dock {
+  animation: stream-dock-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes stream-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stream-dock {
+    animation: none;
+  }
+}
+/* The last rows of a list can always scroll clear of the floating player. */
+body:has(.stream-dock) .stream-page {
+  padding-bottom: 300px;
+}
+/* On phones the open link lives in the row's "..." menu ("Open in ..."), so titles get the room. */
+@media (max-width: 520px) {
+  .stream-page .track-row .stream-open {
+    display: none;
+  }
+}

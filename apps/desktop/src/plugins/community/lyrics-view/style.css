@@ -165,8 +165,11 @@
   color: inherit;
   border-radius: 10px;
 }
-.lv-line-btn:hover {
-  background: var(--surface);
+/* Only real pointers get a hover wash; on touch it would stick to the last tapped line. */
+@media (hover: hover) {
+  .lv-line-btn:hover {
+    background: var(--surface);
+  }
 }
 .lv-text {
   display: block;
@@ -262,6 +265,9 @@
   margin: 0 14px 6px;
 }
 .lv-k-scroll {
+  /* Lines fade out under the title bar and controls instead of being cut off. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12%, #000 86%, transparent 100%);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -349,4 +355,34 @@
 }
 .reduce-motion .lv-line {
   transition: none;
+}
+
+/* ---- Feel ---------------------------------------------------------------- */
+.lv-karaoke {
+  animation: lv-k-in 240ms ease-out;
+}
+@keyframes lv-k-in {
+  from {
+    opacity: 0;
+  }
+}
+.lv-karaoke .lv-line {
+  transition: color 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv-karaoke {
+    animation: none;
+  }
+  .lv-line,
+  .lv-karaoke .lv-line {
+    transition: none;
+  }
+}
+.lv-empty {
+  margin-top: 8px;
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm, 12px);
 }
