@@ -65,6 +65,10 @@ const stranger = { sender: {} };
 
 const call = (channel: string, e: unknown, ...args: unknown[]) => h.handlers.get(channel)!(e, ...args);
 
+// beforeAll imports the whole main-process module graph cold (several seconds when the machine is busy;
+// the default 10 s hook limit was hit under load), so give the set-up and tear-down hooks more room.
+vi.setConfig({ hookTimeout: 60_000 });
+
 beforeAll(async () => {
   const { registerIntegrations, applyStartupSwitches } = await import("./integrations");
   applyStartupSwitches();
@@ -151,7 +155,9 @@ describe("control API wiring", () => {
   const get = (path: string, headers: Record<string, string> = {}) =>
     new Promise<{ status: number; json: Record<string, unknown> }>((resolve, reject) => {
       http
-        .get({ host: "127.0.0.1", port: PORT, path, headers }, (res) => {
+        // A fresh connection per request: Node 20+ keeps sockets alive in the global agent, and regenerating
+        // the token restarts the listener, so a pooled socket from before the restart is reset ("socket hang up").
+        .get({ host: "127.0.0.1", port: PORT, path, headers, agent: false }, (res) => {
           let text = "";
           res.on("data", (c) => (text += c));
           res.on("end", () => resolve({ status: res.statusCode ?? 0, json: JSON.parse(text || "{}") }));
