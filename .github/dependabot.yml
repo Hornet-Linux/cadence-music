@@ -1,0 +1,42 @@
+# Weekly dependency updates. Tooling updates are grouped into one PR per app,
+# because eslint/typescript-eslint and vite/vitest have to move together.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/server
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      dev-tooling:
+        dependency-type: development
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /apps/desktop
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    ignore:
+      # The castlabs Electron fork (Widevine) is a release decision, not a routine bump.
+      - dependency-name: electron
+      - dependency-name: electron-builder
+        update-types: [version-update:semver-major]
+    groups:
+      dev-tooling:
+        dependency-type: development
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: gradle
+    directory: /apps/android
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]

@@ -11,9 +11,9 @@ WORKDIR /src
 COPY packages/shared ./packages/shared
 # The UI shares the LLM provider code with the server (dependency-free).
 COPY apps/server/src/llm/core ./apps/server/src/llm/core
-COPY apps/desktop/package.json ./apps/desktop/
+COPY apps/desktop/package.json apps/desktop/package-lock.json ./apps/desktop/
 WORKDIR /src/apps/desktop
-RUN npm install --no-audit --no-fund --ignore-scripts
+RUN npm ci --no-audit --no-fund --ignore-scripts
 COPY apps/desktop ./
 RUN npm run build:web
 
@@ -22,9 +22,9 @@ FROM node:22-slim AS build
 WORKDIR /src
 # Shared API types (type-only; needed to compile, not at runtime).
 COPY packages/shared ./packages/shared
-COPY apps/server/package.json ./apps/server/
+COPY apps/server/package.json apps/server/package-lock.json ./apps/server/
 WORKDIR /src/apps/server
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY apps/server ./
 RUN npm run build && npm prune --omit=dev && find dist -name '*.test.js' -delete
 

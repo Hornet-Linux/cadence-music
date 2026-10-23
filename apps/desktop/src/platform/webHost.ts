@@ -197,7 +197,7 @@ export async function completeWebRedirects(): Promise<void> {
   const path = location.pathname.replace(/\/+$/, "");
   if (path !== OIDC_CALLBACK && path !== SPOTIFY_CALLBACK) return;
   const params = new URLSearchParams(location.search);
-  let pending: Pending | null = null;
+  let pending: Pending | null;
   try {
     pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null") as Pending | null;
   } catch {
