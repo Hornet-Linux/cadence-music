@@ -95,7 +95,8 @@ export function summarizeIndexing(trackCount: number, i: IndexingDto, now = Date
   if (i.running) {
     return { text: i.found > 0 ? `Indexing… found ${i.found} files, ${tracks} ready` : "Looking through your files…", busy: true, problem: null };
   }
-  const problem = i.status === "failed" ? (ERROR_TEXT[i.error ?? "failed"] ?? ERROR_TEXT.failed!) : null;
+  const unread = i.status === "done" && i.failed > 0 ? `${i.failed} ${i.failed === 1 ? "file" : "files"} couldn't be read, so ${i.failed === 1 ? "it isn't" : "they aren't"} in your library. Refresh to try again.` : null;
+  const problem = i.status === "failed" ? (ERROR_TEXT[i.error ?? "failed"] ?? ERROR_TEXT.failed!) : unread;
   if (i.status === "never") return { text: "Not indexed yet", busy: false, problem: null };
   if (i.status === "interrupted") return { text: `${tracks}. Indexing was interrupted and will carry on.`, busy: false, problem: null };
   const when = i.finishedAt ? `, updated ${timeAgo(i.finishedAt, now)}` : "";
