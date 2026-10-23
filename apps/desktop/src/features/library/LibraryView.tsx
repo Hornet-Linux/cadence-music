@@ -3,8 +3,13 @@ import { usePluginHost } from "@/plugins/host";
 import type { LibrarySource } from "@/plugins/types";
 import { CollectionShelf } from "@/features/collection/CollectionUi";
 import { usePlayer } from "@/player/playerStore";
-import { PlayIcon, ShuffleIcon } from "@/ui/icons";
+import { useServer } from "@/plugins/builtins/server/serverStore";
+import { useSettingsModal } from "@/features/settings/settingsStore";
+import { EmptyState } from "@/ui/EmptyState";
+import { LibraryIcon, PlayIcon, ShuffleIcon } from "@/ui/icons";
 import { TrackRow } from "@/ui/media";
+import { isWebPlayer } from "@/ui/platform";
+import { SkeletonRows } from "@/ui/Skeleton";
 
 const PREVIEW = 200;
 
@@ -55,6 +60,9 @@ function SourceSection({ source }: { source: LibrarySource }) {
 
 export function LibraryView() {
   const sources = usePluginHost((s) => s.contributions.librarySources);
+  const loading = useServer((s) => s.loading && s.tracks.length === 0);
+  const showSettings = useSettingsModal((s) => s.show);
+  const web = isWebPlayer();
   return (
     <div className="view">
       <header className="view-header">
@@ -62,17 +70,29 @@ export function LibraryView() {
         <p className="muted">Your playlists, liked songs and everything from your services, in one place.</p>
       </header>
       <CollectionShelf />
+      {loading && <SkeletonRows label="Loading your library" />}
       <div className="source-sections">
         {sources.map((source) => (
           <SourceSection key={source.id} source={source} />
         ))}
       </div>
-      <div className="card pad when-empty">
-        <p className="muted">
-          Your library is empty. Connect Spotify, Apple Music or your server in <strong>Settings</strong>, or add
-          files under <strong>Local Files</strong>.
-        </p>
-      </div>
+      {!loading && (
+        <div className="when-empty">
+          <EmptyState
+            icon={<LibraryIcon size={24} />}
+            title="Your library is empty"
+            action={
+              <button className="btn primary" onClick={() => showSettings(web ? "server" : undefined)}>
+                {web ? "Open server settings" : "Open settings"}
+              </button>
+            }
+          >
+            {web
+              ? "Put music in your server's music folder, then rescan from Settings."
+              : "Connect Spotify, Apple Music, Jellyfin or your server in Settings, or add files under Local Files."}
+          </EmptyState>
+        </div>
+      )}
     </div>
   );
 }

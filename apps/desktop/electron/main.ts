@@ -2,6 +2,7 @@ import electron, { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createLlmProvider, parseJsonRequest, parseLlmConfig } from "./llm";
+import { applyStartupSwitches, registerIntegrations } from "./integrations";
 import { oidcLogin } from "./oidc";
 import { deleteSecret, getSecret, setSecret } from "./secrets";
 import { spotifyAccessToken, spotifyLogin, spotifyLogout, spotifyStatus } from "./spotify";
@@ -15,6 +16,8 @@ const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 
 // Streaming SDKs start playback from code, not from a click in their own frame.
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+// Optional system media controls, switched on by the Media keys plugin (applies after a restart).
+applyStartupSwitches();
 
 // castlabs Electron (ECS) adds `components` to install the Widevine CDM that
 // Spotify and Apple Music need. Stock Electron has no such module.
@@ -146,6 +149,9 @@ ipcMain.handle("llm:status", (_e, config: unknown) => createLlmProvider(parseLlm
 ipcMain.handle("llm:chat-json", (_e, config: unknown, req: unknown) => {
   return createLlmProvider(parseLlmConfig(config)).chatJson(parseJsonRequest(req));
 });
+
+// ---- Desktop integrations (Discord, shortcuts, control API, Slack) ----------
+registerIntegrations(() => win);
 
 // ---- Widevine self-check ---------------------------------------------------
 // `--widevine-probe` installs the CDM, checks the key system in a hidden

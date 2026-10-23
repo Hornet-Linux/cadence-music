@@ -24,7 +24,8 @@ export function normalize(s: string): string {
     .trim();
 }
 
-function matches(track: Track, pick: DjPick): boolean {
+/** Is this track the song the model named? Tolerates remaster suffixes, accents and "feat." differences. */
+export function trackMatchesPick(track: Track, pick: { artist: string; title: string }): boolean {
   const title = normalize(track.title);
   const want = normalize(pick.title);
   const titleOk = title === want || title.startsWith(want) || want.startsWith(title);
@@ -46,11 +47,11 @@ async function search(get: Fetch, q: string): Promise<Track[]> {
 /** Find the real Spotify track for a pick, or null if the model made it up. */
 export async function resolvePick(pick: DjPick, get: Fetch = spotifyFetch): Promise<Track | null> {
   const strict = await search(get, `track:${pick.title} artist:${pick.artist}`).catch(() => []);
-  const hit = strict.find((t) => matches(t, pick));
+  const hit = strict.find((t) => trackMatchesPick(t, pick));
   if (hit) return hit;
   // Field filters miss on small spelling differences; a loose search catches those.
   const loose = await search(get, `${pick.artist} ${pick.title}`).catch(() => []);
-  return loose.find((t) => matches(t, pick)) ?? null;
+  return loose.find((t) => trackMatchesPick(t, pick)) ?? null;
 }
 
 /**

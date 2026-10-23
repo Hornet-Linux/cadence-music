@@ -36,6 +36,11 @@ export interface LlmProvider {
   status(): Promise<LlmStatus>;
   /** Run a chat and return the reply parsed as JSON. */
   chatJson<T = unknown>(req: LlmJsonRequest): Promise<T>;
+  /**
+   * Run a chat and return the reply text, streaming it through `onDelta` when
+   * the provider can. Absent on providers reached through a relay (JSON only).
+   */
+  chatText?(req: LlmTextRequest, options?: LlmTextOptions): Promise<string>;
 }
 
 export type FetchFn = typeof fetch;
@@ -49,4 +54,16 @@ export class LlmError extends Error {
     super(message);
     this.name = "LlmError";
   }
+}
+
+/** A free-text chat (no JSON schema). */
+export interface LlmTextRequest {
+  messages: LlmMessage[];
+  temperature?: number;
+}
+
+export interface LlmTextOptions {
+  /** Called with each piece of the reply as it arrives (providers that can't stream call it once). */
+  onDelta?: (text: string) => void;
+  signal?: AbortSignal;
 }

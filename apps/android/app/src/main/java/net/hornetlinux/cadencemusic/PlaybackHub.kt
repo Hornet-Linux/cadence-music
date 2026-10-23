@@ -30,8 +30,14 @@ object PlaybackHub {
     @Volatile
     var commandSink: ((action: String, seekSeconds: Double?) -> Unit)? = null
 
+    /** Called when music starts playing (not on every update); the activity uses it to ask for notification access in context. */
+    @Volatile
+    var onPlaybackStarted: (() -> Unit)? = null
+
     fun update(context: Context, next: MediaState) {
+        val wasPlaying = state?.playing == true
         state = next
+        if (next.playing && !wasPlaying) onPlaybackStarted?.invoke()
         val running = PlaybackService.instance
         if (running != null) {
             running.refresh()

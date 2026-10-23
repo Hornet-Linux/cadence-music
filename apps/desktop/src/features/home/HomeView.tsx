@@ -2,13 +2,18 @@ import { useMemo } from "react";
 import { recentTracks, topTracks, useHistory } from "@/features/history/historyStore";
 import { DjCard } from "@/features/dj/DjCard";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
+import { useSettingsModal } from "@/features/settings/settingsStore";
 import { usePlayer } from "@/player/playerStore";
+import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
 import type { LibrarySource } from "@/plugins/types";
 import { primaryArtist, type Track } from "@/shared/types";
 import { CoverArt } from "@/ui/CoverArt";
-import { DiscIcon, FlameIcon, PlayIcon, SparkleIcon, TrophyIcon } from "@/ui/icons";
+import { EmptyState } from "@/ui/EmptyState";
+import { DiscIcon, FlameIcon, NoteIcon, PlayIcon, SparkleIcon, TrophyIcon } from "@/ui/icons";
 import { MediaCard, Shelf } from "@/ui/media";
+import { isWebPlayer } from "@/ui/platform";
+import { SkeletonShelf } from "@/ui/Skeleton";
 
 const CARDS = 16;
 
@@ -16,7 +21,7 @@ function SourceShelf({ source }: { source: LibrarySource }) {
   const tracks = source.useTracks();
   if (tracks.length === 0) return null;
   return (
-    <Shelf icon={<DiscIcon size={20} />} title={`From ${source.label}`}>
+    <Shelf icon={<DiscIcon size={18} />} title={`From ${source.label}`}>
       {tracks.slice(0, CARDS).map((t) => (
         <MediaCard key={t.id} track={t} queue={tracks} />
       ))}
@@ -50,19 +55,60 @@ function Hero({ track, queue }: { track: Track; queue: Track[] }) {
   );
 }
 
-function Welcome() {
+/**
+ * Shown while nothing has been played and no source has any tracks. The
+ * stylesheet hides it as soon as a source shelf appears (.source-sections).
+ */
+function NothingYet() {
   const startSetup = useOnboarding((s) => s.start);
+  const showSettings = useSettingsModal((s) => s.show);
+  const user = useServer((s) => s.user);
+  const web = isWebPlayer();
+
+  // The web player is served by the person's own server, so there is nothing to connect.
+  if (web && user) {
+    return (
+      <EmptyState
+        icon={<NoteIcon size={24} />}
+        title="No music yet"
+        action={
+          <button className="btn primary" onClick={() => showSettings("server")}>
+            Open server settings
+          </button>
+        }
+      >
+        Put music in your server's music folder, then rescan from Settings.
+      </EmptyState>
+    );
+  }
+  if (web) {
+    return (
+      <EmptyState
+        icon={<NoteIcon size={24} />}
+        title="Sign in to start listening"
+        action={
+          <button className="btn primary" onClick={() => showSettings("server")}>
+            Sign in
+          </button>
+        }
+      >
+        Your music lives on your server. Sign in to see your library.
+      </EmptyState>
+    );
+  }
   return (
-    <section className="hero welcome">
-      <div className="hero-text">
-        <span className="eyebrow">Welcome</span>
-        <h2>Your music, all in one place</h2>
-        <p>Connect Spotify, Apple Music, Jellyfin or your own server and your library and listening show up here.</p>
-        <button className="btn primary big" onClick={startSetup}>
+    <EmptyState
+      icon={<NoteIcon size={24} />}
+      title="Your music, all in one place"
+      action={
+        <button className="btn primary" onClick={startSetup}>
           <SparkleIcon size={16} /> Set up sources
         </button>
-      </div>
-    </section>
+      }
+    >
+      Connect Spotify, Apple Music, Jellyfin or your own server, or add files from this computer. What you play shows up
+      here.
+    </EmptyState>
   );
 }
 
@@ -71,6 +117,7 @@ export function HomeView() {
   const sources = usePluginHost((s) => s.contributions.librarySources);
   const plays = useHistory((s) => s.plays);
   const remoteTop = useHistory((s) => s.remoteTop);
+  const loadingLibrary = useServer((s) => s.loading && s.tracks.length === 0);
 
   const recent = useMemo(() => recentTracks(plays, CARDS), [plays]);
   const top = useMemo(
@@ -90,12 +137,12 @@ export function HomeView() {
         <h1>{greeting}</h1>
       </header>
 
-      {recent.length > 0 ? <Hero track={recent[0]} queue={recent} /> : <Welcome />}
+      {recent.length > 0 && <Hero track={recent[0]} queue={recent} />}
 
       <DjCard />
 
       {recent.length > 0 && (
-        <Shelf icon={<FlameIcon size={20} />} title="Listening right now">
+        <Shelf icon={<FlameIcon size={18} />} title="Listening right now">
           {recent.map((t) => (
             <MediaCard key={t.id} track={t} queue={recent} />
           ))}
@@ -103,7 +150,7 @@ export function HomeView() {
       )}
 
       {top.length > 1 && (
-        <Shelf icon={<TrophyIcon size={20} />} title="Most played">
+        <Shelf icon={<TrophyIcon size={18} />} title="Most played">
           {top.map(({ track, plays: n }, i) => (
             <MediaCard
               key={track.id}
@@ -116,11 +163,19 @@ export function HomeView() {
         </Shelf>
       )}
 
+      {loadingLibrary && <SkeletonShelf label="Loading your library" />}
+
       <div className="source-sections">
         {sources.map((source) => (
           <SourceShelf key={source.id} source={source} />
         ))}
       </div>
+
+      {recent.length === 0 && !loadingLibrary && (
+        <div className="home-empty">
+          <NothingYet />
+        </div>
+      )}
 
       {widgets.map((w) => (
         <section className="section" key={w.id}>

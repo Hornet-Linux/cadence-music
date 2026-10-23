@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { ensureAccountSchema } from "./auth/schema.js";
 
 export type Db = DatabaseSync;
 
@@ -148,6 +149,7 @@ export function openDb(file: string): Db {
   db.exec("PRAGMA foreign_keys = ON");
   db.exec("PRAGMA busy_timeout = 5000");
   migrate(db);
+  ensureAccountSchema(db);
   return db;
 }
 

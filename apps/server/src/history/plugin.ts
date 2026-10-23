@@ -109,6 +109,7 @@ export const historyPlugin: ServerPlugin = {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         );
         let stored = 0;
+        const newlyStored: Play[] = [];
         transaction(db, () => {
           for (const { track, playedAt } of valid) {
             const result = insert.run(
@@ -122,9 +123,16 @@ export const historyPlugin: ServerPlugin = {
               track.durationSec ?? null,
               playedAt,
             );
-            stored += Number(result.changes);
+            if (Number(result.changes) > 0) {
+              stored += 1;
+              newlyStored.push({ track, playedAt });
+            }
           }
         });
+        // Tell other plugins (scrobblers, webhooks) only about plays that were really new.
+        for (const { track, playedAt } of newlyStored) {
+          ctx.events.emit("play.recorded", { userId: req.user!.id, track, playedAt });
+        }
         return { stored, rejected: plays.length - valid.length };
       },
     );

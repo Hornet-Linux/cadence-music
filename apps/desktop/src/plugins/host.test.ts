@@ -1,19 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { usePluginHost } from "./host";
+import { emptyContributions, usePluginHost } from "./host";
 import type { Plugin } from "./types";
 import type { Track } from "@/shared/types";
 
 function resetHost() {
   usePluginHost.setState({
     plugins: [],
-    contributions: {
-      sidebar: [],
-      homeWidgets: [],
-      settings: [],
-      setupSteps: [],
-      audioSources: [],
-      librarySources: [],
-    },
+    contributions: emptyContributions(),
   });
 }
 
@@ -131,6 +124,40 @@ describe("plugin host", () => {
     await host.setEnabled("test.steps", true);
     expect(usePluginHost.getState().contributions.setupSteps.map((s) => s.id)).toEqual(["high", "low"]);
     await expect(host.setEnabled("test.steps-ungated", true)).rejects.toThrow(/ui\.settings/);
+  });
+
+  it("turns a non-builtin plugin back on after a restart if the user had enabled it", async () => {
+    localStorage.removeItem("cadence.enabledPlugins");
+    const optIn: Plugin = {
+      manifest: { id: "test.optin", name: "Opt in", version: "1.0.0", capabilities: [], apiRange: "^1.0.0" },
+      activate() {},
+    };
+    const never: Plugin = {
+      manifest: { id: "test.never", name: "Never", version: "1.0.0", capabilities: [], apiRange: "^1.0.0" },
+      activate() {},
+    };
+
+    usePluginHost.getState().register(optIn);
+    usePluginHost.getState().register(never);
+    await usePluginHost.getState().setEnabled("test.optin", true);
+    expect(usePluginHost.getState().plugins.find((p) => p.plugin.manifest.id === "test.optin")?.enabled).toBe(true);
+
+    // "Restart": a fresh host registers the same plugins again.
+    resetHost();
+    usePluginHost.getState().register(optIn);
+    usePluginHost.getState().register(never);
+    await usePluginHost.getState().whenIdle();
+    const state = usePluginHost.getState().plugins;
+    expect(state.find((p) => p.plugin.manifest.id === "test.optin")?.enabled).toBe(true);
+    expect(state.find((p) => p.plugin.manifest.id === "test.never")?.enabled).toBe(false);
+
+    // Turning it off is remembered too.
+    await usePluginHost.getState().setEnabled("test.optin", false);
+    resetHost();
+    usePluginHost.getState().register(optIn);
+    await usePluginHost.getState().whenIdle();
+    expect(usePluginHost.getState().plugins[0]?.enabled).toBe(false);
+    localStorage.removeItem("cadence.enabledPlugins");
   });
 
   it("does not duplicate now-playing listeners when plugins are toggled", async () => {

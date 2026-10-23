@@ -1,0 +1,43 @@
+.release-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.release-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  min-height: 64px;
+}
+.release-row:first-child {
+  border-top: 0;
+}
+.release-art {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: block;
+  background: var(--bg-elevated-2);
+}
+.release-body {
+  flex: 1;
+  min-width: 0;
+}
+.release-title,
+.release-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.release-dismiss {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+}
+.release-reset {
+  min-height: 44px;
+}

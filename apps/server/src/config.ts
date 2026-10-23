@@ -38,6 +38,11 @@ export interface Config {
   adminUsername?: string;
   adminPassword?: string;
   oidc?: OidcConfig;
+  /**
+   * The OIDC_* values actually set in the environment. They win over (and
+   * lock) the matching fields on the admin panel's Single sign-on page.
+   */
+  oidcEnv?: Partial<OidcConfig>;
   /** Spotify app (client) ID offered to desktop apps. Not a secret. */
   spotifyClientId?: string;
   /** Enables Apple Music by letting the server mint MusicKit developer tokens. */
@@ -186,6 +191,15 @@ export function loadConfig(env: Env = process.env): Config {
     };
   }
 
+  const oidcEnv: Partial<OidcConfig> = {};
+  if (issuer) oidcEnv.issuer = issuer;
+  if (clientId) oidcEnv.clientId = clientId;
+  if (env.OIDC_CLIENT_SECRET?.trim()) oidcEnv.clientSecret = env.OIDC_CLIENT_SECRET.trim();
+  if (env.OIDC_NAME?.trim()) oidcEnv.displayName = env.OIDC_NAME.trim();
+  if (env.OIDC_SCOPES?.trim()) oidcEnv.scopes = env.OIDC_SCOPES.trim();
+  if (list(env.OIDC_ALLOWED_GROUPS).length) oidcEnv.allowedGroups = list(env.OIDC_ALLOWED_GROUPS);
+  if (list(env.OIDC_ADMIN_GROUPS).length) oidcEnv.adminGroups = list(env.OIDC_ADMIN_GROUPS);
+
   const port = int(env.PORT, 8787, "PORT");
   if (port < 1 || port > 65535) throw new Error("PORT must be between 1 and 65535");
 
@@ -229,6 +243,7 @@ export function loadConfig(env: Env = process.env): Config {
     adminUsername: env.ADMIN_USERNAME?.trim() || undefined,
     adminPassword: env.ADMIN_PASSWORD || undefined,
     oidc,
+    oidcEnv,
     spotifyClientId,
     appleMusic,
     signup: parseSignup(env),

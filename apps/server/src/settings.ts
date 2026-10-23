@@ -64,6 +64,57 @@ export class Settings {
     return saved ? { serverUrl: saved, source: "admin" } : { serverUrl: null, source: null };
   }
 
+  /** Whether the admin turned a community plugin on (they all start off). */
+  pluginEnabled(id: string): boolean {
+    return this.read<boolean>(`plugin:${id}:enabled`) === true;
+  }
+
+  setPluginEnabled(id: string, enabled: boolean): void {
+    this.write(`plugin:${id}:enabled`, enabled);
+  }
+
+  /** A plugin's own saved configuration (addresses, keys). Plain JSON, kept in the server database. */
+  pluginConfig<T>(id: string): T | undefined {
+    return this.read<T>(`plugin:${id}:config`);
+  }
+
+  setPluginConfig(id: string, value: unknown | null): void {
+    if (value === null) this.db.prepare("DELETE FROM settings WHERE key = ?").run(`plugin:${id}:config`);
+    else this.write(`plugin:${id}:config`, value);
+  }
+
+  /** A plugin's saved configuration for one person (their own Last.fm key and so on). */
+  pluginUserConfig<T>(id: string, userId: number): T | undefined {
+    return this.read<T>(`plugin:${id}:user:${userId}`);
+  }
+
+  setPluginUserConfig(id: string, userId: number, value: unknown | null): void {
+    const key = `plugin:${id}:user:${userId}`;
+    if (value === null) this.db.prepare("DELETE FROM settings WHERE key = ?").run(key);
+    else this.write(key, value);
+  }
+
+  /**
+   * Whether signed-in people may send free-form prompts through the server's AI
+   * provider (song chat, playlist builder, taste summary). Off by default.
+   * LLM_CHAT_ENABLED=1 or =0 in the environment wins over the admin setting.
+   */
+  llmChatEnabled(): boolean {
+    const env = process.env.LLM_CHAT_ENABLED;
+    if (env === "1") return true;
+    if (env === "0") return false;
+    return this.read<boolean>("llm:chatEnabled") === true;
+  }
+
+  /** True when the environment decides, so the admin setting has no effect. */
+  llmChatLocked(): boolean {
+    return process.env.LLM_CHAT_ENABLED === "1" || process.env.LLM_CHAT_ENABLED === "0";
+  }
+
+  setLlmChatEnabled(enabled: boolean): void {
+    this.write("llm:chatEnabled", enabled);
+  }
+
   /** A person's own Spotify app ID, saved so all their devices can use it. */
   userSpotifyClientId(userId: number): string | undefined {
     return this.read<string>(`user:${userId}:spotifyClientId`);
