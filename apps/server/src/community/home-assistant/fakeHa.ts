@@ -8,6 +8,11 @@ export interface FakeHa {
   states: Map<string, { state: string; attributes: Record<string, unknown> }>;
   posts: { entity: string; body: { state: string; attributes: Record<string, unknown> } }[];
   setFailing(status: number | null): void;
+  /**
+   * Resolves with the first post at index >= `from` that matches. Take `from` (posts.length)
+   * before triggering the change, so the wait is event driven rather than timed.
+   */
+  waitForPost(match: (p: FakeHa["posts"][number]) => boolean, from: number): Promise<FakeHa["posts"][number]>;
   close(): Promise<void>;
 }
 
@@ -16,6 +21,7 @@ export async function startFakeHa(token = "ha-long-lived-token", opts: { host?: 
   const states: FakeHa["states"] = new Map();
   const posts: FakeHa["posts"] = [];
   let failing: number | null = null;
+  const waiters = new Set<() => void>();
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => chunks.push(c));
@@ -35,6 +41,7 @@ export async function startFakeHa(token = "ha-long-lived-token", opts: { host?: 
         const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { state: string; attributes: Record<string, unknown> };
         states.set(m[1]!, body);
         posts.push({ entity: m[1]!, body });
+        for (const w of [...waiters]) w();
         res.statusCode = 201;
         return res.end(JSON.stringify({ entity_id: m[1], ...body }));
       }
@@ -49,6 +56,17 @@ export async function startFakeHa(token = "ha-long-lived-token", opts: { host?: 
     states,
     posts,
     setFailing: (s) => (failing = s),
+    waitForPost: (match, from) =>
+      new Promise((resolve) => {
+        const check = () => {
+          const hit = posts.slice(from).find(match);
+          if (!hit) return;
+          waiters.delete(check);
+          resolve(hit);
+        };
+        waiters.add(check);
+        check();
+      }),
     close: async () => {
       server.closeAllConnections();
       await new Promise<void>((r) => server.close(() => r()));
