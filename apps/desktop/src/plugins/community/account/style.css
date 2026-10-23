@@ -1,0 +1,20 @@
+.acct { gap: 22px; }
+.acct-section { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border); }
+.acct-section h3 { font-size: 0.95rem; font-weight: 650; }
+.acct-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.acct-device {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border);
+}
+.acct-grow { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.acct-badge {
+  margin-left: 8px; padding: 2px 9px; border-radius: 99px; font-size: 0.72rem; font-weight: 650;
+  background: rgba(61, 220, 151, 0.12); color: var(--ok);
+}
+.acct-wrap { flex-wrap: wrap; }
+.acct-status { font-size: 0.86rem; color: var(--ok); }
+.acct-status.bad { color: var(--danger); }
+.acct .btn { min-height: 44px; }
+.acct .danger-text { color: var(--danger); border-color: rgba(255, 92, 124, 0.35); }
+.acct .danger-solid { background: rgba(255, 92, 124, 0.16); border-color: rgba(255, 92, 124, 0.5); color: #ffb3c2; }
+.acct .text-input { min-height: 44px; }

@@ -317,6 +317,12 @@ jobs:
         run: |
           cp .env.example .env
           docker compose config --quiet
+      - name: Validate the ready-made compose files (no .env needed)
+        working-directory: deploy/compose
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.caddy.yml config --quiet
+          docker compose -f docker-compose.caddy.yml config | grep -q 'reverse_proxy cadence:8787'
 
   # ---------------------------------------------------------------- release
   release:

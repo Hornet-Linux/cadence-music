@@ -1,0 +1,215 @@
+/* Streaming-service plugins: settings, page and the visible player panel. Calm, token-based. */
+
+.stream-credit {
+  margin-top: 8px;
+}
+.stream-credit a,
+.stream-settings a,
+.stream-page a:not(.btn):not(.icon-btn) {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.stream-credit a:hover,
+.stream-settings a:hover {
+  color: var(--text);
+}
+
+.stream-caps {
+  display: grid;
+  gap: 14px;
+}
+.stream-list {
+  margin: 6px 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.stream-admin {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 14px 14px;
+  background: var(--surface);
+}
+.stream-admin summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.stream-admin form {
+  margin-top: 6px;
+}
+.stream-field {
+  display: block;
+}
+.stream-field .text-input {
+  min-height: 44px;
+}
+.stream-uri {
+  display: block;
+  margin-top: 6px;
+  word-break: break-all;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.stream-settings .btn,
+.stream-page .btn {
+  min-height: 44px;
+}
+
+.stream-note {
+  margin-bottom: 16px;
+  max-width: 640px;
+}
+.stream-note .btn {
+  margin-top: 8px;
+}
+
+.stream-tabs {
+  margin-bottom: 16px;
+}
+.stream-tabs .segmented button {
+  min-height: 40px;
+  min-width: 44px;
+}
+.stream-search {
+  margin-bottom: 18px;
+  padding: 6px 8px 6px 18px;
+  max-width: 640px;
+}
+.stream-search input {
+  min-width: 0;
+  min-height: 40px;
+}
+.stream-results {
+  min-height: 80px;
+}
+.stream-subhead {
+  font-size: 1.1rem;
+  margin: 12px 0;
+}
+.stream-playlists {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  max-width: 640px;
+}
+.stream-playlist {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.stream-playlist:hover {
+  background: var(--surface-hover);
+}
+.stream-open {
+  text-decoration: none;
+}
+
+/* ---- Visible player panel ---------------------------------------------------
+   Official embedded players must stay on screen, unobscured and at least 200x200.
+   The title bar, note and credit sit above and below the player, never on top of it. */
+.stream-dock {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--player-h, 92px) + var(--tabbar-h, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+  width: min(360px, calc(100vw - 24px));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+.stream-dock-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 0 12px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+}
+.stream-dock-title {
+  font-weight: 650;
+  font-size: 0.86rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stream-dock-open,
+.stream-dock-close {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.stream-dock-open:hover,
+.stream-dock-close:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.stream-dock-body {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+.stream-dock-body iframe,
+.stream-dock-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.stream-dock-note {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.stream-dock-credit {
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  border-top: 1px solid var(--border);
+}
+.stream-dock-credit a {
+  color: var(--text-faint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .stream-dock {
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}

@@ -1,0 +1,78 @@
+/* Shared by the device plugins (output picker, remote control, DLNA, Chromecast, Snapcast, Home Assistant). */
+.dev-panel .dev-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dev-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dev-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  min-height: 48px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  border-radius: 10px;
+}
+.dev-item .dev-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dev-item .dev-meta {
+  grid-column: 1;
+  font-size: 12px;
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+}
+.dev-item .btn {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 44px;
+}
+.dev-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.dev-row .field-label,
+.dev-row p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.dev-row .text-input,
+.dev-row .btn {
+  min-height: 44px;
+}
+.dev-h {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.dev-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dev-actions .btn {
+  min-height: 44px;
+}
+.dev-token {
+  display: block;
+  margin: 8px 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}

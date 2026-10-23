@@ -1,0 +1,95 @@
+.sw-ranges {
+  margin-bottom: 16px;
+}
+.sw-hero-number {
+  font-size: 3.2rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 6px 0 4px;
+}
+.sw-rank .sx-title {
+  max-width: 100%;
+}
+.sw-count {
+  font-variant-numeric: tabular-nums;
+  min-width: 2.2em;
+  text-align: right;
+}
+.sw-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+}
+.sw-bar-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.sw-bar-track {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+.sw-bar-fill {
+  width: 100%;
+  background: var(--text-faint);
+  border-radius: 3px 3px 0 0;
+  opacity: 0.8;
+}
+.sw-bar-col.peak .sw-bar-fill {
+  background: var(--text-muted);
+  opacity: 1;
+}
+.sw-bar-label {
+  height: 14px;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  text-align: center;
+  white-space: nowrap;
+}
+.sw-split {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.sw-split > span {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+}
+.sw-card-img {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  margin: 8px auto 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+.sw-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.sw-widget .sx-stats {
+  width: 100%;
+}
+.sw-widget .sx-stat-value {
+  font-size: 1.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .sw-hero-number {
+    font-size: 2.6rem;
+  }
+}

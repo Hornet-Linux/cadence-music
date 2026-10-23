@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { usePlayer } from "./playerStore";
-import { usePluginHost } from "@/plugins/host";
+import { emptyContributions, usePluginHost } from "@/plugins/host";
 import type { ExternalPlayback, ExternalPlaybackEvent, Plugin } from "@/plugins/types";
 import type { Track } from "@/shared/types";
 
@@ -76,14 +76,7 @@ beforeEach(async () => {
   handles = [];
   usePluginHost.setState({
     plugins: [],
-    contributions: {
-      sidebar: [],
-      homeWidgets: [],
-      settings: [],
-      setupSteps: [],
-      audioSources: [],
-      librarySources: [],
-    },
+    contributions: emptyContributions(),
   });
   usePluginHost.getState().register(externalSource);
   await usePluginHost.getState().setEnabled("test.external", true);

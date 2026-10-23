@@ -23,7 +23,12 @@ export type Capability =
   | "ui.home.widget" // contribute a widget to the Home view
   | "ui.settings" // contribute a settings panel
   | "storage" // read/write a small private key-value store
-  | "network.outbound"; // make outbound HTTP requests
+  | "network.outbound" // make outbound HTTP requests
+  | "player.queue" // read and change the play queue
+  | "audio.dsp" // insert audio effects into the playback chain
+  | "output.device" // offer extra places to play to (cast, multi-room, ...)
+  | "commands" // register commands that hotkeys, remotes and scripts can run
+  | "track.actions"; // add actions to a track's menu
 
 export interface PluginManifest {
   /** Reverse-DNS unique id, e.g. "obsoletelabs.tracking-bridge". */
@@ -38,6 +43,106 @@ export interface PluginManifest {
   apiRange: string;
   /** True for plugins that ship with the app and need no install/consent. */
   builtin?: boolean;
+}
+
+/** Lyrics for a track. A line without `timeSec` is unsynced. */
+export interface Lyrics {
+  lines: { timeSec?: number; text: string }[];
+  synced: boolean;
+  /** Where they came from, shown under the lyrics (e.g. "LRCLIB"). */
+  source: string;
+}
+
+/** Supplies lyrics (granted by "provider.lyrics"). The host tries providers in order. */
+export interface LyricsProvider {
+  id: string;
+  label: string;
+  getLyrics: (track: Track, signal?: AbortSignal) => Promise<Lyrics | null>;
+}
+
+/** Extra facts about a track or artist (granted by "provider.metadata"). */
+export interface TrackMetadata {
+  artwork?: string;
+  /** Artist biography or a track description. */
+  about?: string;
+  year?: number;
+  genres?: string[];
+  links?: { label: string; url: string }[];
+}
+
+export interface MetadataProvider {
+  id: string;
+  label: string;
+  getMetadata: (track: Track, signal?: AbortSignal) => Promise<TrackMetadata | null>;
+}
+
+/** What changed in playback. `progress` fires about once a second while playing. */
+export type PlaybackEvent =
+  | { kind: "track"; track: Track | null }
+  | { kind: "play" | "pause"; track: Track | null; position: number }
+  | { kind: "seek" | "progress"; track: Track | null; position: number; duration: number }
+  | { kind: "ended"; track: Track; position: number; duration: number };
+
+/** A read/control handle on the player (each method needs its own capability). */
+export interface PlayerApi {
+  /** Needs "player.read". */
+  getState: () => {
+    current: Track | null;
+    isPlaying: boolean;
+    position: number;
+    duration: number;
+    volume: number;
+    queue: Track[];
+    index: number;
+  };
+  /** Needs "player.control". */
+  toggle: () => void;
+  next: () => Promise<void>;
+  previous: () => Promise<void>;
+  seek: (seconds: number) => void;
+  setVolume: (volume: number) => void;
+  /** Needs "player.queue". */
+  playTracks: (tracks: Track[], startIndex?: number) => Promise<void>;
+  enqueue: (track: Track) => void;
+}
+
+/** A Web Audio effect (granted by "audio.dsp"). Only plain-media playback passes through it. */
+export interface AudioEffect {
+  id: string;
+  label: string;
+  /** Build the nodes. `input` feeds the effect and `output` carries on to the speakers. */
+  create: (audio: AudioContext) => { input: AudioNode; output: AudioNode; dispose?: () => void };
+  /** Effects run in ascending order. */
+  order?: number;
+}
+
+/** A place audio can be sent to besides this computer's speakers (granted by "output.device"). */
+export interface OutputTarget {
+  id: string;
+  label: string;
+  /** Find devices on the network or system. */
+  listDevices: () => Promise<{ id: string; name: string }[]>;
+  /** Start sending playback to the device (or `null` to return to this computer). */
+  select: (deviceId: string | null) => Promise<void>;
+}
+
+/** A named action for a hotkey, the command palette or a remote (granted by "commands"). */
+export interface CommandContribution {
+  id: string;
+  title: string;
+  keywords?: string[];
+  /** Suggested shortcut such as "Ctrl+Alt+Right". Users can change it. */
+  shortcut?: string;
+  run: () => void | Promise<void>;
+}
+
+/** An item in a track's menu (granted by "track.actions"). */
+export interface TrackActionContribution {
+  id: string;
+  label: string;
+  run: (track: Track) => void | Promise<void>;
+  /** Hide the action for tracks it doesn't apply to. */
+  appliesTo?: (track: Track) => boolean;
 }
 
 /** A sidebar navigation entry contributed by a plugin. */
@@ -162,8 +267,19 @@ export interface PluginContext {
   registerAudioSource: (source: AudioSource) => void;
   registerLibrarySource: (source: LibrarySource) => void;
 
+  registerLyricsProvider: (provider: LyricsProvider) => void;
+  registerMetadataProvider: (provider: MetadataProvider) => void;
+  registerAudioEffect: (effect: AudioEffect) => void;
+  registerOutputTarget: (target: OutputTarget) => void;
+  registerCommand: (command: CommandContribution) => void;
+  registerTrackAction: (action: TrackActionContribution) => void;
+
   /** Subscribe to now-playing changes. Returns an unsubscribe function. */
   onNowPlaying: (listener: (track: Track | null) => void) => () => void;
+  /** Subscribe to play, pause, seek, progress and end events (needs "player.read"). */
+  onPlayback: (listener: (event: PlaybackEvent) => void) => () => void;
+  /** Read and control the player; each method needs its own capability. */
+  player: PlayerApi;
 
   storage: PluginStorage;
   /** Guarded fetch; only available with the "network.outbound" capability. */

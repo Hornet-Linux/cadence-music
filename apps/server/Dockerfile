@@ -1,6 +1,12 @@
 # Build from the repository root:
 #   docker build -f apps/server/Dockerfile -t cadence-server .
 
+# ---- ffmpeg: one static binary (opus, mp3, aac), no extra system packages -----
+# Used by the optional loudness, audio-analysis, transcode and library-health
+# community plugins. To build without it, delete the COPY line further down:
+# those plugins then report "ffmpeg missing" and everything else is unaffected.
+FROM mwader/static-ffmpeg:7.1.1@sha256:11a44711684c0b9f754c047dcd64235b8b52deab251bd0e0a86f22faa160749c AS ffmpeg
+
 # ---- Web player: the desktop UI built as a website (served at /app) --------
 FROM node:22-slim AS web
 # git is needed to install the castlabs Electron package (a GitHub dependency);
@@ -40,6 +46,7 @@ COPY --from=build /src/apps/server/package.json ./
 COPY --from=build /src/apps/server/node_modules ./node_modules
 COPY --from=build /src/apps/server/dist ./dist
 COPY --from=web /src/apps/desktop/dist-web ./web
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
 # /data must be writable by the unprivileged user; named volumes inherit this.
 RUN mkdir -p /data /music && chown node:node /data
 USER node

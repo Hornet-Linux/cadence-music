@@ -1,0 +1,157 @@
+.rc-view .rc-h2 {
+  margin: 22px 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.rc-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rc-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rc-device {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.rc-device:hover {
+  background: var(--surface-hover);
+}
+.rc-device.selected {
+  border-color: var(--accent);
+}
+.rc-device.offline {
+  opacity: 0.55;
+}
+.rc-dname {
+  font-weight: 600;
+}
+.rc-dsum {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rc-player {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rc-now {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.rc-art {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.rc-text {
+  min-width: 0;
+}
+.rc-title {
+  font-weight: 600;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.rc-sub {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rc-seek,
+.rc-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rc-seek input,
+.rc-volume input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  accent-color: var(--accent);
+}
+.rc-time {
+  font-size: 12px;
+  min-width: 40px;
+  text-align: center;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.rc-transport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+.rc-btn {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+.rc-main {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface-hover);
+}
+.rc-actions .btn {
+  min-height: 44px;
+}
+.rc-queue summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.rc-queue ol {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.rc-qrow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 8px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.rc-qrow:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.rc-qrow.current .rc-qt {
+  color: var(--accent);
+}
+.rc-qa {
+  font-size: 12px;
+  color: var(--text-muted);
+}

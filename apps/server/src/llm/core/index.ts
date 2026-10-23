@@ -6,6 +6,7 @@ import { LlmError, type FetchFn, type LlmJsonRequest, type LlmMessage, type LlmP
 
 export * from "./types.js";
 export * from "./dj.js";
+export { parseTextRequest, readLines, sseData } from "./stream.js";
 export { PRESETS, presetById, type ProviderPreset } from "./presets.js";
 export { extractJson } from "./http.js";
 

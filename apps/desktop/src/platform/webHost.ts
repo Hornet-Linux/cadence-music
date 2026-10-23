@@ -2,6 +2,7 @@ import type { AuthResponse } from "@uma/shared";
 import type { HostBridge } from "../../electron/preload";
 import type { CadenceNativeBridge } from "../host";
 import { createLlmProvider } from "../../electron/llm";
+import { authNoticeFor, showAuthNotice } from "./authNotice";
 
 // Browser stand-in for the Electron preload bridge (window.host), so the same
 // UI runs as a website served by the Cadence server at /app. Differences:
@@ -167,6 +168,14 @@ const auth: HostBridge["auth"] = {
     start.searchParams.set("redirect_uri", location.origin + OIDC_CALLBACK);
     start.searchParams.set("state", pending.state);
     start.searchParams.set("code_challenge", await challengeFor(pending.verifier));
+    // Check first that the server can reach its provider: otherwise the browser
+    // would land on a bare error page instead of coming back here.
+    const probe = await fetch(start.toString(), { redirect: "manual" }).catch(() => null);
+    if (!probe || probe.status >= 500) {
+      const notice = authNoticeFor("oidc_unavailable");
+      showAuthNotice(notice, () => void auth.oidcLogin(serverUrl).catch(() => undefined));
+      throw new Error(notice.text);
+    }
     location.assign(start.toString());
     return new Promise<never>(() => undefined); // the page navigates away
   },
@@ -180,14 +189,48 @@ const llm: HostBridge["llm"] = {
   chatJson: (config, req) => createLlmProvider(config).chatJson(req),
 };
 
+// Desktop-only integrations (Discord, global shortcuts, control API, Slack) do
+// nothing in a browser; their plugins are not even loaded here.
+const unsupported = async () => {
+  throw new Error("Only available in the desktop app");
+};
+const integrations: HostBridge["integrations"] = {
+  discord: {
+    start: unsupported,
+    setActivity: async () => undefined,
+    stop: async () => undefined,
+    status: async () => ({ state: "off" }),
+    onStatus: () => () => undefined,
+  },
+  shortcuts: { set: async () => [], clear: async () => undefined, onTriggered: () => () => undefined },
+  system: { mediaControls: async () => false, setMediaControls: unsupported, relaunch: async () => undefined },
+  control: {
+    start: unsupported,
+    stop: async () => undefined,
+    status: async () => ({ running: false, port: null, clients: 0, token: null }),
+    regenerateToken: unsupported,
+    pushState: () => undefined,
+    setHandler: () => undefined,
+  },
+  slack: { test: unsupported, setStatus: unsupported, clearStatus: unsupported, forget: async () => undefined },
+};
+
 export const webHost: HostBridge = {
   window: { minimize: () => undefined, toggleMaximize: () => undefined, close: () => undefined },
   secrets,
   auth,
   spotify,
   llm,
+  integrations,
   platform: "web" as unknown as HostBridge["platform"],
 };
+
+/** An error code from a sign-in redirect, mapped to a friendly notice. */
+class RedirectError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 /**
  * Finish a sign-in redirect if the page was loaded on a callback URL, then
@@ -208,8 +251,8 @@ export async function completeWebRedirects(): Promise<void> {
   try {
     const error = params.get("error");
     const code = params.get("code");
-    if (error) throw new Error(error === "access_denied" ? "Access denied" : `Sign-in failed (${error})`);
-    if (!pending || !code || params.get("state") !== pending.state) throw new Error("Sign-in link expired. Try again.");
+    if (error) throw new RedirectError(error);
+    if (!pending || !code || params.get("state") !== pending.state) throw new RedirectError("expired");
 
     if (path === OIDC_CALLBACK && pending.kind === "oidc" && pending.server) {
       const res = await fetch(apiUrl(pending.server, "api/auth/exchange"), {
@@ -217,7 +260,7 @@ export async function completeWebRedirects(): Promise<void> {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ code, code_verifier: pending.verifier }),
       });
-      if (!res.ok) throw new Error(`Sign-in failed (${res.status})`);
+      if (!res.ok) throw new RedirectError(res.status === 400 ? "expired" : "failed");
       const result = (await res.json()) as AuthResponse;
       await secrets.set("server.token", result.token);
       localStorage.setItem("server:url", pending.server);
@@ -233,7 +276,22 @@ export async function completeWebRedirects(): Promise<void> {
       localStorage.setItem("spotify:clientId", pending.clientId);
     }
   } catch (err) {
-    sessionStorage.setItem("auth:error", (err as Error).message);
+    if (path === OIDC_CALLBACK) {
+      const notice = authNoticeFor(err instanceof RedirectError ? err.code : "failed");
+      sessionStorage.setItem("auth:error", notice.text);
+      const server = pending?.kind === "oidc" ? pending.server : undefined;
+      showAuthNotice(notice, server ? () => void auth.oidcLogin(server).catch(() => undefined) : undefined);
+    } else {
+      const message =
+        err instanceof RedirectError
+          ? err.code === "access_denied"
+            ? "Access denied"
+            : err.code === "expired"
+              ? "Sign-in link expired. Try again."
+              : `Sign-in failed (${err.code})`
+          : (err as Error).message;
+      sessionStorage.setItem("auth:error", message);
+    }
   } finally {
     history.replaceState(null, "", `${BASE}/`);
   }

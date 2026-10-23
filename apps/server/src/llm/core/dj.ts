@@ -29,6 +29,10 @@ export interface DjRequest {
   mood?: string;
   /** Set when "Switch it up" is pressed: move away from the last set. */
   switchUp?: boolean;
+  /** How the host talks in the intros (a personality), e.g. "dry and witty, never gushing". */
+  style?: string;
+  /** Short facts about how the listener reacted to earlier picks (skips, songs they finished). */
+  notes?: string[];
   /** "Artist – Title" lines already played or queued this session. */
   avoid?: string[];
   count?: number;
@@ -84,6 +88,8 @@ export function buildDjMessages(profile: TasteProfile, req: DjRequest = {}): Llm
     list("Don't play", req.avoid ?? []),
     `It's ${timeOfDay(req.now ?? new Date())}.`,
     req.mood ? `The listener asked for: ${req.mood}` : "",
+    req.style ? `Host style for the intros (this replaces the default tone): ${req.style}` : "",
+    req.notes?.length ? list("How the listener reacted to earlier picks", req.notes) : "",
     req.switchUp ? "They pressed \"Switch it up\": take the set in a clearly different direction from the last songs." : "",
     `Pick ${count} songs.`,
   ]
