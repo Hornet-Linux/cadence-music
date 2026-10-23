@@ -26,7 +26,8 @@ import type { ActiveOidc } from "./oidcSettings.js";
 import { MAX_PASSWORD, checkPassword } from "./passwords.js";
 import { RateLimiter } from "./rateLimit.js";
 import { registerAccountRoutes } from "./account.js";
-import { createSession, deleteSession } from "./sessions.js";
+import { createSession, deleteSession, userForToken } from "./sessions.js";
+import { clearSessionCookie, sessionCredential } from "./webSession.js";
 import {
   countPasswordUsers,
   countUsers,
@@ -431,9 +432,27 @@ export function registerAuthRoutes(
 
   // ---- Session ----------------------------------------------------------
   app.post("/api/auth/logout", { preHandler: requireUser }, async (req, reply) => {
-    const token = req.headers.authorization!.slice("Bearer ".length).trim();
-    deleteSession(db, token);
+    const credential = sessionCredential(req)!;
+    deleteSession(db, credential.token);
+    if (credential.via === "cookie") clearSessionCookie(req, reply);
     return reply.code(204).send();
+  });
+
+  // Who is signed in, if anyone. Always 200, so the web player can check its
+  // cookie on start without a 401 in the console for a signed-out visitor.
+  app.get("/api/auth/session", async (req): Promise<{ user: PublicUser | null }> => {
+    const credential = sessionCredential(req);
+    const user = credential ? userForToken(db, credential.token) : null;
+    return { user: user && !user.disabled_at ? toPublicUser(user) : null };
+  });
+
+  // The web player moves a session it used to keep in localStorage into the
+  // HttpOnly cookie (sent with X-Cadence-Session: cookie, which the cookie hook
+  // turns into Set-Cookie). Same session, so nothing else changes.
+  app.post("/api/auth/web-session", { preHandler: requireUser }, async (req, reply) => {
+    const credential = sessionCredential(req)!;
+    if (credential.via !== "bearer") return reply.code(400).send({ error: "already_cookie" });
+    return { token: credential.token, user: toPublicUser(req.user!) } satisfies AuthResponse;
   });
 
   app.get("/api/me", { preHandler: requireUser }, async (req): Promise<PublicUser> =>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { LlmDeviceRegistration, LlmRelayJob, LlmRelayResult } from "@uma/shared";
-import { apiUrl, useServer } from "@/plugins/builtins/server/serverStore";
+import { apiUrl, authHeaders, useServer } from "@/plugins/builtins/server/serverStore";
 import type { HostBridge } from "../../../electron/preload";
 import { deviceId, localConfig, useProviders, type LocalProvider } from "./providers";
 
@@ -120,7 +120,7 @@ async function answer(jobId: string, result: LlmRelayResult): Promise<void> {
   const { url, token } = useServer.getState();
   await fetch(apiUrl(url, `api/llm/devices/jobs/${jobId}`), {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    headers: { ...authHeaders(token), "content-type": "application/json" },
     body: JSON.stringify(result),
   }).catch(() => undefined);
 }
@@ -132,7 +132,7 @@ async function connectLoop(registration: LlmDeviceRegistration, signal: AbortSig
       const { url, token } = useServer.getState();
       const res = await fetch(apiUrl(url, "api/llm/devices/connect"), {
         method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        headers: { ...authHeaders(token), "content-type": "application/json" },
         body: JSON.stringify(registration),
         signal,
       });

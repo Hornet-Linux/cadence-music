@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { sessionCredential } from "./webSession.js";
 import type { PublicUser } from "@uma/shared";
 import type { Config } from "../config.js";
 import type { Db } from "../db.js";
@@ -17,9 +18,9 @@ const PASSWORD_MAX_FAILURES = 8;
 const count = (db: Db, sql: string, ...args: (string | number)[]) =>
   (db.prepare(sql).get(...args) as { n: number }).n;
 
+/** This request's own session token (bearer, or the web player's cookie). */
 function bearer(req: FastifyRequest): string | null {
-  const header = req.headers.authorization ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7).trim() : null;
+  return sessionCredential(req)?.token ?? null;
 }
 
 function parseJson(text: string): unknown {
