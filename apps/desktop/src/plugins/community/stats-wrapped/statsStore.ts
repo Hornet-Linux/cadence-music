@@ -25,11 +25,14 @@ export const useStatsData = create<StatsData>((set, get) => ({
   error: null,
   loadedAt: 0,
   async load(force = false) {
-    const { status, loadedAt } = get();
-    if (status === "loading" || (!force && status === "ready" && Date.now() - loadedAt < FRESH_MS)) return;
+    const { status, loadedAt, source } = get();
+    const signedIn = !!useServer.getState().user;
+    // Sign-in finishes after the first render, so cached device-only data must not hide the server's.
+    const sameSource = source === (signedIn ? "server" : "device");
+    if (status === "loading" || (!force && sameSource && status === "ready" && Date.now() - loadedAt < FRESH_MS)) return;
     set({ status: "loading", error: null });
     try {
-      if (useServer.getState().user) {
+      if (signedIn) {
         const { plays, truncated } = await fetchServerHistory();
         set({ plays, truncated, source: "server", status: "ready", loadedAt: Date.now() });
       } else {

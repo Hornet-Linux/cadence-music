@@ -12,6 +12,8 @@ export interface DeviceInfo {
 
 export interface DeviceList {
   devices: DeviceInfo[];
+  /** Set when speakers probably can't reach the address the server would hand them. */
+  streamWarning?: string | null;
   discovering?: boolean;
   lastScanAt?: number | null;
   hint?: string;

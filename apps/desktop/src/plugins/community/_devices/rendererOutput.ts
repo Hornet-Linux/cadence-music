@@ -3,7 +3,7 @@ import type { Track } from "@/shared/types";
 import type { OutputTarget, PlaybackEvent, PluginContext } from "../../types";
 import { rendererApi, type PlayRequest, type RendererApi } from "./deviceApi";
 import { friendlyError } from "./errors";
-import { reportOutputLost, setOutputWarning, silenceLocal } from "./outputState";
+import { reportOutputLost, setOutputWarning, setTargetWarning, silenceLocal } from "./outputState";
 
 export interface RendererTargetConfig {
   /** The OutputTarget id, e.g. "cadence.dlna". */
@@ -149,6 +149,7 @@ export function createRendererTarget(ctx: PluginContext, cfg: RendererTargetConf
     async listDevices() {
       try {
         const list = await api.list(true);
+        setTargetWarning(cfg.id, list.streamWarning ?? null);
         // The picker only shows a name, so say what the device is where it matters (Sonos speakers are UPnP devices).
         return list.devices.map((d) => ({ id: d.id, name: d.kind === "sonos" ? `${d.name} (Sonos)` : d.name }));
       } catch (err) {

@@ -25,6 +25,9 @@ export interface DlnaManagerOptions {
 const SONOS_TEXT = "Sonos speakers are UPnP devices, so they show up here too.";
 
 /** Finds UPnP/DLNA renderers (SSDP plus addresses the admin entered) and hands out sessions to control them. */
+/** Where renderers usually serve their UPnP device description. */
+const DESCRIPTION_PATHS = ["/xml/device_description.xml", "/description.xml", "/desc.xml", "/rootDesc.xml", "/dmr.xml", "/DeviceDescription.xml"];
+
 export class DlnaManager implements RendererBackend {
   private readonly entries = new Map<string, Entry>();
   private manualLocations: string[];
@@ -132,8 +135,11 @@ export class DlnaManager implements RendererBackend {
     const trimmed = address.trim();
     const hasPathOrPort = /^[a-z]+:\/\//i.test(trimmed) ? /^[a-z]+:\/\/[^/]+(:\d+|\/.+)/i.test(trimmed) : /[:/]/.test(trimmed);
     if (hasPathOrPort) {
-      const url = parseAddress(trimmed, undefined, "/xml/device_description.xml");
-      return url ? [url.toString()] : [];
+      const url = parseAddress(trimmed);
+      if (!url) return [];
+      if (url.pathname !== "/") return [url.toString()];
+      // "IP:PORT" without a path: try the description paths renderers commonly use.
+      return DESCRIPTION_PATHS.map((p) => new URL(p, url).toString());
     }
     const host = parseAddress(trimmed);
     if (!host) return [];

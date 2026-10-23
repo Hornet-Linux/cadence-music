@@ -6,6 +6,7 @@ import { didlLite, formatTime, parseDescription, parseTime } from "./upnp.js";
 import { parseSsdpResponse } from "./ssdp.js";
 import { startFakeRenderer, type FakeRenderer } from "./fakeRenderer.js";
 import { createDlnaPlugin } from "./plugin.js";
+import { streamAddressWarning } from "../_devices/streamUrls.js";
 
 let generic: FakeRenderer;
 let sonos: FakeRenderer;
@@ -92,6 +93,13 @@ test("a manual address adds a Sonos speaker, labelled as Sonos, and only an admi
   assert.equal(((await get("/api/dlna/devices")).json() as { devices: Dev[] }).devices.length, 2);
 });
 
+test("an address with a port but no path finds the description at a common path", async () => {
+  const hostPort = new URL(sonos.location).host; // e.g. 127.0.0.1:54321, description lives at /desc.xml
+  const ok = await post("/api/dlna/devices/manual", { address: hostPort }, srv.admin);
+  assert.equal(ok.statusCode, 200, ok.body);
+  assert.equal((ok.json() as Dev).name, "Living Room");
+});
+
 test("play hands the speaker a short-lived signed stream URL that the server honours", async () => {
   const id = await deviceId("Fake Speaker");
   const res = await post(`/api/dlna/devices/${id}/play`, { trackId: `server:${srv.trackId}`, positionSec: 0, autoplay: true });
@@ -174,4 +182,13 @@ test("removing a manual device forgets it", async () => {
   assert.equal((await del(srv.alice)).statusCode, 403);
   assert.equal((await del(srv.admin)).statusCode, 200);
   assert.equal((await del(srv.admin)).statusCode, 404);
+});
+
+test("the picker is warned when speakers can't reach the stream address", async () => {
+  assert.match(streamAddressWarning("http://127.0.0.1:9530", false) ?? "", /can't reach "127.0.0.1"/);
+  assert.match(streamAddressWarning("http://172.17.0.7:8787", true) ?? "", /inside Docker/);
+  assert.equal(streamAddressWarning("http://172.17.0.7:8787", false), null);
+  assert.equal(streamAddressWarning("http://192.168.1.10:8787", true), null);
+  const list = (await get("/api/dlna/devices")).json() as { streamWarning: string | null };
+  assert.ok("streamWarning" in list);
 });
