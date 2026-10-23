@@ -94,6 +94,13 @@ describe("checkAlarm", () => {
     expect(checkAlarm(a, new Date(at(2, 7, 0).getTime() + 5 * 60_000)).kind).toBe("ring");
   });
 
+  it("plays the fallback music instead of staying silent when the source is empty", async () => {
+    vi.useRealTimers();
+    const player = { playTracks: vi.fn(async () => undefined), getState: () => ({ isPlaying: true }) } as never;
+    const result = await ringAlarm(alarm({ rampSec: 0, shuffle: false }), { player, tracksFor: () => [], fallback: () => [track("q")], verifyAfterMs: 1 });
+    expect(result).toEqual({ ok: true, started: 1, usedFallback: true });
+  });
+
   it("does nothing for a disabled alarm", () => {
     expect(checkAlarm(alarm({ enabled: false, armedAt: 0 }), at(2, 7, 0, 1)).kind).toBe("none");
   });

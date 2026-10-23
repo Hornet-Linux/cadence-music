@@ -107,3 +107,27 @@
     flex-wrap: wrap;
   }
 }
+
+/* A soft caret while the answer streams in, so it reads as being written, not frozen. */
+.chat-bubble.streaming::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.12em;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.5;
+  animation: chat-caret 1.1s ease-in-out infinite;
+}
+@keyframes chat-caret {
+  50% {
+    opacity: 0.12;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble.streaming::after {
+    animation: none;
+  }
+}
