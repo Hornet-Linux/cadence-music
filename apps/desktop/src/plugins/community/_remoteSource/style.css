@@ -97,9 +97,6 @@
   color: var(--text-muted);
   font-weight: 500;
 }
-.rs-crumb:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
 .rs-folder-list {
   list-style: none;
   border: 1px solid var(--border);
@@ -138,9 +135,6 @@
   gap: 8px;
   padding: 0 14px 0 4px;
   text-align: left;
-}
-.rs-folder-open:hover {
-  background: var(--surface-hover);
 }
 .rs-folder-name {
   overflow: hidden;
@@ -212,9 +206,6 @@
   border-radius: var(--radius-sm);
   text-align: left;
 }
-.rs-album:hover {
-  background: var(--surface-hover);
-}
 .rs-album-name {
   font-weight: 600;
 }
@@ -241,4 +232,35 @@
   content: "";
   position: absolute;
   inset: -10px;
+}
+
+/* Hover only where a pointer can hover (no sticky highlight after a tap), calm transitions, a gentle press. */
+.rs-crumb,
+.rs-folder-open,
+.rs-album {
+  transition:
+    background-color 160ms ease,
+    transform 120ms ease;
+}
+@media (hover: hover) {
+  .rs-crumb:hover:not(:disabled),
+  .rs-folder-open:hover,
+  .rs-album:hover {
+    background: var(--surface-hover);
+  }
+}
+.rs-folder-open:active,
+.rs-album:active {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rs-crumb,
+  .rs-folder-open,
+  .rs-album {
+    transition: none;
+  }
+  .rs-folder-open:active,
+  .rs-album:active {
+    transform: none;
+  }
 }

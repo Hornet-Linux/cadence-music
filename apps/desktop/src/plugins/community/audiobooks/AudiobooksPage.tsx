@@ -4,9 +4,10 @@ import { BackIcon, PauseIcon, PlayIcon, SearchIcon, TrashIcon } from "@/ui/icons
 import { describeError, useDebounced, useLoad } from "../_sourcekit/api";
 import { clock, SPEEDS, speedLabel, spoken } from "../_sourcekit/format";
 import { Back15Icon, BookmarkIcon, Fwd30Icon, MoonIcon } from "../_sourcekit/icons";
-import { Art, Bar, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts } from "../_sourcekit/ui";
+import { Art, Bar, Chips, IconButton, PageHeader, Problem, SignInGate, joinFacts, LoadingRows } from "../_sourcekit/ui";
 import { addBookmark, bookIdOf, bookToTrack, chapterAt, fetchBook, fetchBookmarks, fetchBooks, fetchLibraries, removeBookmark, SLEEP_MINUTES, startBookAt, useAudiobooks, type Book } from "./audiobookStore";
 import { useSettingsModal } from "@/features/settings/settingsStore";
+import { useServer } from "../../builtins/server/serverStore";
 
 function useNow(everyMs: number): number {
   const [now, setNow] = useState(Date.now());
@@ -235,7 +236,7 @@ function ContinueView({ onOpen }: { onOpen: (b: Book) => void }) {
   return (
     <>
       <Shelf books={books} onOpen={onOpen} />
-      {!loaded && <p className="empty">Loading…</p>}
+      {!loaded && <LoadingRows label="Loading…" />}
       {loaded && books.length === 0 && <p className="empty">Nothing in progress. Pick a book from your library.</p>}
     </>
   );
@@ -279,7 +280,7 @@ function LibraryView({ onOpen }: { onOpen: (b: Book) => void }) {
       </div>
       <Problem message={libs.error ?? first.error} onRetry={() => (libs.error ? libs.reload() : first.reload())} />
       <Shelf books={books} onOpen={onOpen} />
-      {(libs.loading || first.loading) && <p className="empty">Loading…</p>}
+      {(libs.loading || first.loading) && <LoadingRows label="Loading…" />}
       {!first.loading && !first.error && libraryId && books.length === 0 && <p className="empty">{term ? `No books match “${term}”.` : "This library has no books yet."}</p>}
       {!term && books.length > 0 && books.length < total && (
         <button className="btn ghost show-more" disabled={busy} onClick={() => void showMore()}>
@@ -296,6 +297,7 @@ export function AudiobooksPage() {
   const error = useAudiobooks((s) => s.error);
   const refresh = useAudiobooks((s) => s.refreshStatus);
   const openSettings = useSettingsModal((s) => s.show);
+  const isAdmin = useServer((s) => !!s.user?.isAdmin);
   const [tab, setTab] = useState<"continue" | "library">("continue");
   const [open, setOpen] = useState<Book | null>(null);
   useEffect(() => {
@@ -307,11 +309,24 @@ export function AudiobooksPage() {
       <PageHeader title="Audiobooks">{connected ? `Signed in to Audiobookshelf as ${status?.userName ?? "you"}. Your place is saved back there as you listen.` : "Listen to your Audiobookshelf library, with your own account."}</PageHeader>
       <SignInGate what="Audiobookshelf">
         {!status ? (
-          <p className="empty">{checking ? "Checking Audiobookshelf…" : (error ?? "Couldn't check Audiobookshelf.")}</p>
+          checking ? (
+          <LoadingRows label="Checking Audiobookshelf…" rows={3} />
+        ) : (
+          <Problem message={error ?? "Couldn't reach Audiobookshelf."} onRetry={() => void refresh()} />
+        )
         ) : !status.configured ? (
           <div className="card pad stack">
             <p className="strong">Audiobookshelf isn&apos;t set up on this server</p>
-            <p className="muted">The server owner adds its address in Settings, Audiobooks.</p>
+            <p className="muted">
+              {isAdmin ? "Add your Audiobookshelf address in Settings, Audiobooks. Everyone then signs in with their own account." : "The server owner adds its address in Settings, Audiobooks."}
+            </p>
+            {isAdmin && (
+              <div>
+                <button className="btn primary" style={{ minHeight: 44 }} onClick={() => openSettings("audiobooks")}>
+                  Set up Audiobookshelf
+                </button>
+              </div>
+            )}
           </div>
         ) : !connected ? (
           <div className="card pad stack">

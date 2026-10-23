@@ -7,6 +7,7 @@ import { BackIcon, HeartIcon, PlayIcon, SearchIcon, ShuffleIcon } from "@/ui/ico
 import { TrackRow } from "@/ui/media";
 import { useDebounced, usePaged, type Paged } from "./hooks";
 import type { BrowseApi, Card } from "./types";
+import { LoadingRows } from "../_sourcekit/ui";
 import "./style.css";
 
 type Tab = "tracks" | "albums" | "artists" | "playlists" | "favourites";
@@ -70,7 +71,7 @@ function TrackList({ api, tracks, empty }: { api: BrowseApi; tracks: Track[]; em
 }
 
 function Status({ paged, noun }: { paged: Paged<unknown>; noun: string }) {
-  const { loading, error, hasMore, more } = paged;
+  const { loading, error, hasMore, more, items } = paged;
   return (
     <>
       {error && (
@@ -78,7 +79,7 @@ function Status({ paged, noun }: { paged: Paged<unknown>; noun: string }) {
           {error}
         </p>
       )}
-      {loading && <p className="empty">Loading {noun}…</p>}
+      {loading && <LoadingRows label={`Loading ${noun}…`} rows={items.length ? 2 : 6} />}
       {!loading && hasMore && (
         <button className="btn ghost show-more" onClick={more}>
           Show more

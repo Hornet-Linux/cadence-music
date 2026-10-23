@@ -85,3 +85,20 @@ export function Chips<T extends string>({ value, options, onChange, label }: { v
     </div>
   );
 }
+
+/** Placeholder rows shaped like the real list, so the page doesn't jump when results arrive. */
+export function LoadingRows({ rows = 5, label = "Loading" }: { rows?: number; label?: string }) {
+  return (
+    <div className="sk-list sk-loading" role="status" aria-busy="true" aria-label={label}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div className="sk-ghost" key={i} aria-hidden="true">
+          <span className="skeleton sk-ghost-art" />
+          <span className="sk-ghost-lines">
+            <span className="skeleton sk-ghost-line" />
+            <span className="skeleton sk-ghost-line short" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
