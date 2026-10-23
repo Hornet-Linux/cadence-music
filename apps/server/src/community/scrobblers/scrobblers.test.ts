@@ -209,6 +209,8 @@ test("ListenBrainz: connect validates the token; a flush sends one request with 
   assert.equal(s.sent, 2);
   assert.equal(s.queue.pending, 0);
   assert.equal(s.queue.sentToday, 2);
+  assert.ok(s.lastSuccessAt, "last sent is derived alongside the daily count");
+  assert.equal(s.lastSuccessAt, s.queue.lastSentAt ?? s.lastSuccessAt);
 });
 
 test("a wrong ListenBrainz token is rejected at connect and nothing is saved", async () => {

@@ -19,6 +19,8 @@ export interface QueueCounts {
   pending: number;
   /** Delivered in the last 24 hours. */
   sentToday: number;
+  /** When the most recent play was delivered (any age), so "last sent" and the daily count agree. */
+  lastSentAt: number | null;
   dropped: number;
   /** When the next retry is due, if anything is waiting. */
   nextAttemptAt: number | null;
@@ -165,7 +167,7 @@ export class ScrobbleQueue {
     const rows = this.db
       .prepare("SELECT state, COUNT(*) AS n, MIN(CASE WHEN state = 'pending' THEN next_attempt_at END) AS next FROM scrobbler_queue WHERE user_id = ? AND service = ? GROUP BY state")
       .all(userId, service) as unknown as { state: QueueState; n: number; next: number | null }[];
-    const out: QueueCounts = { pending: 0, sentToday: 0, dropped: 0, nextAttemptAt: null };
+    const out: QueueCounts = { pending: 0, sentToday: 0, lastSentAt: null, dropped: 0, nextAttemptAt: null };
     for (const r of rows) {
       if (r.state === "pending") {
         out.pending = r.n;
@@ -173,9 +175,10 @@ export class ScrobbleQueue {
       } else if (r.state === "dropped") out.dropped = r.n;
     }
     const today = this.db
-      .prepare("SELECT COUNT(*) AS n FROM scrobbler_queue WHERE user_id = ? AND service = ? AND state = 'sent' AND finished_at >= ?")
-      .get(userId, service, now - 24 * 3600_000) as { n: number };
+      .prepare("SELECT COUNT(*) AS n, MAX(finished_at) AS last FROM scrobbler_queue WHERE user_id = ? AND service = ? AND state = 'sent' AND finished_at >= ?")
+      .get(userId, service, now - 24 * 3600_000) as { n: number; last: number | null };
     out.sentToday = today.n;
+    out.lastSentAt = today.last;
     return out;
   }
 

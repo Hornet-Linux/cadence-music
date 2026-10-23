@@ -77,3 +77,20 @@ export function trackKey(track: Track): string {
   const artist = track.artists[0]?.name ?? "";
   return `${track.id}|${artist}|${track.title}`.toLowerCase();
 }
+
+/** The menu language closest to the browser's, or English. */
+export function defaultTranslateLanguage(nav: string | undefined = typeof navigator === "undefined" ? undefined : navigator.language): string {
+  const code = (nav ?? "en").toLowerCase();
+  const map: Record<string, string> = { en: "English", es: "Spanish", fr: "French", de: "German", it: "Italian", pt: "Portuguese", nl: "Dutch", sv: "Swedish", ru: "Russian", ja: "Japanese", ko: "Korean", zh: "Chinese (Simplified)", ar: "Arabic", hi: "Hindi" };
+  return map[code.split("-")[0]!] ?? "English";
+}
+
+/** Cheap check: do these lines look like they are already in English? (Used to skip pointless English-to-English translation.) */
+export function looksEnglish(lines: string[]): boolean {
+  const text = lines.join(" ").toLowerCase();
+  const words = text.match(/[\p{L}']+/gu) ?? [];
+  if (words.length < 8) return false;
+  const common = new Set(["the", "and", "you", "i", "to", "a", "in", "of", "my", "it", "me", "is", "we", "on", "your", "for", "that", "with", "all", "be"]);
+  const hits = words.filter((w) => common.has(w)).length;
+  return !/[^\x20-\x7e\s]/.test(text) && hits / words.length > 0.2;
+}
