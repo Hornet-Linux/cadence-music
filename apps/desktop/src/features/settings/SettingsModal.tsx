@@ -3,6 +3,8 @@ import { DjSettings } from "@/features/dj/DjSettings";
 import { useHistory } from "@/features/history/historyStore";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
 import { ACCENTS, usePrefs } from "@/features/preferences/prefsStore";
+import { readScale, setScale } from "@/app/uiScale";
+import { isWeb } from "@/platform/webHost";
 import { useServer } from "@/plugins/builtins/server/serverStore";
 import { usePluginHost } from "@/plugins/host";
 import {
@@ -77,6 +79,37 @@ function PlaybackSection() {
   );
 }
 
+const SIZE_LABELS: [number, string][] = [
+  [0.8, "Smaller"],
+  [0.9, "Small"],
+  [1, "Default"],
+  [1.1, "Large"],
+  [1.25, "Larger"],
+  [1.5, "Largest"],
+];
+
+/** Desktop only: scales the whole interface (also Ctrl+= / Ctrl+- / Ctrl+0). */
+function InterfaceSizeRow() {
+  const [size, setSize] = useState(readScale);
+  useEffect(() => {
+    const on = (e: Event) => setSize((e as CustomEvent<number>).detail);
+    window.addEventListener("ui-scale", on);
+    return () => window.removeEventListener("ui-scale", on);
+  }, []);
+  if (!window.host?.ui || isWeb()) return null;
+  return (
+    <SettingRow title="Interface size" description="Make everything bigger or smaller. Shortcuts: Ctrl + plus, Ctrl + minus, Ctrl + 0.">
+      <div className="segmented" role="radiogroup" aria-label="Interface size">
+        {SIZE_LABELS.map(([value, label]) => (
+          <button key={value} role="radio" aria-checked={size === value} className={size === value ? "on" : ""} onClick={() => setScale(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </SettingRow>
+  );
+}
+
 function AppearanceSection() {
   const prefs = usePrefs();
   return (
@@ -97,6 +130,7 @@ function AppearanceSection() {
           ))}
         </div>
       </SettingRow>
+      <InterfaceSizeRow />
       <SettingRow title="Ambient background" description="Tint the app with colours from the artwork that's playing.">
         <Toggle
           label="Ambient background"

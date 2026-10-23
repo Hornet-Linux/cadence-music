@@ -217,6 +217,7 @@ const integrations: HostBridge["integrations"] = {
 
 export const webHost: HostBridge = {
   window: { minimize: () => undefined, toggleMaximize: () => undefined, close: () => undefined },
+  ui: { setZoom: () => undefined },
   secrets,
   auth,
   spotify,
