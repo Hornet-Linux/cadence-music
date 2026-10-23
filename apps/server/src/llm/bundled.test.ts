@@ -44,7 +44,9 @@ test("the server's Ollama is registered once and becomes the default only if the
   assert.equal(fresh.get(first)!.isDefault, true);
 });
 
-function fakeOllama(installed: string[], opts: { failFirst?: number } = {}) {
+const ndjson = (...events: object[]) => new Response(events.map((e) => JSON.stringify(e)).join("\n") + "\n");
+
+function fakeOllama(installed: string[], opts: { failFirst?: number; pullError?: string } = {}) {
   const calls: string[] = [];
   let failures = opts.failFirst ?? 0;
   const fetchFn: FetchFn = async (input, init) => {
@@ -56,8 +58,11 @@ function fakeOllama(installed: string[], opts: { failFirst?: number } = {}) {
     }
     if (url.endsWith("/api/tags")) return Response.json({ models: installed.map((name) => ({ name })) });
     if (url.endsWith("/api/pull")) {
-      installed.push(JSON.parse(String(init?.body)).model);
-      return Response.json({ status: "success" });
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.stream, true, "a streamed pull, so fetch doesn't time out waiting for headers");
+      if (opts.pullError) return ndjson({ status: "pulling manifest" }, { error: opts.pullError });
+      installed.push(body.model);
+      return ndjson({ status: "pulling manifest" }, { status: "pulling abc", total: 100, completed: 50 }, { status: "success" });
     }
     return new Response("not found", { status: 404 });
   };
@@ -74,6 +79,10 @@ test("the model is downloaded only when missing, after Ollama comes up", async (
   const result = await pullModelInBackground("http://ollama:11434", "qwen3:8b", silent, signal, missing.fetchFn, { retryMs: 1 });
   assert.equal(result, "pulled");
   assert.deepEqual(missing.calls, ["GET /api/tags", "GET /api/tags", "GET /api/tags", "POST /api/pull"]);
+
+  const broken = fakeOllama([], { pullError: "pull model manifest: file does not exist" });
+  assert.equal(await pullModelInBackground("http://ollama:11434", "nope", silent, signal, broken.fetchFn, { retryMs: 1 }), "failed");
+  assert.equal(broken.calls.filter((c) => c === "POST /api/pull").length, 3, "retried");
 
   const down = fakeOllama([], { failFirst: 1000 });
   assert.equal(
