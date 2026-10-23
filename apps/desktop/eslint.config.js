@@ -19,6 +19,10 @@ export default tseslint.config(
       // places they flag work today; warn until they're reworked on their own.
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/refs": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/immutability": "warn",
+      "no-useless-assignment": "warn",
+      "preserve-caught-error": "warn",
       "no-undef": "off",
     },
   },
@@ -29,6 +33,7 @@ export default tseslint.config(
     },
     rules: {
       "no-undef": "off",
+      "no-useless-assignment": "warn",
     },
   },
   {
