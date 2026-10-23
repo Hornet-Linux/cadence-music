@@ -13,7 +13,16 @@ export default defineConfig(({ mode }) => {
     return {
       base: "/app/",
       resolve: { alias },
-      plugins: [react()],
+      plugins: [
+        react(),
+        {
+          // The server sends the (stricter, plugin-aware) Content-Security-Policy header for /app. A second,
+          // fixed policy in a meta tag would be intersected with it and block the opt-in embeds.
+          name: "web-csp-from-server",
+          apply: "build",
+          transformIndexHtml: (html: string) => html.replace(/\s*<meta\s+http-equiv="Content-Security-Policy"[^>]*>/i, ""),
+        },
+      ],
       build: { outDir: "dist-web", emptyOutDir: true },
     };
   }

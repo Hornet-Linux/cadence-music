@@ -6,15 +6,16 @@ export interface Hsl {
   l: number;
 }
 
+// Quiet, low-saturation pairs: artwork placeholders should recede, not shout.
 const FALLBACKS: [string, string][] = [
-  ["#8b6bff", "#55e0d8"],
-  ["#ff4f8b", "#ffb36b"],
-  ["#36d1dc", "#5b86e5"],
-  ["#f093fb", "#f5576c"],
-  ["#3ddc97", "#c6f35b"],
-  ["#fa709a", "#fee140"],
-  ["#4facfe", "#00f2fe"],
-  ["#a18cd1", "#fbc2eb"],
+  ["#5d6590", "#46506f"],
+  ["#845d6c", "#5f4553"],
+  ["#4f7782", "#3c5964"],
+  ["#7b6a90", "#5a4d6e"],
+  ["#587a67", "#42604f"],
+  ["#8a7157", "#665240"],
+  ["#4f6f95", "#3b5373"],
+  ["#74698f", "#574f6d"],
 ];
 
 export function hashString(s: string): number {
@@ -49,9 +50,13 @@ export function hslCss({ h, s, l }: Hsl): string {
   return `hsl(${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`;
 }
 
-/** Make a colour lively enough to theme with, whatever the artwork. */
-export function vivid(c: Hsl): Hsl {
-  return { h: c.h, s: Math.min(0.85, Math.max(0.55, c.s * 1.3)), l: Math.min(0.66, Math.max(0.52, c.l)) };
+/**
+ * Tame a colour into a restrained accent: soft saturation and a light, even
+ * tone so text on top stays readable (dark text on the accent, accent text on
+ * the dark surfaces both pass WCAG AA).
+ */
+export function calm(c: Hsl): Hsl {
+  return { h: c.h, s: Math.min(0.42, Math.max(0.2, c.s * 0.5)), l: Math.min(0.74, Math.max(0.64, c.l)) };
 }
 
 /**

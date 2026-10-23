@@ -37,19 +37,33 @@ jobs:
         run: |
           brew install xcodegen
           xcodegen generate
-      - name: Compile the tests
-        # The Apple Intelligence test skips itself without compatible hardware;
-        # building for the simulator proves the tests compile.
+      - name: Unit tests
+        # Runs CadenceTests on an iPhone simulator. The Apple Intelligence test skips
+        # itself without compatible hardware.
         run: |
-          xcodebuild build-for-testing \
+          UDID=$(xcrun simctl list devices available iPhone -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          def version(runtime):
+              tail = runtime.split("iOS-")[-1]
+              return [int(p) for p in tail.split("-") if p.isdigit()]
+          runtimes = sorted((r for r, d in devices.items() if "iOS-" in r and d), key=version)
+          print(devices[runtimes[-1]][0]["udid"])
+          ')
+          echo "Testing on simulator $UDID"
+          xcodebuild test \
             -project Cadence.xcodeproj \
             -scheme Cadence \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "id=$UDID" \
             -derivedDataPath build-tests \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
       - name: Build
+        env:
+          # A release tag (v1.2.3) sets the app version; other builds keep the one in project.yml.
+          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
+          args=()
+          if [ -n "$TAG_NAME" ]; then args+=("MARKETING_VERSION=${TAG_NAME#v}"); fi
           xcodebuild build \
             -project Cadence.xcodeproj \
             -scheme Cadence \
@@ -57,7 +71,8 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            ${args[@]+"${args[@]}"}
       - name: Package Cadence.ipa
         run: |
           mkdir -p out/Payload

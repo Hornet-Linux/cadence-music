@@ -3,35 +3,119 @@ import WebKit
 
 /// Hosts the server's web player (/app), so the iOS app shares its UI and
 /// sign-in redirects. The lock screen and Control Center come from the page's
-/// Media Session metadata (src/player/integrations.ts).
+/// Media Session metadata (src/player/integrations.ts), published by WebKit.
 struct PlayerView: View {
     let url: URL
     let onChangeServer: () -> Void
     @State private var failure: String?
     @State private var reloadToken = 0
+    @State private var monitor: NetworkMonitor?
+    @State private var release: ReleaseInfo?
+    @Environment(\.openURL) private var openURL
+
+    private let updates = UpdateChecker()
+
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+    }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color(uiColor: Palette.uiColor(Palette.playerBackground)).ignoresSafeArea()
+            // Only the container safe areas are ignored: the web page handles the notch and the home
+            // indicator itself (viewport-fit=cover and env(safe-area-inset-*)), while the keyboard
+            // still shrinks the view so a focused field stays visible.
             WebPlayer(url: url, reloadToken: reloadToken, failure: $failure, onChangeServer: onChangeServer)
-                .ignoresSafeArea()
-            if let failure {
-                VStack(spacing: 14) {
-                    Text("Couldn't load your server").font(.headline)
-                    Text(failure).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    Button("Try again") {
-                        self.failure = nil
-                        reloadToken += 1
-                    }
-                    .buttonStyle(.borderedProminent)
-                    Button("Change server", action: onChangeServer)
-                }
-                .padding(24)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .padding()
+                .ignoresSafeArea(.container)
+            if let message = failure {
+                FailureCard(host: url.host ?? "", message: message, retry: retry, changeServer: onChangeServer)
             }
         }
         .preferredColorScheme(.dark)
+        .onChange(of: failure) { newValue in
+            monitor?.stop()
+            monitor = nil
+            if newValue != nil {
+                // Retry on its own when the device comes back online.
+                let fresh = NetworkMonitor { retry() }
+                fresh.start()
+                monitor = fresh
+            }
+        }
+        .task { await checkForUpdate() }
+        .alert("A newer version is available", isPresented: updatePresented, presenting: release) { found in
+            Button("View release") { openURL(found.pageURL) }
+            Button("Later", role: .cancel) {}
+        } message: { found in
+            Text("Cadence \(found.displayVersion) is out; you have \(currentVersion). "
+                + "Updates are not installed automatically: download the new Cadence.ipa from the release page and install it the same way as before.")
+        }
+    }
+
+    private var updatePresented: Binding<Bool> {
+        Binding(
+            get: { release != nil },
+            set: { shown in
+                if !shown { release = nil }
+            }
+        )
+    }
+
+    private func retry() {
+        failure = nil
+        reloadToken += 1
+    }
+
+    /// A gentle once-a-day check, a few seconds after the player opens.
+    private func checkForUpdate() async {
+        try? await Task.sleep(nanoseconds: 4_000_000_000)
+        guard !Task.isCancelled else { return }
+        if let found = await updates.check(currentVersion: currentVersion) {
+            updates.markNotified(found)
+            release = found
+        }
+    }
+}
+
+/// Shown over the player when the server cannot be reached.
+private struct FailureCard: View {
+    let host: String
+    let message: String
+    let retry: () -> Void
+    let changeServer: () -> Void
+
+    var body: some View {
+        ZStack {
+            Palette.background.color.ignoresSafeArea()
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        LogoMark()
+                        Text("Cannot reach your server")
+                            .font(.title2.bold())
+                            .foregroundColor(Palette.text.color)
+                            .multilineTextAlignment(.center)
+                        if !host.isEmpty {
+                            Text(host)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundColor(Palette.secondaryText.color)
+                        }
+                        Text(message)
+                            .font(.body)
+                            .foregroundColor(Palette.secondaryText.color)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Try again", action: retry)
+                            .buttonStyle(PrimaryButtonStyle())
+                        Button("Change server", action: changeServer)
+                            .buttonStyle(SecondaryButtonStyle())
+                    }
+                    .frame(maxWidth: 420)
+                    .padding(24)
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                }
+            }
+        }
     }
 }
 
@@ -47,9 +131,15 @@ struct WebPlayer: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.allowsAirPlayForMediaPlayback = true
         config.websiteDataStore = .default() // keeps the sign-in between launches
-        // The page's "Change server" button (Settings → Server) posts here.
+        // The page's "Change server" button (Settings, Server) and the playback
+        // sync script (PlaybackSync) post here. Only the server's own pages are heard.
         config.userContentController.add(WeakMessageHandler(context.coordinator), name: "cadence")
+        if let sync = PlaybackSync.script(serverURL: url) {
+            config.userContentController.addUserScript(WKUserScript(
+                source: sync, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         // Exposes window.CadenceNative so the AI DJ can use Apple Intelligence on this phone.
         // Both the handler and the script only work for the server's own pages.
         config.userContentController.addScriptMessageHandler(
@@ -62,12 +152,21 @@ struct WebPlayer: UIViewRepresentable {
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
+        let background = Palette.uiColor(Palette.playerBackground)
         web.isOpaque = false
-        web.backgroundColor = .black
-        // The player scrolls inside its own panes; the page itself shouldn't bounce or zoom.
+        web.backgroundColor = background
+        web.scrollView.backgroundColor = background
+        web.underPageBackgroundColor = background
+        // The player scrolls inside its own panes: the page itself must not bounce, zoom or
+        // pull to refresh (a web view has no pull-to-refresh unless one is added, and none is).
+        // Insets are .never because the page applies env(safe-area-inset-*) itself
+        // (viewport-fit=cover); the view runs edge to edge so those values are real.
         web.scrollView.bounces = false
+        web.scrollView.alwaysBounceVertical = false
+        web.scrollView.alwaysBounceHorizontal = false
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.scrollView.pinchGestureRecognizer?.isEnabled = false
+        web.allowsBackForwardNavigationGestures = true
         context.coordinator.web = web
         web.load(URLRequest(url: url))
         return web
@@ -100,9 +199,13 @@ struct WebPlayer: UIViewRepresentable {
 
         func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
             guard BridgeOrigin.isTrusted(message.frameInfo, server: parent.url),
-                  let body = message.body as? [String: Any], body["action"] as? String == "changeServer"
+                  let body = message.body as? [String: Any], let action = body["action"] as? String
             else { return }
-            parent.onChangeServer()
+            switch action {
+            case "changeServer": parent.onChangeServer()
+            case "audioActive": AudioSessionController.shared.activate()
+            default: break
+            }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -117,9 +220,42 @@ struct WebPlayer: UIViewRepresentable {
             if webView === web { parent.failure = nil }
         }
 
+        /// A 404 or 5xx for the player's own page (a server that is down, or not a Cadence server)
+        /// would otherwise show a blank error page, so it becomes the "cannot reach" card.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
+                     decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+            if webView === web, navigationResponse.isForMainFrame,
+               let http = navigationResponse.response as? HTTPURLResponse,
+               let responseURL = http.url, let scheme = responseURL.scheme, let host = responseURL.host,
+               BridgeOrigin.isTrusted(scheme: scheme, host: host, port: responseURL.port, server: parent.url),
+               let message = PlayerFailure.message(forHTTPStatus: http.statusCode) {
+                parent.failure = message
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
+        }
+
+        /// iOS ends the page's process when memory runs low, which leaves a blank view: load it again.
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard webView === web else {
+                closePopup()
+                return
+            }
+            parent.failure = nil
+            if webView.url == nil {
+                webView.load(URLRequest(url: parent.url))
+            } else {
+                webView.reload()
+            }
+        }
+
         private func show(_ error: Error, in webView: WKWebView) {
-            guard webView === web, (error as NSError).code != NSURLErrorCancelled else { return }
-            parent.failure = error.localizedDescription
+            guard webView === web else { return }
+            let nsError = error as NSError
+            guard !PlayerFailure.shouldIgnore(domain: nsError.domain, code: nsError.code) else { return }
+            parent.failure = PlayerFailure.message(
+                domain: nsError.domain, code: nsError.code, fallback: error.localizedDescription)
         }
 
         // Pages that open a new window (Apple Music's sign-in) get a sheet that

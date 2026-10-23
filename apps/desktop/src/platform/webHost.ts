@@ -180,12 +180,39 @@ const llm: HostBridge["llm"] = {
   chatJson: (config, req) => createLlmProvider(config).chatJson(req),
 };
 
+// Desktop-only integrations (Discord, global shortcuts, control API, Slack) do
+// nothing in a browser; their plugins are not even loaded here.
+const unsupported = async () => {
+  throw new Error("Only available in the desktop app");
+};
+const integrations: HostBridge["integrations"] = {
+  discord: {
+    start: unsupported,
+    setActivity: async () => undefined,
+    stop: async () => undefined,
+    status: async () => ({ state: "off" }),
+    onStatus: () => () => undefined,
+  },
+  shortcuts: { set: async () => [], clear: async () => undefined, onTriggered: () => () => undefined },
+  system: { mediaControls: async () => false, setMediaControls: unsupported, relaunch: async () => undefined },
+  control: {
+    start: unsupported,
+    stop: async () => undefined,
+    status: async () => ({ running: false, port: null, clients: 0, token: null }),
+    regenerateToken: unsupported,
+    pushState: () => undefined,
+    setHandler: () => undefined,
+  },
+  slack: { test: unsupported, setStatus: unsupported, clearStatus: unsupported, forget: async () => undefined },
+};
+
 export const webHost: HostBridge = {
   window: { minimize: () => undefined, toggleMaximize: () => undefined, close: () => undefined },
   secrets,
   auth,
   spotify,
   llm,
+  integrations,
   platform: "web" as unknown as HostBridge["platform"],
 };
 
