@@ -73,10 +73,10 @@ export function ChatPage() {
               ))}
             </div>
           )}
-          {chat.messages.map((m) => (
+          {chat.messages.map((m, i) => (
             <div key={m.id} className={`chat-msg ${m.role}`}>
               {m.role === "user" && m.about && <div className="chat-about">{m.about}</div>}
-              <div className="chat-bubble">
+              <div className={`chat-bubble${answering && m.content && m.role === "assistant" && i === chat.messages.length - 1 ? " streaming" : ""}`}>
                 {m.content || (answering && m.role === "assistant" ? <span className="chat-dots">Thinking…</span> : "")}
               </div>
             </div>
