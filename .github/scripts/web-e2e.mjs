@@ -66,6 +66,18 @@ ${welcome}`);
   assert.equal(await page.locator(".wizard-backdrop").count(), 0, "the wizard blocked a signed-in visitor");
   console.log("✓ no wizard for a signed-in visitor");
 
+  // ---- Wide layout: the full sidebar ------------------------------------------
+  const rail = page.locator("nav.rail");
+  await rail.getByRole("button", { name: "Server", exact: true }).waitFor();
+  assert.equal(await rail.getByRole("button", { name: "More", exact: true }).count(), 0, "the wide layout should not hide pages behind More");
+  await rail.getByRole("button", { name: "Collapse sidebar" }).click();
+  await page.reload();
+  await rail.getByRole("button", { name: "Expand sidebar" }).waitFor();
+  assert.ok((await rail.boundingBox()).width < 100, "the folded sidebar should be an icon rail");
+  await rail.getByRole("button", { name: "Expand sidebar" }).click();
+  await shot("3-sidebar");
+  console.log("✓ wide layout: full sidebar lists plugin pages and folds to icons (remembered)");
+
   // ---- Library + playback ---------------------------------------------------
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("heading", { name: "Your Library" }).waitFor();

@@ -448,7 +448,7 @@ function NavSection({
   }
   return (
     <div className="nav-section" role="group" aria-label={title}>
-      <button className="nav-heading" aria-expanded={open} onClick={() => onToggle(title)}>
+      <button className="nav-heading" aria-label={`${title} pages`} aria-expanded={open} onClick={() => onToggle(title)}>
         <span>{title}</span>
         <span className={`nav-caret${open ? " open" : ""}`} aria-hidden>
           ›
