@@ -40,6 +40,7 @@ export const RULE_NAMES: Record<string, string> = {
   "album-artist": "Album artist",
   "track-number": "Track number from file name",
   "title-from-filename": "Title from file name",
+  "from-folders": "From Artist/Album folders",
 };
 
 export const ruleName = (rule: string) => RULE_NAMES[rule] ?? rule;
