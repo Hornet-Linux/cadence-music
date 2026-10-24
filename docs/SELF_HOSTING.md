@@ -144,7 +144,8 @@ docker compose logs -f server   # watch the first library scan
 The server binds to `127.0.0.1:${HOST_PORT}` only, so it is not reachable from
 the internet until you put the proxy in front of it.
 
-Data (database, generated secret) lives in the `music-data` Docker volume.
+Data (the database with accounts, history, likes and playlists, and the
+generated secret) lives in the `music-data` Docker volume.
 Back it up with your usual volume backups.
 
 ## 3. Reverse proxy (Caddy)
@@ -178,13 +179,18 @@ directly with no proxy, set `TRUST_PROXY=false`. A plain number (`TRUST_PROXY=2`
 means "believe that many hops" and is only safe when nobody can reach the
 server except through your proxy.
 
-## 4. Connect the desktop app
+## 4. Connect the apps
 
 Install the app. The first-run wizard opens on its own (or use **Settings →
 About → Run setup again**). Enter `music.example.com` and click **Connect**.
 On a new server you'll be asked for the setup code to create the admin;
 otherwise sign in with your account or your SSO provider. The remaining steps
-connect Spotify and Apple Music, and you can skip any of them.
+connect Spotify, Apple Music and Jellyfin, and you can skip any of them. The web player
+at `https://music.example.com/app`, the iOS app ([IOS.md](IOS.md)) and the
+Android app ([ANDROID.md](ANDROID.md)) ask for the same address and sign-in.
+
+Step-by-step guides for beginners are in the
+[wiki](https://github.com/Hornet-Linux/cadence-music/wiki).
 
 ## Single sign-on with Authentik (OIDC)
 
@@ -248,7 +254,8 @@ desktop build's Widevine DRM support (castlabs Electron).
 
 1. Go to the [Spotify developer dashboard](https://developer.spotify.com/dashboard)
    and create an app.
-2. Add the redirect URI `http://127.0.0.1:43821/callback`, and select
+2. Add the redirect URIs `http://127.0.0.1:43821/callback` (desktop) and
+   `https://music.example.com/app/spotify/callback` (web player), and select
    **Web API** and **Web Playback SDK**.
 3. Under **User Management**, add the email of every Spotify account that will
    use it. Apps that Spotify hasn't reviewed are limited to a small allowlist

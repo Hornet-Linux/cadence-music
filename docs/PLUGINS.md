@@ -7,7 +7,7 @@ Signed, installable third-party packages build on this same contract.
 ## The model
 
 A plugin is an object with a **manifest** and an `activate(ctx)` function
-(`src/plugins/types.ts`):
+(`apps/desktop/src/plugins/types.ts`):
 
 ```ts
 const myPlugin: Plugin = {
@@ -42,7 +42,7 @@ single source of truth about what a plugin can do.
 | `provider.metadata` | supply artwork/metadata                        |
 | `ui.sidebar`        | add a navigation entry + page                  |
 | `ui.home.widget`    | add a widget to Home                           |
-| `ui.settings`       | add a settings panel                           |
+| `ui.settings`       | add a settings panel and setup-wizard steps    |
 | `storage`           | read/write a small private key-value store     |
 | `network.outbound`  | make outbound HTTP requests                    |
 
@@ -52,11 +52,11 @@ single source of truth about what a plugin can do.
 - **Home widgets** — `ctx.registerHomeWidget(...)`
 - **Settings panels** — `ctx.registerSettingsPanel(...)`
 - **Audio sources** — `ctx.registerAudioSource({ resolve })`; the player tries each
-  enabled source until one returns a URL.
+  enabled source until one returns a URL or an external playback handle.
 - **Library sources** — `ctx.registerLibrarySource({ id, label, useTracks })`.
   `useTracks` is a React hook returning the source's tracks; the Library, Home
-  and Search views render a section for every source. This is where the server,
-  local files and future Spotify / Apple Music importers plug in.
+  and Search views render a section for every source: the server, Spotify,
+  Apple Music and local files all plug in here.
 - **Now-playing observers** — `ctx.onNowPlaying(cb)` for scrobblers, presence, etc.
 - **Setup steps** — `ctx.registerSetupStep({ id, title, description, weight, render })`
   adds a page to the first-run wizard (requires `ui.settings`). The server,
@@ -74,7 +74,7 @@ at the same time (as built-ins do at start-up) never overwrite each other.
 ## Built-in vs sample plugins
 
 - `builtin: true` plugins ship with the app, are trusted, and enable
-  automatically: `core.server` (your self-hosted server and history sync),
+  automatically: `core.server` (your self-hosted server, and syncing history, likes and playlists),
   `core.spotify`, `core.apple-music`, `core.jellyfin` (your Jellyfin library,
   streamed through the server; see [JELLYFIN.md](JELLYFIN.md)), `core.local-files` and `core.now-playing-log`.
 - Sample plugins start **disabled** and demonstrate the consent flow — e.g.
@@ -85,7 +85,8 @@ at the same time (as built-ins do at start-up) never overwrite each other.
 
 The server has the same seam (`apps/server/src/plugins/types.ts`). A server
 plugin receives the Fastify instance and a context with the database, config,
-server secret, a logger and the `requireUser` / `requireAdmin` pre-handlers:
+server secret, a logger, the `requireUser` / `requireAdmin` pre-handlers and
+`settings` (runtime settings an admin can change, which override `.env`):
 
 ```ts
 export const myPlugin: ServerPlugin = {
@@ -100,8 +101,9 @@ export const myPlugin: ServerPlugin = {
 };
 ```
 
-The music library itself (`core.library`) is a server plugin, so third-party
-plugins use exactly the same contract. Keep routes under `/api/<area>`.
+The built-in features are server plugins — `core.library`, `core.integrations`,
+`core.history`, `core.collection` (likes and playlists) and `core.admin` — so
+third-party plugins use exactly the same contract. Keep routes under `/api/<area>`.
 
 ## Planned: signed packages
 
