@@ -53,6 +53,25 @@ export function setScale(scale: number): number {
 export function startUiScale(): void {
   if (!window.host?.ui) return;
   window.host.ui.setZoom(readScale());
+  // Chromium drops the page zoom back to its default when the display's scale
+  // changes (moving between monitors, docking, changing Windows scaling) or the
+  // window is restored, which rescales the content without resizing the window.
+  // Re-apply the saved size whenever that can happen.
+  const reapply = () => window.host?.ui?.setZoom(readScale());
+  window.addEventListener("resize", reapply);
+  window.addEventListener("focus", reapply);
+  const watchDpr = () => {
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    mq.addEventListener(
+      "change",
+      () => {
+        reapply();
+        watchDpr();
+      },
+      { once: true },
+    );
+  };
+  watchDpr();
   window.addEventListener("keydown", (e) => {
     const action = zoomKeyAction(e);
     if (!action) return;
