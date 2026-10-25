@@ -14,7 +14,7 @@ export function StatusLine({ tone, children }: { tone: "ok" | "warn" | "off"; ch
 /** Copy text to the clipboard and say so for a moment. */
 export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <button
