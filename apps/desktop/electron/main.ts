@@ -1,4 +1,4 @@
-import electron, { app, BrowserWindow, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import electron, { app, BrowserWindow, ipcMain, Menu, shell, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isTrustedSender } from "./ipcGuard";
@@ -80,6 +80,10 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  // Touchpad pinch (sent as Ctrl+wheel on Windows) otherwise zooms the page
+  // visually; the interface size is the only zoom this app wants.
+  void win.webContents.setVisualZoomLevelLimits(1, 1);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     let host = "";
@@ -241,6 +245,15 @@ app.whenReady().then(async () => {
     return;
   }
   await widevineReady();
+  // The default menu carries Chromium's own Zoom In / Out / Reset accelerators,
+  // which stack on top of the app's interface size (Ctrl+= / Ctrl+- / Ctrl+0) and
+  // rescale the content while the window keeps its size. Keep only the roles
+  // that matter (clipboard on macOS, window and app controls).
+  Menu.setApplicationMenu(
+    process.platform === "darwin"
+      ? Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }])
+      : null,
+  );
   createWindow();
 });
 
