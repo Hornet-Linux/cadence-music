@@ -1,12 +1,14 @@
 # Architecture
 
-Cadence is a **plugin-first** music player made of two parts that
-live in this repository:
+Cadence is a **plugin-first** music player. Everything lives in this
+repository:
 
 ```
-apps/desktop/     Electron desktop app (Windows .exe; also runs on Linux/macOS)
-apps/server/      Self-hosted server (Docker) — accounts, OIDC, library, streaming
-packages/shared/  Type-only HTTP API contract shared by both
+apps/desktop/     Electron desktop app (Windows .exe, macOS .dmg) and the web player build
+apps/server/      Self-hosted server (Docker) — accounts, OIDC, library, streaming,
+                  history, likes and playlists
+apps/ios/         SwiftUI shell that hosts the server's web player (see IOS.md)
+packages/shared/  Type-only HTTP API contract shared by the app and server
 deploy/           docker-compose, env template, Caddy example
 docs/             This documentation
 ```
@@ -21,7 +23,7 @@ provider.
 | --- | --- |
 | Shell | castlabs Electron 42 (Widevine DRM), frameless window with a custom title bar |
 | UI | React 18 + TypeScript, hand-rolled CSS design system |
-| State | Zustand stores (`player`, `pluginHost`, `nav`, per-plugin stores) |
+| State | Zustand stores (`player`, `pluginHost`, `nav`, `history`, `collection`, `prefs`, per-plugin stores) |
 | Build | Vite + `vite-plugin-electron`; electron-builder (optional VMP signing) |
 | Tests | Vitest (jsdom) + a Playwright launch test of the built app |
 
@@ -46,6 +48,18 @@ in one queue.
 section per *library source* contributed by plugins — the server, Spotify, Apple
 Music and local files — so a new source plugin shows up everywhere
 automatically.
+
+**Likes, playlists and history.** `features/collection/collectionStore.ts` and
+`features/history/historyStore.ts` keep them on the device. While signed in,
+the server plugin attaches a remote (`collectionSync.ts`, `historySync.ts`):
+it uploads what was made offline, then mirrors the server's copy.
+
+**Navigation.** `app/navStore.ts` keeps a back/forward stack of routes, driven
+by the title bar arrows, `Alt+←/→` and the mouse's back/forward buttons.
+
+**Web player.** `vite build --mode web` builds the same UI as a website, served
+by the server at `/app`; `src/platform/webHost.ts` provides `window.host` with
+browser redirects and `localStorage`.
 
 **Streaming services.** Spotify and Apple Music connect only through their
 official APIs. Spotify uses a per-installation developer app (client ID, no
@@ -82,6 +96,27 @@ files whose size or modification time changed. Audio elements cannot send
 headers, so the app asks for a short-lived HMAC-signed stream URL; the stream
 endpoint supports byte ranges for seeking.
 
+**Plugins.** `app.ts` registers the built-in server plugins: `core.library`,
+`core.integrations` (Spotify app ID, Apple Music tokens), `core.history`,
+`core.collection` (liked songs and playlists) and `core.admin` (`/admin`).
+Tables: `users`, `sessions`, `tracks`, `plays`, `settings`, `likes` and
+`playlists`; deleting a user cascades to everything they own.
+
+## iOS app (`apps/ios`)
+
+A SwiftUI app generated from `project.yml` with XcodeGen. It asks for the
+server address, then shows the server's `/app` in a `WKWebView` with a
+background audio session; lock-screen controls come from the page's Media
+Session metadata. See [IOS.md](IOS.md).
+
+## CI and releases
+
+`ci.yml` lints, typechecks and tests both apps, builds and smoke-tests the
+Docker image (including a browser test of the web player), and on `main` and
+tags packages the Windows installer and the macOS disk images. A `v*` tag
+publishes a GitHub Release. `ios.yml` builds an unsigned `Cadence.ipa` when
+`apps/ios` changes and attaches it to tagged releases.
+
 ## Security notes
 
 - The server binds to localhost in the provided compose file; expose it only
@@ -91,7 +126,6 @@ endpoint supports byte ranges for seeking.
 
 ## Roadmap
 
-- Playlists and likes synced through the server.
-- Spotify / Apple Music connector plugins (library import).
+- Spotify playlists and albums, and Apple Music playlists, in the library.
 - Artwork extraction and caching.
 - Signed, installable third-party plugin packages for both apps.

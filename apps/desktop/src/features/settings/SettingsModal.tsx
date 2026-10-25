@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { version } from "../../../package.json";
 import { DjSettings } from "@/features/dj/DjSettings";
 import { useHistory } from "@/features/history/historyStore";
 import { useOnboarding } from "@/features/onboarding/onboardingStore";
@@ -272,7 +273,7 @@ function AboutSection() {
   const playCount = useHistory((s) => s.plays.length);
   return (
     <>
-      <SettingRow title="Cadence" description="Self-hostable, plugin-first music player. Version 0.1.0.">
+      <SettingRow title="Cadence" description={`Self-hostable, plugin-first music player. Version ${version}.`}>
         <span />
       </SettingRow>
       <SettingRow title="Setup wizard" description="Walk through connecting your server and services again.">

@@ -2,18 +2,30 @@
 
 [![CI](https://github.com/Hornet-Linux/cadence-music/actions/workflows/ci.yml/badge.svg)](https://github.com/Hornet-Linux/cadence-music/actions/workflows/ci.yml)
 
-A music player you own end to end: a desktop app for your computer and a
-server you host yourself. **Plugin-first** — the app is a clean player shell,
-and almost everything else (where music comes from, sign-in, service
-connections) is a plugin, on both the desktop and the server.
+A music player you own end to end: apps for your computer, your browser and
+your phone, backed by a small server you host yourself. Your own music files,
+Spotify and Apple Music show up in one library and play in one queue, and your
+liked songs, playlists and listening history follow you to every device.
+**Plugin-first** — the app is a clean player shell, and almost everything else
+(where music comes from, sign-in, service connections) is a plugin, on both the
+apps and the server.
+
+**New here? The [wiki](https://github.com/Hornet-Linux/cadence-music/wiki) has
+step-by-step guides written for beginners, starting with
+[Getting Started](https://github.com/Hornet-Linux/cadence-music/wiki/Getting-Started).**
 
 ## What's here
 
-- **Desktop app** (`apps/desktop`) — Electron, ships for Windows (`.exe`) and macOS (`.dmg`). Plays
-  local files on its own, or connects to your server.
+- **Self-hosted server** (`apps/server`) — one Docker container. Accounts,
+  single sign-on, listening history, liked songs and playlists, and an optional
+  music-file library streamed with seeking. Also serves the web player, the
+  landing page and the admin panel.
+- **Web player** — the full app in any browser at `https://your-domain/app`.
+- **Desktop app** (`apps/desktop`) — Electron, ships for Windows (`.exe`) and
+  macOS (`.dmg`). Plays local files on its own, or connects to your server.
 - **iOS app** (`apps/ios`) — sideloaded with a free Apple ID; plays from your
-  server in the background. See [docs/IOS.md](docs/IOS.md).
-- **Android app** (`apps/android`) � a native shell around your server's web
+  server in the background with lock-screen controls. See [docs/IOS.md](docs/IOS.md).
+- **Android app** (`apps/android`) — a native shell around your server's web
   player; sideload the APK. See [docs/ANDROID.md](docs/ANDROID.md).
 - **Self-hosted server** (`apps/server`) — one Docker container. Scans your music
   folder, streams it with seeking, and handles accounts.
@@ -53,17 +65,19 @@ No `.env` file needed. Want HTTPS for a domain? Use
 [`docker-compose.caddy.yml`](deploy/compose/docker-compose.caddy.yml) instead.
 Update with `docker compose pull && docker compose up -d`. Image tags, the
 optional helper script and troubleshooting: [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+Step-by-step guides for every setup are in the wiki's
+[Self-Hosting](https://github.com/Hornet-Linux/cadence-music/wiki/Self-Hosting) page.
 
 **2. Claim it:** open `http://your-server:8787/app` (or your domain), enter the
 setup code from `docker compose logs cadence | grep "setup code"` and choose
 your admin login. Manage people and single sign-on at `/admin`.
 
-**3. Listen** in the browser at `/app`, or install the app:
+**3. Listen** in the browser at `/app`, or install an app:
 
 - **Windows:** [Cadence-Setup.exe](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-Setup.exe)
 - **macOS (Apple Silicon):** [Cadence-mac-arm64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-arm64.dmg)
 - **macOS (Intel):** [Cadence-mac-x64.dmg](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence-mac-x64.dmg)
-- **iPhone / iPad:** [Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.ipa), sideloaded with a free Apple ID ([how](docs/IOS.md))
+- **iPhone / iPad:** [Cadence.ipa](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.ipa), sideloaded with a free Apple ID ([how](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App))
 - **Android:** [Cadence.apk](https://github.com/Hornet-Linux/cadence-music/releases/latest/download/Cadence.apk), sideloaded ([how](docs/ANDROID.md))
 
 Between versioned releases, every push to `main` refreshes the [Nightly](https://github.com/Hornet-Linux/cadence-music/releases/tag/nightly) pre-release with the newest build of every app, with no sign-in needed: 
@@ -76,6 +90,12 @@ The Mac app isn't notarized by Apple, so the first time, open it with
 right-click → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
 
 To update the server later, run the same command again.
+
+**4. Connect services:** [Spotify](https://github.com/Hornet-Linux/cadence-music/wiki/Spotify)
+(free developer app, Premium for playback) and
+[Apple Music](https://github.com/Hornet-Linux/cadence-music/wiki/Apple-Music)
+(needs a MusicKit key on the server) and
+[Jellyfin](docs/JELLYFIN.md) (the server owner sets its address in the admin page).
 
 ## AI DJ
 
@@ -120,6 +140,31 @@ On very old or low-memory machines (4–8 GB RAM), pick `llama3.2:1b` instead
 can come out shorter. Larger models such as `qwen3:8b` pick better songs if you
 have 16 GB of RAM or a GPU. See the [AI DJ wiki page](https://github.com/Hornet-Linux/cadence-music/wiki/AI-DJ) for more.
 
+## Documentation
+
+The **[wiki](https://github.com/Hornet-Linux/cadence-music/wiki)** is the
+user guide, written for beginners:
+
+| | |
+| --- | --- |
+| Start | [Getting Started](https://github.com/Hornet-Linux/cadence-music/wiki/Getting-Started) · [Self-Hosting](https://github.com/Hornet-Linux/cadence-music/wiki/Self-Hosting) · [Configuration](https://github.com/Hornet-Linux/cadence-music/wiki/Configuration) |
+| Using Cadence | [Web Player](https://github.com/Hornet-Linux/cadence-music/wiki/Web-Player) · [Desktop App](https://github.com/Hornet-Linux/cadence-music/wiki/Desktop-App) · [iOS App](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App) · [Library and Playback](https://github.com/Hornet-Linux/cadence-music/wiki/Library-and-Playback) · [Liked Songs and Playlists](https://github.com/Hornet-Linux/cadence-music/wiki/Liked-Songs-and-Playlists) · [Listening History](https://github.com/Hornet-Linux/cadence-music/wiki/Listening-History) |
+| People | [Accounts and Sign-in](https://github.com/Hornet-Linux/cadence-music/wiki/Accounts-and-Sign-in) · [Single Sign-On (OIDC)](https://github.com/Hornet-Linux/cadence-music/wiki/Single-Sign-On-OIDC) · [Admin Panel](https://github.com/Hornet-Linux/cadence-music/wiki/Admin-Panel) |
+| Services | [Spotify](https://github.com/Hornet-Linux/cadence-music/wiki/Spotify) · [Apple Music](https://github.com/Hornet-Linux/cadence-music/wiki/Apple-Music) |
+| Under the hood | [Architecture](https://github.com/Hornet-Linux/cadence-music/wiki/Architecture) · [Plugins](https://github.com/Hornet-Linux/cadence-music/wiki/Plugins) · [Server API](https://github.com/Hornet-Linux/cadence-music/wiki/Server-API) · [Security](https://github.com/Hornet-Linux/cadence-music/wiki/Security) · [iOS App with Xcode](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App-with-Xcode) |
+| Help | [Troubleshooting](https://github.com/Hornet-Linux/cadence-music/wiki/Troubleshooting) · [Known Issues](https://github.com/Hornet-Linux/cadence-music/wiki/Known-Issues) · [Development](https://github.com/Hornet-Linux/cadence-music/wiki/Development) |
+
+Reference docs kept next to the code:
+
+- [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) — deploy the server, Caddy,
+  Authentik/OIDC setup, configuration reference.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how it fits together.
+- [docs/PLUGINS.md](docs/PLUGINS.md) — desktop and server plugins.
+- [docs/IOS.md](docs/IOS.md) — the iOS app.
+- [docs/ANDROID.md](docs/ANDROID.md) — the Android app and the Nightly downloads.
+- [docs/AI_DJ.md](docs/AI_DJ.md) — the AI DJ: providers, device sharing, the server API.
+- [docs/JELLYFIN.md](docs/JELLYFIN.md) — play your Jellyfin library through the server.
+
 ## Development
 
 Requires **Node.js 22+**. Each app installs on its own:
@@ -128,26 +173,36 @@ Requires **Node.js 22+**. Each app installs on its own:
 cd apps/desktop
 npm install
 npm run dev          # Electron app with hot reload
+npm run dev:web      # the web player in a browser
 npm run lint && npm run typecheck && npm test
 
 cd ../server
 npm install
 npm test             # compiles, then runs node:test
 npm run build
-MUSIC_DIR=~/Music ADMIN_USERNAME=admin ADMIN_PASSWORD=admin npm start
+MUSIC_DIR=~/Music ADMIN_USERNAME=admin ADMIN_PASSWORD=adminadmin1 npm start
 ```
+
+The iOS app needs a Mac with Xcode 16 and XcodeGen: see
+[iOS App with Xcode](https://github.com/Hornet-Linux/cadence-music/wiki/iOS-App-with-Xcode).
+More in the wiki's [Development](https://github.com/Hornet-Linux/cadence-music/wiki/Development) page.
 
 ## CI
 
 Every push and PR runs [ci.yml](.github/workflows/ci.yml):
 
 - **Desktop:** lint, typecheck, Vitest with coverage on **Linux and Windows**,
-  a production build with a clean-tree guard, and a packaged Windows `.exe` on
-  `main` and tags.
+  a production build with a clean-tree guard, a real-app launch test, and the
+  packaged Windows `.exe` and macOS `.dmg` files on `main` and tags.
 - **Server:** lint, typecheck and the `node:test` suite (including a full OIDC
   sign-in against a fake provider and real byte-range streaming).
 - **Docker:** builds the server image and smoke-tests the running container —
-  health check, sign-in, a library scan and a ranged stream.
+  health check, sign-in, a library scan, a ranged stream, and a browser test of
+  the web player.
+
+[ios.yml](.github/workflows/ios.yml) builds the unsigned `Cadence.ipa` when
+`apps/ios` changes. Pushing a `v*` tag publishes a GitHub Release with all four
+downloads.
 
 ## Documentation
 
