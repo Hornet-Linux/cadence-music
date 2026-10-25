@@ -81,7 +81,7 @@ export async function startFakeCast(opts: { id?: string; fn?: string; md?: strin
         : [],
     });
     socket.on("data", (chunk) => {
-      for (const m of reader.push(chunk)) {
+      for (const m of reader.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)) {
         const payload = JSON.parse(m.payload ?? "{}") as Record<string, unknown>;
         if (m.namespace !== NS_HEARTBEAT) received.push({ namespace: m.namespace, destinationId: m.destinationId, payload });
         const requestId = payload["requestId"];

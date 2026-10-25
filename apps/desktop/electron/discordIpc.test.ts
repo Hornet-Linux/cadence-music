@@ -367,7 +367,7 @@ describe("over a real pipe", () => {
     const server = net.createServer((socket) => {
       const decoder = new FrameDecoder();
       socket.on("data", (chunk) => {
-        for (const frame of decoder.push(chunk)) {
+        for (const frame of decoder.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)) {
           received.push(frame);
           if (frame.op === OP.HANDSHAKE) socket.write(encodeFrame(OP.FRAME, ready));
         }

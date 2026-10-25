@@ -58,7 +58,7 @@ export class CastConnection {
       socket.on("data", (chunk) => {
         this.lastSeen = Date.now();
         try {
-          for (const m of reader.push(chunk)) this.handle(m);
+          for (const m of reader.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)) this.handle(m);
         } catch {
           socket.destroy();
         }

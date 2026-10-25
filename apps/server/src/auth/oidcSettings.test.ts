@@ -218,7 +218,7 @@ test("single sign-on set up on the admin page works at once, without a restart",
   assert.deepEqual((await app.inject({ method: "GET", url: "/api/health" })).json().auth.oidc, { name: "Keycloak" });
 
   const ok = await signIn(app, idp.seen);
-  assert.ok(ok.back?.searchParams.get("code"), ok.back?.href);
+  assert.ok(ok.back?.searchParams.get("code"), ok.back?.href ?? "sign-in redirect was missing");
   const ex = await app.inject({ method: "POST", url: "/api/auth/exchange", payload: { code: ok.back!.searchParams.get("code"), code_verifier: ok.verifier } });
   assert.equal(ex.statusCode, 200, ex.body);
   assert.equal(findUserByUsername(db, "kira")?.is_admin, 1, "admin group promotes");
