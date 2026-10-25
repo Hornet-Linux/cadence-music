@@ -25,7 +25,7 @@ val hasReleaseKey = keystorePath != null && file(keystorePath).exists()
 
 android {
     namespace = "net.hornetlinux.cadencemusic"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "net.hornetlinux.cadencemusic"
