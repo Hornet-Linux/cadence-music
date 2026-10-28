@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { usePluginHost } from "@/plugins/host";
 import { primaryArtist } from "@/shared/types";
 import { SearchIcon } from "@/ui/icons";
-import { FontControls, TranslateControls, TranslateNote } from "./Controls";
+import { FontControls, OffsetControls, TranslateControls, TranslateNote } from "./Controls";
 import { Karaoke } from "./Karaoke";
 import { LyricsBody } from "./LyricsBody";
 import { isInstrumental } from "./lrc";
@@ -197,6 +197,7 @@ export function LyricsPage() {
             </button>
           </div>
           <FontControls />
+          <OffsetControls />
           <TranslateControls />
           <button
             type="button"

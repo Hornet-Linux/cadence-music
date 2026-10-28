@@ -389,3 +389,67 @@
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm, 12px);
 }
+
+/* ---- Apple Music-style line motion --------------------------------------- */
+/* The line being sung sits at full size and sharp; the rest recede, softly blurred. */
+.lv-line {
+  transform-origin: left center;
+  transition:
+    color 0.4s ease,
+    opacity 0.4s ease,
+    transform 0.5s cubic-bezier(0.22, 0.8, 0.3, 1),
+    filter 0.4s ease;
+  will-change: transform;
+}
+.lv-karaoke .lv-line {
+  transform-origin: center;
+}
+.lv-line[data-state="past"],
+.lv-line[data-state="next"] {
+  transform: scale(0.94);
+  filter: blur(0.7px);
+}
+.lv-line[data-state="past"] {
+  opacity: 0.6;
+}
+.lv-line[data-state="active"] {
+  transform: scale(1);
+  filter: none;
+  opacity: 1;
+}
+/* Hovering a line brings it into focus so it is easy to read and tap. */
+@media (hover: hover) {
+  .lv-line[data-state="past"]:hover,
+  .lv-line[data-state="next"]:hover {
+    filter: none;
+    opacity: 1;
+  }
+}
+.lv-offset {
+  min-width: 4.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.lv-k-tools {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv-line,
+  .lv-karaoke .lv-line {
+    transition: none;
+    will-change: auto;
+  }
+  .lv-line[data-state="past"],
+  .lv-line[data-state="next"] {
+    transform: none;
+  }
+}
+.reduce-motion .lv-line,
+.reduce-motion .lv-karaoke .lv-line {
+  transition: none;
+  will-change: auto;
+}
+.reduce-motion .lv-line[data-state="past"],
+.reduce-motion .lv-line[data-state="next"] {
+  transform: none;
+}

@@ -9,6 +9,7 @@ export function LyricsBody({ variant, container }: { variant: "page" | "karaoke"
   const translated = useLyricsView((s) => s.translatedLines);
   const translateOn = useLyricsView((s) => s.translateOn);
   const scale = useLyricsView((s) => s.fontScale);
+  const offsetSec = useLyricsView((s) => s.offsetSec);
   const listRef = useRef<HTMLOListElement>(null);
   const active = useActiveLine(lyrics);
   useAutoScroll(listRef, active, { anchor: variant === "karaoke" ? 0.42 : 0.38, container });
@@ -42,7 +43,7 @@ export function LyricsBody({ variant, container }: { variant: "page" | "karaoke"
         return (
           <li key={i} data-i={i} data-state={state} className={`lv-line${gap ? " gap" : ""}`} aria-current={state === "active" ? "true" : undefined}>
             {tappable && line.timeSec !== undefined && !gap ? (
-              <button type="button" className="lv-line-btn" onClick={() => seekTo(line.timeSec!)}>
+              <button type="button" className="lv-line-btn" onClick={() => seekTo(Math.max(0, line.timeSec! - offsetSec))}>
                 {content}
               </button>
             ) : (

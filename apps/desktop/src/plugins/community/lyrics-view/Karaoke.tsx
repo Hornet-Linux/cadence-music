@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon, NextIcon, PauseIcon, PlayIcon, PrevIcon } from "@/ui/icons";
 import { primaryArtist } from "@/shared/types";
-import { FontControls, TranslateControls, TranslateNote } from "./Controls";
+import { FontControls, OffsetControls, TranslateControls, TranslateNote } from "./Controls";
 import { useWakeLock } from "./hooks";
 import { LyricsBody } from "./LyricsBody";
 import { isInstrumental } from "./lrc";
@@ -47,6 +47,7 @@ export function Karaoke() {
         <FontControls />
       </header>
       <div className="lv-k-tools">
+        <OffsetControls />
         <TranslateControls />
       </div>
       <TranslateNote />

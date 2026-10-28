@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useNav } from "@/app/navStore";
 import { useUi } from "@/app/uiStore";
+import { usePluginHost } from "@/plugins/host";
 import { usePlayer } from "@/player/playerStore";
 import { usePlaybackBlock } from "@/player/playbackBlock";
 import { formatDuration, primaryArtist } from "@/shared/types";
@@ -11,6 +13,7 @@ import {
   PauseIcon,
   PlayIcon,
   PrevIcon,
+  LyricsIcon,
   QueueIcon,
   RepeatIcon,
   ShuffleIcon,
@@ -233,6 +236,10 @@ function Volume() {
 export function PlayerBar() {
   const queueOpen = useUi((s) => s.queueOpen);
   const toggleQueue = useUi((s) => s.toggleQueue);
+  // The Lyrics page comes from a plugin, so its button only shows while that plugin is on.
+  const hasLyrics = usePluginHost((s) => s.contributions.sidebar.some((i) => i.id === "lyrics"));
+  const onLyrics = useNav((s) => s.route.kind === "plugin" && s.route.itemId === "lyrics");
+  const hasTrack = usePlayer((s) => s.current !== null);
 
   return (
     <footer className="playerbar">
@@ -242,6 +249,17 @@ export function PlayerBar() {
         <SeekBar />
       </div>
       <div className="player-right">
+        {hasLyrics && (
+          <button
+            className={`ctrl${onLyrics ? " active" : ""}`}
+            aria-label="Lyrics"
+            aria-pressed={onLyrics}
+            disabled={!hasTrack}
+            onClick={() => useNav.getState().navigate({ kind: "plugin", itemId: "lyrics" })}
+          >
+            <LyricsIcon size={19} />
+          </button>
+        )}
         <button
           className={`ctrl${queueOpen ? " active" : ""}`}
           aria-label="Queue"

@@ -3,7 +3,7 @@ import type { Track } from "@/shared/types";
 import { emptyContributions, usePluginHost } from "@/plugins/host";
 import type { Lyrics, LyricsProvider, PlaybackEvent, PluginContext } from "../../types";
 import { registerLyricsTranslator, useLyricsTranslators } from "./api";
-import { playbackPosition, seekTo, startLyricsView, stopLyricsView, useLyricsView } from "./lyricsStore";
+import { OFFSET_MAX, playbackPosition, seekTo, startLyricsView, stopLyricsView, useLyricsView } from "./lyricsStore";
 
 const track = (id: string): Track => ({ id, title: `Song ${id}`, artists: [{ id: "a", name: "Artist" }] });
 const lyrics: Lyrics = { lines: [{ timeSec: 1, text: "one" }, { timeSec: 2, text: "two" }], synced: true, source: "Test" };
@@ -157,5 +157,27 @@ describe("lyrics view store", () => {
     expect(playbackPosition()).toBe(12.5);
     seekTo(42);
     expect(f.player.seek).toHaveBeenCalledWith(42);
+  });
+});
+
+describe("lyrics sync offset", () => {
+  it("starts at zero, clamps and rounds to a tenth of a second", () => {
+    const { setOffset } = useLyricsView.getState();
+    expect(useLyricsView.getState().offsetSec).toBe(0);
+    setOffset(0.54);
+    expect(useLyricsView.getState().offsetSec).toBe(0.5);
+    setOffset(99);
+    expect(useLyricsView.getState().offsetSec).toBe(OFFSET_MAX);
+    setOffset(-99);
+    expect(useLyricsView.getState().offsetSec).toBe(-OFFSET_MAX);
+    setOffset(0);
+  });
+
+  it("resets when the track changes", () => {
+    useLyricsView.getState().setTrack(track("offset-1"));
+    useLyricsView.getState().setOffset(2);
+    useLyricsView.getState().setTrack(track("offset-2"));
+    expect(useLyricsView.getState().offsetSec).toBe(0);
+    useLyricsView.getState().setTrack(null);
   });
 });

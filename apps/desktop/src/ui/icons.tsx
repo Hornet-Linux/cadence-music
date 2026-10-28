@@ -145,6 +145,12 @@ export const QueueIcon = (p: P) => (
     <path d="M15.5 14.5v5l4-2.5-4-2.5Z" fill="currentColor" />
   </Svg>
 );
+export const LyricsIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-7l-4 3.5V16.5H5A1.5 1.5 0 0 1 3.5 15V7A1.5 1.5 0 0 1 5 5.5Z" />
+    <path d="M8 10h8M8 13h5" />
+  </Svg>
+);
 export const PlusIcon = (p: P) => (
   <Svg {...p}>
     <path d="M12 5v14M5 12h14" />

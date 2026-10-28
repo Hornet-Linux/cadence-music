@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Lyrics } from "../../types";
 
 let position = 0;
-vi.mock("./lyricsStore", () => ({ playbackPosition: () => position }));
+let offsetSec = 0;
+vi.mock("./lyricsStore", () => ({
+  playbackPosition: () => position,
+  useLyricsView: (select: (s: { offsetSec: number }) => unknown) => select({ offsetSec }),
+}));
 
 const { prefersReducedMotion, useActiveLine, useAutoScroll, MANUAL_SCROLL_PAUSE_MS } = await import("./hooks");
 
@@ -27,6 +31,7 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   document.documentElement.classList.remove("reduce-motion");
+  offsetSec = 0;
   vi.useFakeTimers();
   // jsdom has no Element.scrollTo.
   Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
@@ -66,6 +71,18 @@ describe("useActiveLine", () => {
     act(() => void vi.advanceTimersByTime(400));
     expect(read()).toBe("2");
     act(() => root.render(<Probe lyrics={{ ...lyrics, synced: false }} />));
+    expect(read()).toBe("-1");
+  });
+
+  it("shifts the active line by the sync offset", () => {
+    position = 8; // line "a" at 5s is active; "b" at 10s is not yet
+    act(() => root.render(<Probe lyrics={lyrics} />));
+    expect(read()).toBe("0");
+    offsetSec = 2; // positive offset shows lines sooner
+    act(() => root.render(<Probe lyrics={{ ...lyrics }} />));
+    expect(read()).toBe("1");
+    offsetSec = -4; // negative offset shows them later
+    act(() => root.render(<Probe lyrics={{ ...lyrics }} />));
     expect(read()).toBe("-1");
   });
 });

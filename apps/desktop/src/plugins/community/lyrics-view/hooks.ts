@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Lyrics } from "../../types";
 import { activeLineIndex } from "./lrc";
-import { playbackPosition } from "./lyricsStore";
+import { playbackPosition, useLyricsView } from "./lyricsStore";
 
 /** Lines light up a touch early, which reads better than lighting up late. */
 export const LEAD_SEC = 0.2;
@@ -24,16 +24,17 @@ export function prefersReducedMotion(): boolean {
 /** The index of the line being sung, or -1 (before the first line, or unsynced lyrics). */
 export function useActiveLine(lyrics: Lyrics | null): number {
   const [index, setIndex] = useState(-1);
+  const offsetSec = useLyricsView((s) => s.offsetSec);
   useEffect(() => {
     if (!lyrics?.synced) {
       setIndex(-1);
       return;
     }
-    const tick = () => setIndex(activeLineIndex(lyrics.lines, playbackPosition(), LEAD_SEC));
+    const tick = () => setIndex(activeLineIndex(lyrics.lines, playbackPosition(), LEAD_SEC + offsetSec));
     tick();
     const id = setInterval(tick, POLL_MS);
     return () => clearInterval(id);
-  }, [lyrics]);
+  }, [lyrics, offsetSec]);
   return index;
 }
 

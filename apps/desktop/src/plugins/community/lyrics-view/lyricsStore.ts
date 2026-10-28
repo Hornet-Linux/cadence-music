@@ -13,6 +13,10 @@ export const FONT_MIN = 0.8;
 export const FONT_MAX = 1.8;
 export const FONT_STEP = 0.1;
 
+/** Sync offset: positive makes lines appear sooner, negative later (like the LRC `[offset:]` tag). */
+export const OFFSET_STEP = 0.5;
+export const OFFSET_MAX = 10;
+
 interface Prefs {
   fontScale?: number;
   choice?: string;
@@ -34,6 +38,8 @@ interface LyricsViewState {
   query: { title: string; artist: string } | null;
   fontScale: number;
   karaoke: boolean;
+  /** Seconds added to the playback position when finding the active line. Resets with each track. */
+  offsetSec: number;
 
   translateOn: boolean;
   translateLanguage: string;
@@ -47,6 +53,7 @@ interface LyricsViewState {
   search: (query: { title: string; artist: string } | null, fresh?: boolean) => void;
   setFontScale: (scale: number) => void;
   setKaraoke: (open: boolean) => void;
+  setOffset: (seconds: number) => void;
   setTranslateOn: (on: boolean) => void;
   setTranslateLanguage: (language: string) => void;
   /** Called by views while mounted; lookups only happen while somebody is looking. */
@@ -80,6 +87,7 @@ function readPrefs(): Prefs {
 }
 
 const clampScale = (n: number) => Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(n * 10) / 10));
+const clampOffset = (n: number) => Math.min(OFFSET_MAX, Math.max(-OFFSET_MAX, Math.round(n * 10) / 10));
 
 export const useLyricsView = create<LyricsViewState>((set, get) => {
   async function runTranslate() {
@@ -120,6 +128,7 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
     query: null,
     fontScale: 1,
     karaoke: false,
+    offsetSec: 0,
     translateOn: false,
     translateLanguage: defaultTranslateLanguage(),
     translateStatus: "idle",
@@ -140,6 +149,7 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
         providerId: null,
         errors: [],
         query: null,
+        offsetSec: 0,
         translateStatus: "idle",
         translatedLines: null,
         translateError: null,
@@ -206,6 +216,10 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
 
     setKaraoke(karaoke) {
       set({ karaoke });
+    },
+
+    setOffset(seconds) {
+      set({ offsetSec: clampOffset(seconds) });
     },
 
     setTranslateOn(translateOn) {
