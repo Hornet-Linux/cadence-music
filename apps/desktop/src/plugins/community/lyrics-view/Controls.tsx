@@ -1,5 +1,5 @@
 import { useLyricsTranslators, TRANSLATE_LANGUAGES, looksEnglish } from "./api";
-import { FONT_MAX, FONT_MIN, FONT_STEP, useLyricsView } from "./lyricsStore";
+import { FONT_MAX, FONT_MIN, FONT_STEP, OFFSET_STEP, useLyricsView } from "./lyricsStore";
 
 /** A- / A+ buttons. */
 export function FontControls() {
@@ -12,6 +12,27 @@ export function FontControls() {
       </button>
       <button type="button" className="lv-btn icon" onClick={() => set(scale + FONT_STEP)} disabled={scale >= FONT_MAX} aria-label="Larger text">
         <span aria-hidden style={{ fontSize: "1.2rem" }}>A</span>
+      </button>
+    </div>
+  );
+}
+
+/** -0.5s / +0.5s nudges for lyrics that run early or late. Only for synced lyrics. */
+export function OffsetControls() {
+  const synced = useLyricsView((s) => s.lyrics?.synced === true);
+  const offset = useLyricsView((s) => (s.track && s.offsets[s.track.id]) || 0);
+  const nudge = useLyricsView((s) => s.nudgeOffset);
+  if (!synced) return null;
+  return (
+    <div className="lv-group" role="group" aria-label="Lyrics timing">
+      <button type="button" className="lv-btn" onClick={() => nudge(-OFFSET_STEP)} aria-label="Show lyrics earlier">
+        −0.5s
+      </button>
+      <span className="lv-offset" aria-live="polite">
+        {offset === 0 ? "In sync" : `${offset > 0 ? "+" : ""}${offset.toFixed(1)}s`}
+      </span>
+      <button type="button" className="lv-btn" onClick={() => nudge(OFFSET_STEP)} aria-label="Show lyrics later">
+        +0.5s
       </button>
     </div>
   );

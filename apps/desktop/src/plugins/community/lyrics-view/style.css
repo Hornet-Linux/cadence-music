@@ -208,9 +208,6 @@
 .lv-line[data-state="past"] {
   color: var(--text-faint);
 }
-.lv-line[data-state="past"] {
-  opacity: 0.8;
-}
 .lv-line[data-state="active"] {
   color: var(--text);
 }
@@ -218,8 +215,33 @@
   color: var(--text-muted);
   font-weight: 500;
 }
+/* Lines fade and grow as they become the one being sung. */
 .lv-line {
-  transition: color 0.3s ease;
+  transform-origin: left center;
+  transition:
+    color 0.3s ease,
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.lv-line[data-state="next"],
+.lv-line[data-state="past"] {
+  transform: scale(0.96);
+}
+.lv-line[data-state="next"] {
+  opacity: 0.7;
+}
+.lv-line[data-state="past"] {
+  opacity: 0.5;
+}
+.lv-line[data-state="active"] {
+  opacity: 1;
+  transform: none;
+}
+.lv-offset {
+  min-width: 4.5em;
+  text-align: center;
+  font-size: 0.84rem;
+  color: var(--text-muted);
 }
 
 /* ---- Karaoke ------------------------------------------------------------ */
@@ -370,7 +392,11 @@
   }
 }
 .lv-karaoke .lv-line {
-  transition: color 0.4s ease;
+  transform-origin: center;
+  transition:
+    color 0.4s ease,
+    opacity 0.45s ease,
+    transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
   .lv-karaoke {

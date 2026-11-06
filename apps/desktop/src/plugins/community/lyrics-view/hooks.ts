@@ -5,7 +5,8 @@ import { playbackPosition } from "./lyricsStore";
 
 /** Lines light up a touch early, which reads better than lighting up late. */
 export const LEAD_SEC = 0.2;
-const POLL_MS = 200;
+// Fast enough that the highlight lands within ~100 ms of the line.
+const POLL_MS = 50;
 /** After the listener scrolls by hand, auto-scroll waits this long. */
 export const MANUAL_SCROLL_PAUSE_MS = 4000;
 
