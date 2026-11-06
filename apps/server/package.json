@@ -16,8 +16,8 @@
     "start": "node --disable-warning=ExperimentalWarning dist/index.js"
   },
   "dependencies": {
-    "fastify": "5.12.7",
-    "music-metadata": "12.2.3"
+    "fastify": "5.12.8",
+    "music-metadata": "12.3.4"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
