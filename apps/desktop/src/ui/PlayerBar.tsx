@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useNav } from "@/app/navStore";
 import { useUi } from "@/app/uiStore";
+import { usePluginHost } from "@/plugins/host";
 import { usePlayer } from "@/player/playerStore";
 import { usePlaybackBlock } from "@/player/playbackBlock";
 import { formatDuration, primaryArtist } from "@/shared/types";
@@ -230,6 +232,35 @@ function Volume() {
   );
 }
 
+/** Shortcuts to plugin pages that asked for one (such as Lyrics). Click again to go back. */
+function PluginButtons() {
+  const items = usePluginHost((s) => s.contributions.sidebar);
+  const route = useNav((s) => s.route);
+  const shortcuts = items.filter((i) => i.playerButton && i.icon);
+  return (
+    <>
+      {shortcuts.map((item) => {
+        const open = route.kind === "plugin" && route.itemId === item.id;
+        return (
+          <button
+            key={item.id}
+            className={`ctrl${open ? " active" : ""}`}
+            aria-label={item.label}
+            aria-pressed={open}
+            onClick={() => {
+              const nav = useNav.getState();
+              if (open && nav.back.length > 0) nav.goBack();
+              else if (!open) nav.navigate({ kind: "plugin", itemId: item.id });
+            }}
+          >
+            {item.icon}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
 export function PlayerBar() {
   const queueOpen = useUi((s) => s.queueOpen);
   const toggleQueue = useUi((s) => s.toggleQueue);
@@ -242,6 +273,7 @@ export function PlayerBar() {
         <SeekBar />
       </div>
       <div className="player-right">
+        <PluginButtons />
         <button
           className={`ctrl${queueOpen ? " active" : ""}`}
           aria-label="Queue"

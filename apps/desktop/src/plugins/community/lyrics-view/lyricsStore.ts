@@ -12,12 +12,16 @@ export type TranslateStatus = "idle" | "loading" | "ready" | "error";
 export const FONT_MIN = 0.8;
 export const FONT_MAX = 1.8;
 export const FONT_STEP = 0.1;
+export const OFFSET_STEP = 0.5;
+const OFFSET_MAX = 10;
 
 interface Prefs {
   fontScale?: number;
   choice?: string;
   translateOn?: boolean;
   translateLanguage?: string;
+  /** Per-track timing correction in seconds; positive shows lyrics later. */
+  offsets?: Record<string, number>;
 }
 
 interface LyricsViewState {
@@ -34,6 +38,7 @@ interface LyricsViewState {
   query: { title: string; artist: string } | null;
   fontScale: number;
   karaoke: boolean;
+  offsets: Record<string, number>;
 
   translateOn: boolean;
   translateLanguage: string;
@@ -47,6 +52,8 @@ interface LyricsViewState {
   search: (query: { title: string; artist: string } | null, fresh?: boolean) => void;
   setFontScale: (scale: number) => void;
   setKaraoke: (open: boolean) => void;
+  /** Shift the playing track's lyrics timing by `delta` seconds. */
+  nudgeOffset: (delta: number) => void;
   setTranslateOn: (on: boolean) => void;
   setTranslateLanguage: (language: string) => void;
   /** Called by views while mounted; lookups only happen while somebody is looking. */
@@ -120,6 +127,7 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
     query: null,
     fontScale: 1,
     karaoke: false,
+    offsets: {},
     translateOn: false,
     translateLanguage: defaultTranslateLanguage(),
     translateStatus: "idle",
@@ -208,6 +216,17 @@ export const useLyricsView = create<LyricsViewState>((set, get) => {
       set({ karaoke });
     },
 
+    nudgeOffset(delta) {
+      const id = get().track?.id;
+      if (!id) return;
+      const value = Math.round(((get().offsets[id] ?? 0) + delta) * 10) / 10;
+      const offsets = { ...get().offsets };
+      if (value === 0 || Math.abs(value) > OFFSET_MAX) delete offsets[id];
+      if (value !== 0 && Math.abs(value) <= OFFSET_MAX) offsets[id] = value;
+      set({ offsets });
+      savePrefs({ offsets });
+    },
+
     setTranslateOn(translateOn) {
       set({ translateOn });
       savePrefs({ translateOn });
@@ -239,6 +258,7 @@ export function startLyricsView(ctx: PluginContext): void {
   const languages: readonly string[] = TRANSLATE_LANGUAGES;
   useLyricsView.setState({
     fontScale: clampScale(prefs.fontScale ?? 1),
+    offsets: prefs.offsets ?? {},
     choice: prefs.choice ?? "auto",
     translateOn: prefs.translateOn === true,
     translateLanguage: prefs.translateLanguage && languages.includes(prefs.translateLanguage) ? prefs.translateLanguage : defaultTranslateLanguage(),
@@ -276,9 +296,16 @@ export function stopLyricsView(): void {
 }
 
 /** The current playback position in seconds (0 when unknown). */
+/** The playing track's timing correction in seconds. */
+function currentOffset(): number {
+  const { track, offsets } = useLyricsView.getState();
+  return (track && offsets[track.id]) || 0;
+}
+
+/** Where the song is, on the lyrics' clock (the timing correction applied). */
 export function playbackPosition(): number {
   try {
-    return host?.player.getState().position ?? 0;
+    return (host?.player.getState().position ?? 0) - currentOffset();
   } catch {
     return 0;
   }
@@ -291,7 +318,7 @@ export function canControlPlayer(): boolean {
 
 export function seekTo(seconds: number): void {
   try {
-    host?.player.seek(seconds);
+    host?.player.seek(Math.max(0, seconds + currentOffset()));
   } catch {
     // Seeking needs player.control; without it the line is simply not tappable.
   }

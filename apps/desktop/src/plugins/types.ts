@@ -151,6 +151,8 @@ export interface SidebarContribution {
   label: string;
   icon?: ReactNode;
   render: () => ReactNode;
+  /** Also show the icon as a shortcut in the player bar (e.g. Lyrics, next to Queue). */
+  playerButton?: boolean;
 }
 
 /** A Home-view widget contributed by a plugin. */

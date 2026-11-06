@@ -158,4 +158,21 @@ describe("lyrics view store", () => {
     seekTo(42);
     expect(f.player.seek).toHaveBeenCalledWith(42);
   });
+
+  it("applies and remembers a per-track timing offset", () => {
+    const f = fakeContext();
+    startLyricsView(f.ctx);
+    useLyricsView.getState().setTrack(track("a"));
+    useLyricsView.getState().nudgeOffset(0.5);
+    useLyricsView.getState().nudgeOffset(0.5);
+    expect(useLyricsView.getState().offsets).toEqual({ a: 1 });
+    expect(f.store.get("prefs")).toMatchObject({ offsets: { a: 1 } });
+    // Lyrics shown 1s later: the lyrics clock runs 1s behind, and tapping a line seeks 1s on.
+    expect(playbackPosition()).toBe(11.5);
+    seekTo(2);
+    expect(f.player.seek).toHaveBeenCalledWith(3);
+    useLyricsView.getState().nudgeOffset(-1);
+    expect(useLyricsView.getState().offsets).toEqual({});
+    expect(playbackPosition()).toBe(12.5);
+  });
 });

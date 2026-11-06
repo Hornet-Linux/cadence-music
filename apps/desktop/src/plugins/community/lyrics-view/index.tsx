@@ -37,7 +37,7 @@ const plugin: Plugin = {
       // The player may not exist yet at start-up; the view starts when a track begins.
       ctx.log("lyrics view could not read the player yet", err);
     }
-    ctx.registerSidebarItem({ id: "lyrics", label: "Lyrics", icon: <LyricsIcon />, render: () => <LyricsPage /> });
+    ctx.registerSidebarItem({ id: "lyrics", label: "Lyrics", icon: <LyricsIcon />, render: () => <LyricsPage />, playerButton: true });
     ctx.registerCommand({
       id: "lyrics.karaoke",
       title: "Show lyrics in karaoke mode",
