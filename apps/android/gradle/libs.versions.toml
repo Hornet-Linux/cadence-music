@@ -7,7 +7,7 @@ coreKtx = "1.19.1"
 webkit = "1.14.0"
 coroutines = "1.11.0"
 # ML Kit GenAI Prompt API (Gemini Nano via AICore)
-mlkitPrompt = "1.0.0-beta4"
+mlkitPrompt = "1.0.0-beta5"
 junit = "4.13.2"
 orgJson = "20260814"
 
